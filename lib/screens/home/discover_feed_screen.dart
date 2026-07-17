@@ -79,7 +79,7 @@ class DiscoverFeedScreen extends StatelessWidget {
                     child: Container(
                       width: 64, height: 64,
                       decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: AppColors.lineBlack, width: 2)),
-                      child: const Icon(Icons.star, size: 32),
+                      child: Image.asset('assets/images/star.jpg', width: 32, height: 32),
                     ),
                   ),
                 ],

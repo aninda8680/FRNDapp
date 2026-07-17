@@ -23,7 +23,7 @@ class SketchyButton extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          if (showSparkles) const SparkleAccent(size: 16),
+          if (showSparkles) const SparkleAccent(size: 24),
           if (showSparkles) const SizedBox(width: 8),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
@@ -42,7 +42,7 @@ class SketchyButton extends StatelessWidget {
             ),
           ),
           if (showSparkles) const SizedBox(width: 8),
-          if (showSparkles) const SparkleAccent(size: 16),
+          if (showSparkles) const SparkleAccent(size: 24),
         ],
       ),
     );
