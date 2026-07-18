@@ -80,7 +80,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           text: _isCodeSent ? 'VERIFY & ENTER' : 'SEND MAGIC LINK',
                           onPressed: () {
                             if (_isCodeSent) {
-                              Navigator.pushNamed(context, '/setup/basic_info');
+                              Navigator.pushNamed(context, '/setup');
                             } else {
                               setState(() {
                                 _isCodeSent = true;

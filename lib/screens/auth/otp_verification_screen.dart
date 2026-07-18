@@ -36,7 +36,7 @@ class OtpVerificationScreen extends StatelessWidget {
               const SizedBox(height: 32),
               SketchyButton(
                 text: 'VERIFY & ENTER',
-                onPressed: () => Navigator.pushNamed(context, '/setup/basic_info'),
+                onPressed: () => Navigator.pushNamed(context, '/setup'),
               ),
             ],
           ),
