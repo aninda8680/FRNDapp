@@ -2,6 +2,8 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../../widgets/sketchy_button.dart';
 import '../../widgets/sketchy_container.dart';
+import '../../services/auth_service.dart';
+import '../../config/dev_config.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -11,7 +13,72 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  bool _isCodeSent = false;
+  bool _isLoading = false;
+  bool _showForgotPassword = false;
+
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  void _showSnackBar(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
+  Future<void> _onSignUpLogin() async {
+    // ── Dev bypass ────────────────────────────────────────────────────────────
+    if (DevConfig.bypassAuth) {
+      Navigator.pushNamed(context, '/otp');
+      return;
+    }
+
+    // ── Validation ────────────────────────────────────────────────────────────
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+
+    if (email.isEmpty || password.isEmpty) {
+      _showSnackBar('Please enter your college email and password.');
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    final result = await AuthService.signupOrLogin(email, password);
+
+    setState(() => _isLoading = false);
+
+    if (!mounted) return;
+
+    switch (result) {
+      case AuthResult.success:
+        // Existing user, correct password → go to profile setup
+        Navigator.pushNamed(context, '/setup');
+        break;
+
+      case AuthResult.wrongPassword:
+        // Existing user, wrong password → tell them & reveal forgot-password link
+        _showSnackBar('Wrong password. Please try again.');
+        setState(() => _showForgotPassword = true);
+        break;
+
+      case AuthResult.needsOtp:
+        // New user → OTP was sent → open OTP verification screen
+        Navigator.pushNamed(context, '/otp');
+        break;
+
+      case AuthResult.failure:
+        _showSnackBar('Something went wrong. Please try again.');
+        break;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -22,8 +89,9 @@ class _LoginScreenState extends State<LoginScreen> {
       body: SafeArea(
         child: Stack(
           children: [
+            // Background illustration — blurs when keyboard is up
             Positioned(
-              top: 135,
+              top: 50,
               left: 0,
               right: 0,
               child: TweenAnimationBuilder<double>(
@@ -45,6 +113,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
             ),
+
+            // Form content
             CustomScrollView(
               slivers: [
                 SliverFillRemaining(
@@ -56,38 +126,86 @@ class _LoginScreenState extends State<LoginScreen> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         const Spacer(flex: 5),
+
+                        // Email field
                         Text(
-                          _isCodeSent ? 'ENTER CODE' : 'ENTER COLLEGE ID',
+                          'ENTER COLLEGE ID',
                           style: Theme.of(context).textTheme.labelLarge,
                         ),
                         const SizedBox(height: 12),
                         SketchyContainer(
                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                           child: TextField(
-                            keyboardType: _isCodeSent ? TextInputType.number : TextInputType.emailAddress,
-                            textAlign: _isCodeSent ? TextAlign.center : TextAlign.start,
-                            decoration: InputDecoration(
+                            controller: _emailController,
+                            keyboardType: TextInputType.emailAddress,
+                            decoration: const InputDecoration(
                               border: InputBorder.none,
-                              hintText: _isCodeSent ? '- - - - - -' : 'student@college.edu',
+                              hintText: 'student@college.edu',
                             ),
-                            style: _isCodeSent 
-                                ? Theme.of(context).textTheme.displaySmall 
-                                : Theme.of(context).textTheme.bodyLarge,
+                            style: Theme.of(context).textTheme.bodyLarge,
                           ),
                         ),
-                        const Spacer(),
-                        SketchyButton(
-                          text: _isCodeSent ? 'VERIFY & ENTER' : 'SEND MAGIC LINK',
-                          onPressed: () {
-                            if (_isCodeSent) {
-                              Navigator.pushNamed(context, '/setup');
-                            } else {
-                              setState(() {
-                                _isCodeSent = true;
-                              });
-                            }
-                          },
+                        const SizedBox(height: 16),
+
+                        // Password field
+                        Text(
+                          'PASSWORD',
+                          style: Theme.of(context).textTheme.labelLarge,
                         ),
+                        const SizedBox(height: 12),
+                        SketchyContainer(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                          child: TextField(
+                            controller: _passwordController,
+                            obscureText: true,
+                            decoration: const InputDecoration(
+                              border: InputBorder.none,
+                              hintText: 'Enter password',
+                            ),
+                            style: Theme.of(context).textTheme.bodyLarge,
+                          ),
+                        ),
+
+                        const Spacer(),
+
+                        // Action button
+                        if (_isLoading)
+                          const Center(child: CircularProgressIndicator())
+                        else
+                          SketchyButton(
+                            text: 'SIGN UP / LOGIN',
+                            onPressed: _onSignUpLogin,
+                          ),
+
+                        // Forgot password — only visible after a wrong-password attempt
+                        if (_showForgotPassword) ...[  
+                          const SizedBox(height: 8),
+                          Center(
+                            child: TextButton(
+                              onPressed: () async {
+                                final email = _emailController.text.trim();
+                                if (email.isEmpty) {
+                                  _showSnackBar('Enter your email above first.');
+                                  return;
+                                }
+                                final sent = await AuthService.forgotPassword(email);
+                                if (!mounted) return;
+                                _showSnackBar(
+                                  sent
+                                      ? 'If that email is registered, a reset link has been sent.'
+                                      : 'Could not send reset link. Please try again.',
+                                );
+                              },
+                              child: Text(
+                                'Forgot Password?',
+                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: Theme.of(context).colorScheme.primary,
+                                    ),
+                              ),
+                            ),
+                          ),
+                        ],
+
                         const SizedBox(height: 16),
                       ],
                     ),

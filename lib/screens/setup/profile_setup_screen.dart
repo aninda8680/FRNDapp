@@ -4,6 +4,7 @@ import '../../widgets/sketchy_container.dart';
 import '../../widgets/profile_photo_picker.dart';
 import '../../widgets/sketchy_progress_bar.dart';
 import '../../theme/app_colors.dart';
+import '../../services/auth_service.dart';
 
 class ProfileSetupScreen extends StatefulWidget {
   const ProfileSetupScreen({super.key});
@@ -16,27 +17,40 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   final PageController _pageController = PageController();
   int _currentIndex = 0;
 
+  final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _ageController = TextEditingController();
-  final TextEditingController _deptController = TextEditingController();
-  final TextEditingController _yearController = TextEditingController();
-  final TextEditingController _promptController = TextEditingController();
+  final TextEditingController _bioController = TextEditingController();
+  final TextEditingController _schoolController = TextEditingController();
+  final TextEditingController _courseController = TextEditingController();
+  final TextEditingController _heightController = TextEditingController();
 
-  final List<String> _availableInterests = [
+  final List<String> _availableHobbies = [
     'Gaming', 'Anime', 'Coding', 'Hiking', 'Music', 'Art', 'Coffee', 'Movies',
     'Reading', 'Photography', 'Sports', 'Travel'
   ];
-  final Set<String> _selectedInterests = {};
-  String? _selectedPreference;
+  final Set<String> _selectedHobbies = {};
+
+  final List<String> _availableSkills = ['JavaScript', 'Python', 'Dart', 'Figma', 'UI/UX', 'Writing', 'Music', 'Public Speaking'];
+  final Set<String> _selectedSkills = {};
+
+  bool _smoke = false;
+  bool _drink = false;
+  bool _pets = false;
+
+  String? _selectedLookingFor;
+  String? _selectedSexualOrientation;
 
   @override
   void dispose() {
     _pageController.dispose();
+    _usernameController.dispose();
     _nameController.dispose();
     _ageController.dispose();
-    _deptController.dispose();
-    _yearController.dispose();
-    _promptController.dispose();
+    _bioController.dispose();
+    _schoolController.dispose();
+    _courseController.dispose();
+    _heightController.dispose();
     super.dispose();
   }
 
@@ -141,13 +155,23 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('WHAT IS YOUR NAME?', style: Theme.of(context).textTheme.labelLarge?.copyWith(color: AppColors.textColor2)),
+          Text('USERNAME', style: Theme.of(context).textTheme.labelLarge?.copyWith(color: AppColors.textColor2)),
+          const SizedBox(height: 8),
+          SketchyContainer(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            child: TextField(
+              controller: _usernameController,
+              decoration: InputDecoration(isDense: true, border: InputBorder.none, hintText: 'newusername', hintStyle: TextStyle(color: AppColors.textColor1.withOpacity(0.5))),
+            ),
+          ),
+          const SizedBox(height: 24),
+          Text('NAME', style: Theme.of(context).textTheme.labelLarge?.copyWith(color: AppColors.textColor2)),
           const SizedBox(height: 8),
           SketchyContainer(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             child: TextField(
               controller: _nameController,
-              decoration: InputDecoration(isDense: true, border: InputBorder.none, hintText: 'Name', hintStyle: TextStyle(color: AppColors.textColor1.withOpacity(0.5))),
+              decoration: InputDecoration(isDense: true, border: InputBorder.none, hintText: 'John Updated', hintStyle: TextStyle(color: AppColors.textColor1.withOpacity(0.5))),
             ),
           ),
           const SizedBox(height: 24),
@@ -158,27 +182,49 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
             child: TextField(
               controller: _ageController,
               keyboardType: TextInputType.number, 
-              decoration: InputDecoration(isDense: true, border: InputBorder.none, hintText: '18', hintStyle: TextStyle(color: AppColors.textColor1.withOpacity(0.5))),
+              decoration: InputDecoration(isDense: true, border: InputBorder.none, hintText: '21', hintStyle: TextStyle(color: AppColors.textColor1.withOpacity(0.5))),
             ),
           ),
           const SizedBox(height: 24),
-          Text('Department', style: Theme.of(context).textTheme.labelLarge?.copyWith(color: AppColors.textColor2)),
+          Text('BIO', style: Theme.of(context).textTheme.labelLarge?.copyWith(color: AppColors.textColor2)),
           const SizedBox(height: 8),
           SketchyContainer(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             child: TextField(
-              controller: _deptController,
-              decoration: InputDecoration(isDense: true, border: InputBorder.none, hintText: 'Computer Science', hintStyle: TextStyle(color: AppColors.textColor1.withOpacity(0.5))),
+              controller: _bioController,
+              maxLines: 3,
+              decoration: InputDecoration(isDense: true, border: InputBorder.none, hintText: 'New bio text', hintStyle: TextStyle(color: AppColors.textColor1.withOpacity(0.5))),
             ),
           ),
           const SizedBox(height: 24),
-          Text('YEAR', style: Theme.of(context).textTheme.labelLarge?.copyWith(color: AppColors.textColor2)),
+          Text('SCHOOL', style: Theme.of(context).textTheme.labelLarge?.copyWith(color: AppColors.textColor2)),
           const SizedBox(height: 8),
           SketchyContainer(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             child: TextField(
-              controller: _yearController,
-              decoration: InputDecoration(isDense: true, border: InputBorder.none, hintText: '1st, 2nd, 3rd, 4th ...', hintStyle: TextStyle(color: AppColors.textColor1.withOpacity(0.5))),
+              controller: _schoolController,
+              decoration: InputDecoration(isDense: true, border: InputBorder.none, hintText: 'Adamas University', hintStyle: TextStyle(color: AppColors.textColor1.withOpacity(0.5))),
+            ),
+          ),
+          const SizedBox(height: 24),
+          Text('COURSE', style: Theme.of(context).textTheme.labelLarge?.copyWith(color: AppColors.textColor2)),
+          const SizedBox(height: 8),
+          SketchyContainer(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            child: TextField(
+              controller: _courseController,
+              decoration: InputDecoration(isDense: true, border: InputBorder.none, hintText: 'CSE', hintStyle: TextStyle(color: AppColors.textColor1.withOpacity(0.5))),
+            ),
+          ),
+          const SizedBox(height: 24),
+          Text('HEIGHT (cm)', style: Theme.of(context).textTheme.labelLarge?.copyWith(color: AppColors.textColor2)),
+          const SizedBox(height: 8),
+          SketchyContainer(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            child: TextField(
+              controller: _heightController,
+              keyboardType: TextInputType.number,
+              decoration: InputDecoration(isDense: true, border: InputBorder.none, hintText: '175', hintStyle: TextStyle(color: AppColors.textColor1.withOpacity(0.5))),
             ),
           ),
           const SizedBox(height: 24),
@@ -236,18 +282,20 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          Text('HOBBIES', style: Theme.of(context).textTheme.labelLarge?.copyWith(color: AppColors.textColor2)),
+          const SizedBox(height: 8),
           Wrap(
             spacing: 12,
             runSpacing: 12,
-            children: _availableInterests.map((e) {
-              final isSelected = _selectedInterests.contains(e);
+            children: _availableHobbies.map((e) {
+              final isSelected = _selectedHobbies.contains(e);
               return GestureDetector(
                 onTap: () {
                   setState(() {
                     if (isSelected) {
-                      _selectedInterests.remove(e);
+                      _selectedHobbies.remove(e);
                     } else {
-                      _selectedInterests.add(e);
+                      _selectedHobbies.add(e);
                     }
                   });
                 },
@@ -263,14 +311,44 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
             }).toList(),
           ),
           const SizedBox(height: 32),
-          Text('PERSONALITY PROMPT', style: Theme.of(context).textTheme.labelLarge?.copyWith(color: AppColors.textColor2)),
+          Text('SKILLS', style: Theme.of(context).textTheme.labelLarge?.copyWith(color: AppColors.textColor2)),
           const SizedBox(height: 8),
-          SketchyContainer(
-            child: TextField(
-              controller: _promptController,
-              maxLines: 3,
-              decoration: InputDecoration(border: InputBorder.none, hintText: 'A random fact about me...', hintStyle: TextStyle(color: AppColors.textColor1.withOpacity(0.5))),
-            ),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: _availableSkills.map((e) {
+              final isSelected = _selectedSkills.contains(e);
+              return GestureDetector(
+                onTap: () {
+                  setState(() {
+                    if (isSelected) {
+                      _selectedSkills.remove(e);
+                    } else {
+                      _selectedSkills.add(e);
+                    }
+                  });
+                },
+                child: SketchyContainer(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  borderRadius: 999,
+                  backgroundColor: isSelected ? AppColors.textColor2 : AppColors.cream,
+                  child: Text(e, style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    color: isSelected ? AppColors.cream : AppColors.textColor2,
+                  )),
+                ),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 32),
+          Text('TAGS', style: Theme.of(context).textTheme.labelLarge?.copyWith(color: AppColors.textColor2)),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildTagToggle('Smoke', _smoke, (v) => setState(() => _smoke = v)),
+              _buildTagToggle('Drink', _drink, (v) => setState(() => _drink = v)),
+              _buildTagToggle('Pets', _pets, (v) => setState(() => _pets = v)),
+            ],
           ),
           const SizedBox(height: 48),
           SketchyButton(
@@ -278,6 +356,27 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
             onPressed: _nextStep,
           ),
           const SizedBox(height: 24),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTagToggle(String label, bool value, ValueChanged<bool> onChanged) {
+    return GestureDetector(
+      onTap: () => onChanged(!value),
+      child: Column(
+        children: [
+          SketchyContainer(
+            padding: const EdgeInsets.all(12),
+            borderRadius: 999,
+            backgroundColor: value ? AppColors.textColor2 : AppColors.cream,
+            child: Icon(
+              value ? Icons.check : Icons.close,
+              color: value ? AppColors.cream : AppColors.textColor2,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(label, style: Theme.of(context).textTheme.labelMedium),
         ],
       ),
     );
@@ -292,16 +391,16 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
           Text('WHAT ARE YOU LOOKING FOR?', style: Theme.of(context).textTheme.labelLarge?.copyWith(color: AppColors.textColor2)),
           const SizedBox(height: 16),
           GestureDetector(
-            onTap: () => setState(() => _selectedPreference = 'Dating'),
+            onTap: () => setState(() => _selectedLookingFor = 'dating'),
             child: SketchyContainer(
               padding: const EdgeInsets.all(24),
-              backgroundColor: _selectedPreference == 'Dating' ? AppColors.textColor2.withOpacity(0.1) : AppColors.cream,
+              backgroundColor: _selectedLookingFor == 'dating' ? AppColors.textColor2.withOpacity(0.1) : AppColors.cream,
               child: Row(
                 children: [
-                  Icon(Icons.favorite_border, size: 32, color: _selectedPreference == 'Dating' ? AppColors.textColor2 : AppColors.inkBlack),
+                  Icon(Icons.favorite_border, size: 32, color: _selectedLookingFor == 'dating' ? AppColors.textColor2 : AppColors.inkBlack),
                   const SizedBox(width: 16),
                   Text('DATING', style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: _selectedPreference == 'Dating' ? AppColors.textColor2 : AppColors.inkBlack
+                    color: _selectedLookingFor == 'dating' ? AppColors.textColor2 : AppColors.inkBlack
                   )),
                 ],
               ),
@@ -309,20 +408,41 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
           ),
           const SizedBox(height: 16),
           GestureDetector(
-            onTap: () => setState(() => _selectedPreference = 'Friends Only'),
+            onTap: () => setState(() => _selectedLookingFor = 'friends'),
             child: SketchyContainer(
               padding: const EdgeInsets.all(24),
-              backgroundColor: _selectedPreference == 'Friends Only' ? AppColors.textColor2.withOpacity(0.1) : AppColors.cream,
+              backgroundColor: _selectedLookingFor == 'friends' ? AppColors.textColor2.withOpacity(0.1) : AppColors.cream,
               child: Row(
                 children: [
-                  Icon(Icons.people_outline, size: 32, color: _selectedPreference == 'Friends Only' ? AppColors.textColor2 : AppColors.inkBlack),
+                  Icon(Icons.people_outline, size: 32, color: _selectedLookingFor == 'friends' ? AppColors.textColor2 : AppColors.inkBlack),
                   const SizedBox(width: 16),
                   Text('FRIENDS ONLY', style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: _selectedPreference == 'Friends Only' ? AppColors.textColor2 : AppColors.inkBlack
+                    color: _selectedLookingFor == 'friends' ? AppColors.textColor2 : AppColors.inkBlack
                   )),
                 ],
               ),
             ),
+          ),
+          const SizedBox(height: 32),
+          Text('SEXUAL ORIENTATION', style: Theme.of(context).textTheme.labelLarge?.copyWith(color: AppColors.textColor2)),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: ['straight', 'gay', 'bisexual', 'other'].map((e) {
+              final isSelected = _selectedSexualOrientation == e;
+              return GestureDetector(
+                onTap: () => setState(() => _selectedSexualOrientation = e),
+                child: SketchyContainer(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  borderRadius: 999,
+                  backgroundColor: isSelected ? AppColors.textColor2 : AppColors.cream,
+                  child: Text(e.toUpperCase(), style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    color: isSelected ? AppColors.cream : AppColors.textColor2,
+                  )),
+                ),
+              );
+            }).toList(),
           ),
           const SizedBox(height: 48),
           SketchyButton(
@@ -338,9 +458,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   Widget _buildProfilePreviewStep() {
     final name = _nameController.text.trim().isNotEmpty ? _nameController.text.trim() : 'Your Name';
     final age = _ageController.text.trim().isNotEmpty ? _ageController.text.trim() : '21';
-    final dept = _deptController.text.trim().isNotEmpty ? _deptController.text.trim() : 'Department';
-    final year = _yearController.text.trim().isNotEmpty ? _yearController.text.trim() : 'Year';
-    final prompt = _promptController.text.trim().isNotEmpty ? _promptController.text.trim() : 'Write something interesting about yourself...';
+    final school = _schoolController.text.trim().isNotEmpty ? _schoolController.text.trim() : 'School';
+    final course = _courseController.text.trim().isNotEmpty ? _courseController.text.trim() : 'Course';
+    final bio = _bioController.text.trim().isNotEmpty ? _bioController.text.trim() : 'Write something interesting about yourself...';
 
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 24.0),
@@ -426,7 +546,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
-                                '$dept • $year',
+                                '$school • $course',
                                 style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.white70),
                               ),
                             ),
@@ -434,12 +554,12 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                         ),
                         
                         // Tags
-                        if (_selectedInterests.isNotEmpty) ...[
+                        if (_selectedHobbies.isNotEmpty) ...[
                           const SizedBox(height: 12),
                           Wrap(
                             spacing: 8,
                             runSpacing: 8,
-                            children: _selectedInterests.take(3).map((e) => Container(
+                            children: _selectedHobbies.take(3).map((e) => Container(
                               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                               decoration: BoxDecoration(
                                 color: Colors.white.withOpacity(0.2),
@@ -454,10 +574,10 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                           ),
                         ],
                         
-                        // Prompt
+                        // Bio
                         const SizedBox(height: 16),
                         Text(
-                          '"$prompt"',
+                          '"$bio"',
                           style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                             fontStyle: FontStyle.italic,
                             color: Colors.white,
@@ -467,18 +587,18 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                         ),
                         
                         // Preference
-                        if (_selectedPreference != null) ...[
+                        if (_selectedLookingFor != null) ...[
                           const SizedBox(height: 12),
                           Row(
                             children: [
                               Icon(
-                                _selectedPreference == 'Dating' ? Icons.favorite : Icons.people, 
+                                _selectedLookingFor == 'dating' ? Icons.favorite : Icons.people, 
                                 color: Colors.white,
                                 size: 16,
                               ),
                               const SizedBox(width: 8),
                               Text(
-                                'Looking for ${_selectedPreference}',
+                                'Looking for ${_selectedLookingFor}',
                                 style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 12),
                               ),
                             ],
@@ -495,7 +615,38 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
           const SizedBox(height: 24),
           SketchyButton(
             text: 'ENTER WORLD',
-            onPressed: _nextStep,
+            onPressed: () async {
+              // Construct schema payload
+              final data = {
+                "username": _usernameController.text.trim(),
+                "name": _nameController.text.trim(),
+                "age": int.tryParse(_ageController.text.trim()) ?? 18,
+                "bio": _bioController.text.trim(),
+                "school": _schoolController.text.trim(),
+                "course": _courseController.text.trim(),
+                "height": int.tryParse(_heightController.text.trim()) ?? 170,
+                "hobbies": _selectedHobbies.toList(),
+                "skills": _selectedSkills.toList(),
+                "lookingFor": _selectedLookingFor ?? 'dating',
+                "sexualOrientation": _selectedSexualOrientation ?? 'straight',
+                "tags": {
+                  "smoke": _smoke,
+                  "drink": _drink,
+                  "pets": _pets,
+                },
+                "pictures": [
+                  // TODO: implement real picture upload
+                  { "url": "https://dummyimage.com/600x800", "fileId": "dummy" }
+                ]
+              };
+              
+              bool success = await AuthService.updateProfile(data);
+              if (success && mounted) {
+                Navigator.pushNamedAndRemoveUntil(context, '/main', (route) => false);
+              } else if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to update profile')));
+              }
+            },
           ),
           const SizedBox(height: 24),
         ],
