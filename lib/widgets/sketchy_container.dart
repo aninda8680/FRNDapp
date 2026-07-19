@@ -7,6 +7,7 @@ class SketchyContainer extends StatelessWidget {
   final EdgeInsetsGeometry? margin;
   final double borderRadius;
   final double borderWidth;
+  final Color? backgroundColor;
 
   const SketchyContainer({
     super.key,
@@ -15,6 +16,7 @@ class SketchyContainer extends StatelessWidget {
     this.margin,
     this.borderRadius = 16,
     this.borderWidth = 2.0,
+    this.backgroundColor,
   });
 
   @override
@@ -23,7 +25,7 @@ class SketchyContainer extends StatelessWidget {
       margin: margin,
       padding: padding,
       decoration: BoxDecoration(
-        color: AppColors.cream,
+        color: backgroundColor ?? AppColors.cream,
         borderRadius: BorderRadius.circular(borderRadius),
         border: Border.all(
           color: AppColors.lineBlack,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../theme/app_colors.dart';
 import '../../widgets/sparkle_accent.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -30,12 +31,9 @@ class _SplashScreenState extends State<SplashScreen> {
               children: [
                 const SparkleAccent(size: 32),
                 const SizedBox(width: 16),
-                Text(
-                  'FRND',
-                  style: Theme.of(context).textTheme.displayLarge?.copyWith(
-                    fontSize: 48,
-                    letterSpacing: 4,
-                  ),
+                Image.asset(
+                  'assets/images/frndlogo.png',
+                  height: 120,
                 ),
                 const SizedBox(width: 16),
                 const SparkleAccent(size: 32),
@@ -44,7 +42,9 @@ class _SplashScreenState extends State<SplashScreen> {
             const SizedBox(height: 16),
             Text(
               'level up your social life',
-              style: Theme.of(context).textTheme.labelLarge,
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                color: AppColors.textColor1,
+              ),
             ),
           ],
         ),
