@@ -1,6 +1,8 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import '../../widgets/sketchy_button.dart';
 import '../../widgets/sketchy_container.dart';
+import '../../widgets/profile_photo_picker.dart';
 import '../../theme/app_colors.dart';
 import '../../services/auth_service.dart';
 
@@ -22,6 +24,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   String? _selectedLookingFor;
   String? _selectedSexualOrientation;
+  
+  final List<String?> _photoPaths = List.filled(4, null);
+  final List<Uint8List?> _photoBytes = List.filled(4, null);
+  final List<Map<String, dynamic>> _existingPictures = [];
   
   bool _isLoading = true;
   bool _isSaving = false;
@@ -57,6 +63,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         _heightController.text = data['height']?.toString() ?? '';
         _selectedLookingFor = data['lookingFor'];
         _selectedSexualOrientation = data['sexualOrientation'];
+        
+        final pictures = data['pictures'] as List<dynamic>?;
+        if (pictures != null) {
+          for (int i = 0; i < pictures.length && i < 4; i++) {
+            _existingPictures.add(pictures[i] as Map<String, dynamic>);
+            _photoPaths[i] = pictures[i]['url'] as String?;
+          }
+        }
+        
         _isLoading = false;
       });
     } else if (mounted) {
@@ -89,6 +104,32 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
     if (_selectedSexualOrientation != null) {
       data["sexualOrientation"] = _selectedSexualOrientation!;
+    }
+
+    // Process pictures
+    List<Map<String, dynamic>> finalPictures = [];
+    for (int i = 0; i < 4; i++) {
+      if (_photoBytes[i] != null) {
+        // Upload new picture
+        final picData = await AuthService.uploadPicture(_photoBytes[i]!, 'profile_pic_$i.jpg');
+        if (picData != null) {
+          finalPictures.add(picData);
+        }
+      } else if (_photoPaths[i] != null && _photoPaths[i]!.startsWith('http')) {
+        // Existing picture
+        final existing = _existingPictures.firstWhere(
+            (p) => p['url'] == _photoPaths[i],
+            orElse: () => <String, dynamic>{});
+        if (existing.isNotEmpty) {
+          finalPictures.add(existing);
+        } else {
+          finalPictures.add({"url": _photoPaths[i], "fileId": "unknown"});
+        }
+      }
+    }
+    
+    if (finalPictures.isNotEmpty) {
+      data["pictures"] = finalPictures;
     }
 
     // Clean up nulls
@@ -155,6 +196,47 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  Text('PROFILE PHOTOS', style: Theme.of(context).textTheme.labelLarge?.copyWith(color: AppColors.textColor2)),
+                  const SizedBox(height: 16),
+                  GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 16,
+                      mainAxisSpacing: 16,
+                      childAspectRatio: 0.8,
+                    ),
+                    itemCount: 4,
+                    itemBuilder: (context, index) {
+                      final angles = [-0.02, 0.04, 0.03, -0.05];
+                      return Transform.rotate(
+                        angle: angles[index],
+                        child: ProfilePhotoPicker(
+                          initialImagePath: _photoPaths[index],
+                          initialProcessedBytes: _photoBytes[index],
+                          onPhotosSet: (paths, bytesList) {
+                            setState(() {
+                              int imgIdx = 0;
+                              for (int j = 0; j < 4 && imgIdx < paths.length; j++) {
+                                int slot = (index + j) % 4;
+                                _photoPaths[slot] = paths[imgIdx];
+                                _photoBytes[slot] = bytesList[imgIdx];
+                                imgIdx++;
+                              }
+                            });
+                          },
+                          allowBackgroundRemoval: true,
+                          showChooseAnotherButton: false,
+                          isBorderless: false,
+                          width: double.infinity,
+                          height: double.infinity,
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 32),
+                  
                   _buildTextField('USERNAME', _usernameController),
                   _buildTextField('NAME', _nameController),
                   _buildTextField('AGE', _ageController, keyboardType: TextInputType.number),

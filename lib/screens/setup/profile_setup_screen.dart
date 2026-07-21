@@ -44,6 +44,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
 
   String? _selectedLookingFor;
   String? _selectedSexualOrientation;
+  bool _isSaving = false;
 
   @override
   void dispose() {
@@ -644,41 +645,69 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
           ),
           
           const SizedBox(height: 24),
-          SketchyButton(
-            text: 'ENTER WORLD',
-            onPressed: () async {
-              // Construct schema payload
-              final data = {
-                "username": _usernameController.text.trim(),
-                "name": _nameController.text.trim(),
-                "age": int.tryParse(_ageController.text.trim()) ?? 18,
-                "bio": _bioController.text.trim(),
-                "school": _schoolController.text.trim(),
-                "course": _courseController.text.trim(),
-                "height": int.tryParse(_heightController.text.trim()) ?? 170,
-                "hobbies": _selectedHobbies.toList(),
-                "skills": _selectedSkills.toList(),
-                "lookingFor": _selectedLookingFor ?? 'dating',
-                "sexualOrientation": _selectedSexualOrientation ?? 'straight',
-                "tags": {
-                  "smoke": _smoke,
-                  "drink": _drink,
-                  "pets": _pets,
-                },
-                "pictures": [
-                  // TODO: implement real picture upload
-                  { "url": "https://dummyimage.com/600x800", "fileId": "dummy" }
-                ]
-              };
-              
-              bool success = await AuthService.updateProfile(data);
-              if (success && mounted) {
-                Navigator.pushNamedAndRemoveUntil(context, '/main', (route) => false);
-              } else if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to update profile')));
-              }
-            },
-          ),
+          if (_isSaving)
+            const Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(AppColors.textColor2),
+              ),
+            )
+          else
+            SketchyButton(
+              text: 'ENTER WORLD',
+              onPressed: () async {
+                setState(() {
+                  _isSaving = true;
+                });
+
+                // Upload images first
+                List<Map<String, dynamic>> uploadedPictures = [];
+                for (int i = 0; i < 4; i++) {
+                  if (_photoBytes[i] != null) {
+                    final picData = await AuthService.uploadPicture(
+                        _photoBytes[i]!, 'profile_pic_$i.jpg');
+                    if (picData != null) {
+                      uploadedPictures.add(picData);
+                    }
+                  }
+                }
+
+                // Construct schema payload
+                final data = {
+                  "username": _usernameController.text.trim(),
+                  "name": _nameController.text.trim(),
+                  "age": int.tryParse(_ageController.text.trim()) ?? 18,
+                  "bio": _bioController.text.trim(),
+                  "school": _schoolController.text.trim(),
+                  "course": _courseController.text.trim(),
+                  "height": int.tryParse(_heightController.text.trim()) ?? 170,
+                  "hobbies": _selectedHobbies.toList(),
+                  "skills": _selectedSkills.toList(),
+                  "lookingFor": _selectedLookingFor ?? 'dating',
+                  "sexualOrientation": _selectedSexualOrientation ?? 'straight',
+                  "tags": {
+                    "smoke": _smoke,
+                    "drink": _drink,
+                    "pets": _pets,
+                  },
+                  "pictures": uploadedPictures.isNotEmpty 
+                      ? uploadedPictures 
+                      : [ { "url": "https://dummyimage.com/600x800", "fileId": "dummy" } ]
+                };
+                
+                bool success = await AuthService.updateProfile(data);
+                
+                if (mounted) {
+                  setState(() {
+                    _isSaving = false;
+                  });
+                  if (success) {
+                    Navigator.pushNamedAndRemoveUntil(context, '/main', (route) => false);
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to update profile')));
+                  }
+                }
+              },
+            ),
           const SizedBox(height: 24),
         ],
       ),

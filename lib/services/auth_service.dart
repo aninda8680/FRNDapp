@@ -1,5 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../config/dev_config.dart';
 
 enum AuthResult {
@@ -21,6 +23,28 @@ class AuthService {
 
   // Store the session cookie (JWT token from the HTTP-only cookie header)
   static String? _cookie;
+
+  /// Initialize the auth service by loading the stored cookie.
+  static Future<void> init() async {
+    final prefs = await SharedPreferences.getInstance();
+    _cookie = prefs.getString('auth_cookie');
+  }
+
+  /// Save the cookie to SharedPreferences.
+  static Future<void> _saveCookie(String? cookie) async {
+    _cookie = cookie;
+    final prefs = await SharedPreferences.getInstance();
+    if (cookie != null) {
+      await prefs.setString('auth_cookie', cookie);
+    } else {
+      await prefs.remove('auth_cookie');
+    }
+  }
+
+  /// Logout the user by clearing the session.
+  static Future<void> logout() async {
+    await _saveCookie(null);
+  }
 
   /// Main entry point for the "Sign Up / Login" button.
   ///
@@ -141,8 +165,9 @@ class AuthService {
     final rawCookie = response.headers['set-cookie'];
     if (rawCookie != null) {
       final index = rawCookie.indexOf(';');
-      _cookie = (index == -1) ? rawCookie : rawCookie.substring(0, index);
-      print('[Auth] Cookie saved: $_cookie');
+      final newCookie = (index == -1) ? rawCookie : rawCookie.substring(0, index);
+      _saveCookie(newCookie);
+      print('[Auth] Cookie saved: $newCookie');
     }
   }
 
@@ -208,6 +233,58 @@ class AuthService {
       return null;
     } catch (e) {
       print('Error fetching profile: $e');
+      return null;
+    }
+  }
+
+  /// Checks if the profile has been fully set up (has a name).
+  static bool isProfileComplete(Map<String, dynamic>? profile) {
+    if (profile == null) return false;
+    final name = profile['name'] as String?;
+    return name != null && name.trim().isNotEmpty;
+  }
+
+  /// Uploads a picture to the backend and returns the picture object { url, fileId }
+  static Future<Map<String, dynamic>?> uploadPicture(List<int> imageBytes, String filename) async {
+    if (DevConfig.bypassAuth) {
+      return {
+        "url": "https://dummyimage.com/600x800",
+        "fileId": "dummy_${DateTime.now().millisecondsSinceEpoch}"
+      };
+    }
+
+    try {
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('https://frnd-api-n3hv.onrender.com/api/upload/picture'),
+      );
+
+      if (_cookie != null) {
+        request.headers['cookie'] = _cookie!;
+      }
+
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          'picture',
+          imageBytes,
+          filename: filename,
+          contentType: MediaType('image', 'jpeg'),
+        ),
+      );
+
+      // No autoSave because we pass the pictures array in updateProfile
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+        return data['picture'] as Map<String, dynamic>?;
+      }
+      print('Failed to upload picture: ${response.statusCode} ${response.body}');
+      return null;
+    } catch (e) {
+      print('Error uploading picture: $e');
       return null;
     }
   }

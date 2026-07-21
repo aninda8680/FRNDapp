@@ -99,11 +99,17 @@ class _ProfilePhotoPickerState extends State<ProfilePhotoPicker> {
 
         if (croppedFile == null) continue;
 
+        final bytes = await File(croppedFile.path).readAsBytes();
         finalPaths.add(croppedFile.path);
-        finalBytes.add(null);
+        finalBytes.add(bytes);
       }
 
       setState(() {
+        if (finalPaths.isNotEmpty) {
+          _originalImagePath = finalPaths[0];
+          _processedBytes = finalBytes[0];
+          _stickerKey = UniqueKey();
+        }
         _isProcessing = false;
       });
 
@@ -203,12 +209,29 @@ class _ProfilePhotoPickerState extends State<ProfilePhotoPicker> {
     }
 
     if (_originalImagePath != null) {
+      final isNetworkUrl = _originalImagePath!.startsWith('http');
       return ClipRRect(
         borderRadius: BorderRadius.circular(widget.isBorderless ? 16 : 14),
-        child: Image.file(
-          File(_originalImagePath!),
-          fit: BoxFit.cover,
-        ),
+        child: isNetworkUrl
+            ? Image.network(
+                _originalImagePath!,
+                fit: BoxFit.cover,
+                loadingBuilder: (context, child, progress) {
+                  if (progress == null) return child;
+                  return const Center(
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(AppColors.textColor2),
+                    ),
+                  );
+                },
+                errorBuilder: (_, __, ___) => const Center(
+                  child: Icon(Icons.broken_image, color: AppColors.lineBlack, size: 40),
+                ),
+              )
+            : Image.file(
+                File(_originalImagePath!),
+                fit: BoxFit.cover,
+              ),
       );
     }
 

@@ -59,8 +59,16 @@ class _LoginScreenState extends State<LoginScreen> {
 
     switch (result) {
       case AuthResult.success:
-        // Existing user, correct password → go to profile setup
-        Navigator.pushNamed(context, '/setup');
+        // Existing user, correct password
+        // Fetch profile to see if it's fully setup
+        final profile = await AuthService.getProfile();
+        if (!mounted) return;
+        
+        if (AuthService.isProfileComplete(profile)) {
+          Navigator.pushReplacementNamed(context, '/main');
+        } else {
+          Navigator.pushReplacementNamed(context, '/setup');
+        }
         break;
 
       case AuthResult.wrongPassword:
@@ -71,7 +79,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
       case AuthResult.needsOtp:
         // New user → OTP was sent → open OTP verification screen
-        Navigator.pushNamed(context, '/otp');
+        Navigator.pushReplacementNamed(context, '/otp');
         break;
 
       case AuthResult.failure:

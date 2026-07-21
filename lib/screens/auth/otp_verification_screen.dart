@@ -42,7 +42,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
   // ── OTP verification ────────────────────────────────────────────────────────
   Future<void> _onVerify() async {
     if (DevConfig.bypassAuth) {
-      Navigator.pushNamed(context, '/setup');
+      Navigator.pushReplacementNamed(context, '/setup');
       return;
     }
 
@@ -59,7 +59,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
     if (!mounted) return;
 
     if (success) {
-      Navigator.pushNamed(context, '/setup');
+      Navigator.pushReplacementNamed(context, '/setup');
     } else {
       _showSnackBar('Incorrect code. Please try again.');
     }
