@@ -1,36 +1,212 @@
 import 'package:flutter/material.dart';
 import '../../widgets/sketchy_button.dart';
 import '../../widgets/sketchy_container.dart';
+import '../../theme/app_colors.dart';
+import '../../services/auth_service.dart';
 
-class EditProfileScreen extends StatelessWidget {
+class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
+
+  @override
+  State<EditProfileScreen> createState() => _EditProfileScreenState();
+}
+
+class _EditProfileScreenState extends State<EditProfileScreen> {
+  final TextEditingController _usernameController = TextEditingController();
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _ageController = TextEditingController();
+  final TextEditingController _bioController = TextEditingController();
+  final TextEditingController _schoolController = TextEditingController();
+  final TextEditingController _courseController = TextEditingController();
+  final TextEditingController _heightController = TextEditingController();
+
+  String? _selectedLookingFor;
+  String? _selectedSexualOrientation;
+  
+  bool _isLoading = true;
+  bool _isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfileData();
+  }
+
+  @override
+  void dispose() {
+    _usernameController.dispose();
+    _nameController.dispose();
+    _ageController.dispose();
+    _bioController.dispose();
+    _schoolController.dispose();
+    _courseController.dispose();
+    _heightController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadProfileData() async {
+    final data = await AuthService.getProfile();
+    if (data != null && mounted) {
+      setState(() {
+        _usernameController.text = data['username'] ?? '';
+        _nameController.text = data['name'] ?? '';
+        _ageController.text = data['age']?.toString() ?? '';
+        _bioController.text = data['bio'] ?? '';
+        _schoolController.text = data['school'] ?? '';
+        _courseController.text = data['course'] ?? '';
+        _heightController.text = data['height']?.toString() ?? '';
+        _selectedLookingFor = data['lookingFor'];
+        _selectedSexualOrientation = data['sexualOrientation'];
+        _isLoading = false;
+      });
+    } else if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to load profile data.')),
+      );
+    }
+  }
+
+  Future<void> _saveChanges() async {
+    setState(() {
+      _isSaving = true;
+    });
+
+    final data = {
+      "username": _usernameController.text.trim(),
+      "name": _nameController.text.trim(),
+      "age": int.tryParse(_ageController.text.trim()) ?? 18,
+      "bio": _bioController.text.trim(),
+      "school": _schoolController.text.trim(),
+      "course": _courseController.text.trim(),
+      "height": int.tryParse(_heightController.text.trim()),
+    };
+
+    if (_selectedLookingFor != null) {
+      data["lookingFor"] = _selectedLookingFor!;
+    }
+    if (_selectedSexualOrientation != null) {
+      data["sexualOrientation"] = _selectedSexualOrientation!;
+    }
+
+    // Clean up nulls
+    data.removeWhere((key, value) => value == null);
+
+    bool success = await AuthService.updateProfile(data);
+    
+    if (mounted) {
+      setState(() {
+        _isSaving = false;
+      });
+      
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Profile updated successfully!')),
+        );
+        Navigator.pop(context); // Go back to profile screen
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to update profile.')),
+        );
+      }
+    }
+  }
+
+  Widget _buildTextField(String label, TextEditingController controller, {int maxLines = 1, TextInputType? keyboardType}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: Theme.of(context).textTheme.labelLarge?.copyWith(color: AppColors.textColor2)),
+        const SizedBox(height: 8),
+        SketchyContainer(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          child: TextField(
+            controller: controller,
+            maxLines: maxLines,
+            keyboardType: keyboardType,
+            decoration: InputDecoration(
+              isDense: true, 
+              border: InputBorder.none, 
+              hintText: 'Enter $label...', 
+              hintStyle: TextStyle(color: AppColors.textColor1.withOpacity(0.5))
+            ),
+          ),
+        ),
+        const SizedBox(height: 24),
+      ],
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('EDIT CHARACTER')),
+      appBar: AppBar(title: const Text('EDIT PROFILE')),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text('BIO', style: Theme.of(context).textTheme.labelLarge),
-              const SizedBox(height: 8),
-              SketchyContainer(
-                child: TextField(
-                  maxLines: 3,
-                  decoration: const InputDecoration(border: InputBorder.none, hintText: 'Update your bio...'),
-                ),
+        child: _isLoading
+          ? const Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(AppColors.textColor2),
               ),
-              const SizedBox(height: 24),
-              SketchyButton(
-                text: 'SAVE CHANGES',
-                onPressed: () => Navigator.pop(context),
+            )
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _buildTextField('USERNAME', _usernameController),
+                  _buildTextField('NAME', _nameController),
+                  _buildTextField('AGE', _ageController, keyboardType: TextInputType.number),
+                  _buildTextField('BIO', _bioController, maxLines: 3),
+                  _buildTextField('SCHOOL', _schoolController),
+                  _buildTextField('COURSE', _courseController),
+                  _buildTextField('HEIGHT (cm)', _heightController, keyboardType: TextInputType.number),
+                  
+                  Text('WHAT ARE YOU LOOKING FOR?', style: Theme.of(context).textTheme.labelLarge?.copyWith(color: AppColors.textColor2)),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => setState(() => _selectedLookingFor = 'dating'),
+                          child: SketchyContainer(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            backgroundColor: _selectedLookingFor == 'dating' ? AppColors.textColor2.withOpacity(0.2) : AppColors.cream,
+                            child: const Center(child: Text('DATING', style: TextStyle(fontWeight: FontWeight.bold))),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => setState(() => _selectedLookingFor = 'friends'),
+                          child: SketchyContainer(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            backgroundColor: _selectedLookingFor == 'friends' ? AppColors.textColor2.withOpacity(0.2) : AppColors.cream,
+                            child: const Center(child: Text('FRIENDS ONLY', style: TextStyle(fontWeight: FontWeight.bold))),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 32),
+                  
+                  if (_isSaving)
+                    const Center(
+                      child: CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(AppColors.textColor2),
+                      ),
+                    )
+                  else
+                    SketchyButton(
+                      text: 'SAVE CHANGES',
+                      onPressed: _saveChanges,
+                    ),
+                  const SizedBox(height: 32),
+                ],
               ),
-            ],
-          ),
-        ),
+            ),
       ),
     );
   }

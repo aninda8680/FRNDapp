@@ -7,12 +7,14 @@ class SketchyProgressBar extends StatefulWidget {
   final double progress; // 0.0 to 1.0
   final String leftLabel;
   final String rightLabel;
+  final Color? textColor;
 
   const SketchyProgressBar({
     super.key,
     required this.progress,
     required this.leftLabel,
     required this.rightLabel,
+    this.textColor,
   });
 
   @override
@@ -50,6 +52,8 @@ class _SketchyProgressBarState extends State<SketchyProgressBar>
 
   @override
   Widget build(BuildContext context) {
+    final effectiveTextColor = widget.textColor ?? AppColors.progressBarColor;
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
@@ -98,14 +102,14 @@ class _SketchyProgressBarState extends State<SketchyProgressBar>
             Text(
               widget.leftLabel,
               style: GoogleFonts.spaceMono(
-                color: AppColors.progressBarColor,
+                color: effectiveTextColor,
                 fontSize: 12,
               ),
             ),
             Text(
               widget.rightLabel,
               style: GoogleFonts.spaceMono(
-                color: AppColors.progressBarColor,
+                color: effectiveTextColor,
                 fontSize: 12,
               ),
             ),

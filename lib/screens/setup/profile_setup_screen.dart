@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import '../../widgets/sketchy_button.dart';
 import '../../widgets/sketchy_container.dart';
@@ -33,6 +34,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
 
   final List<String> _availableSkills = ['JavaScript', 'Python', 'Dart', 'Figma', 'UI/UX', 'Writing', 'Music', 'Public Speaking'];
   final Set<String> _selectedSkills = {};
+
+  final List<String?> _photoPaths = List.filled(4, null);
+  final List<Uint8List?> _photoBytes = List.filled(4, null);
 
   bool _smoke = false;
   bool _drink = false;
@@ -257,10 +261,28 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
             ),
             itemCount: 4,
             itemBuilder: (context, index) {
-              return SketchyContainer(
-                padding: EdgeInsets.zero,
-                child: Center(
-                  child: Icon(Icons.add_a_photo_outlined, size: 48, color: AppColors.inkBlack),
+              final angles = [-0.02, 0.04, 0.03, -0.05];
+              return Transform.rotate(
+                angle: angles[index],
+                child: ProfilePhotoPicker(
+                  initialImagePath: _photoPaths[index],
+                  initialProcessedBytes: _photoBytes[index],
+                  onPhotosSet: (paths, bytesList) {
+                    setState(() {
+                      int imgIdx = 0;
+                      for (int j = 0; j < 4 && imgIdx < paths.length; j++) {
+                        int slot = (index + j) % 4;
+                        _photoPaths[slot] = paths[imgIdx];
+                        _photoBytes[slot] = bytesList[imgIdx];
+                        imgIdx++;
+                      }
+                    });
+                  },
+                  allowBackgroundRemoval: true,
+                  showChooseAnotherButton: false,
+                  isBorderless: false,
+                  width: double.infinity,
+                  height: double.infinity,
                 ),
               );
             },
@@ -486,7 +508,16 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                 children: [
                   // 1. Background Photo
                   ProfilePhotoPicker(
-                    onPhotoSet: () {},
+                    initialImagePath: _photoPaths[0],
+                    initialProcessedBytes: _photoBytes[0],
+                    onPhotosSet: (paths, bytesList) {
+                      if (paths.isNotEmpty) {
+                        setState(() {
+                          _photoPaths[0] = paths[0];
+                          _photoBytes[0] = bytesList[0];
+                        });
+                      }
+                    },
                     allowBackgroundRemoval: false,
                     width: double.infinity,
                     height: double.infinity,

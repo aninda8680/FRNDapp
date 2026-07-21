@@ -178,4 +178,37 @@ class AuthService {
     }
     return headers;
   }
+
+  /// Fetches the authenticated user's own full profile.
+  static Future<Map<String, dynamic>?> getProfile() async {
+    if (DevConfig.bypassAuth) {
+      return {
+        "name": "Alex",
+        "age": 20,
+        "school": "Adamas University",
+        "course": "CSE",
+        "bio": "Leveling up in the game of life. Looking for a player 2.",
+        "hobbies": ["Gaming", "Coding"],
+        "lookingFor": "dating",
+        "pictures": [{"url": "https://dummyimage.com/600x800"}],
+      };
+    }
+
+    try {
+      final response = await http.get(
+        Uri.parse('https://frnd-api-n3hv.onrender.com/api/users/me'),
+        headers: _getHeaders(),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['user'] as Map<String, dynamic>?;
+      }
+      print('Failed to fetch profile: ${response.body}');
+      return null;
+    } catch (e) {
+      print('Error fetching profile: $e');
+      return null;
+    }
+  }
 }

@@ -11,6 +11,7 @@ import 'screens/utilities/report_block_screen.dart';
 import 'screens/utilities/settings_screen.dart';
 import 'screens/utilities/help_support_screen.dart';
 import 'screens/chats/individual_chat_screen.dart';
+import 'screens/profile/edit_profile_screen.dart';
 
 class AppRoutes {
   static const String splash = '/';
@@ -26,6 +27,7 @@ class AppRoutes {
   static const String settings = '/settings';
   static const String helpSupport = '/help_support';
   static const String individualChat = '/chats/individual';
+  static const String editProfile = '/edit_profile';
 
   static Map<String, WidgetBuilder> get routes => {
     splash: (context) => const SplashScreen(),
@@ -41,5 +43,6 @@ class AppRoutes {
     settings: (context) => const SettingsScreen(),
     helpSupport: (context) => const HelpSupportScreen(),
     individualChat: (context) => const IndividualChatScreen(),
+    editProfile: (context) => const EditProfileScreen(),
   };
 }

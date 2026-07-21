@@ -10,21 +10,27 @@ import 'sketchy_button.dart';
 import 'sticker_reveal.dart';
 
 class ProfilePhotoPicker extends StatefulWidget {
-  final VoidCallback onPhotoSet;
+  final void Function(List<String> imagePaths, List<Uint8List?> processedBytes) onPhotosSet;
   final bool allowBackgroundRemoval;
   final double width;
   final double height;
   final bool showChooseAnotherButton;
   final bool isBorderless;
+  final String? initialImagePath;
+  final Uint8List? initialProcessedBytes;
+  final bool isSmall;
 
   const ProfilePhotoPicker({
     super.key, 
-    required this.onPhotoSet,
+    required this.onPhotosSet,
     this.allowBackgroundRemoval = true,
     this.width = 240,
     this.height = 320,
     this.showChooseAnotherButton = true,
     this.isBorderless = false,
+    this.initialImagePath,
+    this.initialProcessedBytes,
+    this.isSmall = false,
   });
 
   @override
@@ -41,134 +47,75 @@ class _ProfilePhotoPickerState extends State<ProfilePhotoPicker> {
   // To re-trigger animation when updated
   Key _stickerKey = UniqueKey();
 
-  Future<void> _pickImage() async {
-    try {
-      final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
-      if (image == null) return;
+  @override
+  void initState() {
+    super.initState();
+    _originalImagePath = widget.initialImagePath;
+    _processedBytes = widget.initialProcessedBytes;
+  }
 
-      final CroppedFile? croppedFile = await ImageCropper().cropImage(
-        sourcePath: image.path,
-        aspectRatio: const CropAspectRatio(ratioX: 3, ratioY: 4),
-        uiSettings: [
-          AndroidUiSettings(
-            toolbarTitle: 'Crop Photo',
-            toolbarColor: AppColors.cream,
-            toolbarWidgetColor: AppColors.inkBlack,
-            activeControlsWidgetColor: AppColors.textColor2,
-            initAspectRatio: CropAspectRatioPreset.ratio4x3,
-            lockAspectRatio: false,
-          ),
-          IOSUiSettings(
-            title: 'Crop Photo',
-            aspectRatioLockEnabled: false,
-          ),
-        ],
-      );
-
-      if (croppedFile == null) return;
-
-      setState(() {
-        _originalImagePath = croppedFile.path;
-        _processedBytes = null; // Clear previous processed
-        _stickerKey = UniqueKey();
-      });
-
-      if (widget.allowBackgroundRemoval) {
-        // Show options dialog immediately after picking and cropping
-        _showProcessingOptionsDialog(croppedFile.path);
-      } else {
-        widget.onPhotoSet();
-      }
-    } catch (e) {
-      debugPrint("Error picking/cropping image: $e");
+  @override
+  void didUpdateWidget(ProfilePhotoPicker oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialImagePath != oldWidget.initialImagePath || 
+        widget.initialProcessedBytes != oldWidget.initialProcessedBytes) {
+      _originalImagePath = widget.initialImagePath;
+      _processedBytes = widget.initialProcessedBytes;
     }
   }
 
-  Future<void> _showProcessingOptionsDialog(String imagePath) async {
-    bool? removeBg = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.cream,
-        shape: RoundedRectangleBorder(
-          side: const BorderSide(color: AppColors.lineBlack, width: 2),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        title: Text('Remove Background?', style: TextStyle(color: AppColors.textColor2, fontWeight: FontWeight.bold)),
-        content: const Text('Would you like to magically remove the background from your photo?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('No', style: TextStyle(color: AppColors.lineBlack)),
-          ),
-          SketchyButton(
-            text: 'Yes',
-            onPressed: () => Navigator.pop(context, true),
-          ),
-        ],
-      ),
-    );
+  Future<void> _pickImage() async {
+    try {
+      final List<XFile> images = await _picker.pickMultiImage(limit: 4);
+      if (images.isEmpty) return;
 
-    if (removeBg == null || !removeBg) {
-      widget.onPhotoSet();
-      return;
-    }
+      setState(() {
+        _isProcessing = true;
+      });
 
-    if (!mounted) return;
-    
-    // Paper theme dialog commented out for now — only BG removal is active
-    // bool? paperTheme = await showDialog<bool>(
-    //   context: context,
-    //   barrierDismissible: false,
-    //   builder: (context) => AlertDialog(
-    //     backgroundColor: AppColors.cream,
-    //     shape: RoundedRectangleBorder(
-    //       side: const BorderSide(color: AppColors.lineBlack, width: 2),
-    //       borderRadius: BorderRadius.circular(16),
-    //     ),
-    //     title: Text('Apply Paper Theme?', style: TextStyle(color: AppColors.textColor2, fontWeight: FontWeight.bold)),
-    //     content: const Text('Would you like to turn your photo into a paper sticker?'),
-    //     actions: [
-    //       TextButton(
-    //         onPressed: () => Navigator.pop(context, false),
-    //         child: const Text('No', style: TextStyle(color: AppColors.lineBlack)),
-    //       ),
-    //       SketchyButton(
-    //         text: 'Yes',
-    //         onPressed: () => Navigator.pop(context, true),
-    //       ),
-    //     ],
-    //   ),
-    // );
-    // paperTheme ??= false;
-    const bool paperTheme = false; // Paper theme disabled for now
+      List<String> finalPaths = [];
+      List<Uint8List?> finalBytes = [];
 
-    // Now start processing
-    setState(() {
-      _isProcessing = true;
-    });
-
-    final bytes = await StickerCutoutService.generateSticker(
-      imagePath,
-      applyPaperTheme: paperTheme,
-    );
-
-    setState(() {
-      _isProcessing = false;
-      if (bytes != null) {
-        _processedBytes = bytes;
-        _stickerKey = UniqueKey();
-        widget.onPhotoSet();
-      } else {
-        // Fallback or show error
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text("Could not detect a person in the photo. Try another one!"),
-            backgroundColor: AppColors.textColor2,
-          ),
+      for (int i = 0; i < images.length && i < 4; i++) {
+        final XFile image = images[i];
+        final CroppedFile? croppedFile = await ImageCropper().cropImage(
+          sourcePath: image.path,
+          aspectRatio: const CropAspectRatio(ratioX: 3, ratioY: 4),
+          uiSettings: [
+            AndroidUiSettings(
+              toolbarTitle: 'Crop Photo ${i + 1}',
+              toolbarColor: AppColors.cream,
+              toolbarWidgetColor: AppColors.inkBlack,
+              activeControlsWidgetColor: AppColors.textColor2,
+              initAspectRatio: CropAspectRatioPreset.ratio4x3,
+              lockAspectRatio: false,
+            ),
+            IOSUiSettings(
+              title: 'Crop Photo ${i + 1}',
+              aspectRatioLockEnabled: false,
+            ),
+          ],
         );
+
+        if (croppedFile == null) continue;
+
+        finalPaths.add(croppedFile.path);
+        finalBytes.add(null);
       }
-    });
+
+      setState(() {
+        _isProcessing = false;
+      });
+
+      if (finalPaths.isNotEmpty) {
+        widget.onPhotosSet(finalPaths, finalBytes);
+      }
+    } catch (e) {
+      debugPrint("Error picking image: $e");
+      setState(() {
+        _isProcessing = false;
+      });
+    }
   }
 
   @override
@@ -194,7 +141,26 @@ class _ProfilePhotoPickerState extends State<ProfilePhotoPicker> {
                 )
               ],
             ),
-        child: _buildImageContent(),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            _buildImageContent(),
+            if ((_originalImagePath != null || _processedBytes != null) && !_isProcessing)
+              Positioned(
+                top: 8,
+                right: 8,
+                child: Container(
+                  padding: EdgeInsets.all(widget.isSmall ? 4 : 8),
+                  decoration: BoxDecoration(
+                    color: AppColors.cream,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: AppColors.lineBlack, width: 2),
+                  ),
+                  child: Icon(Icons.refresh, size: widget.isSmall ? 16 : 20, color: AppColors.inkBlack),
+                ),
+              ),
+          ],
+        ),
       ),
     );
 
@@ -247,19 +213,21 @@ class _ProfilePhotoPickerState extends State<ProfilePhotoPicker> {
     }
 
     // Placeholder
-    return const Center(
+    return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.add_a_photo, size: 48, color: AppColors.lineBlack),
-          SizedBox(height: 12),
-          Text(
-            'TAP TO UPLOAD',
-            style: TextStyle(
-              color: AppColors.lineBlack,
-              fontWeight: FontWeight.bold,
+          Icon(Icons.add_a_photo, size: widget.isSmall ? 28 : 48, color: AppColors.lineBlack),
+          if (!widget.isSmall) ...[
+            const SizedBox(height: 12),
+            const Text(
+              'TAP TO UPLOAD',
+              style: TextStyle(
+                color: AppColors.lineBlack,
+                fontWeight: FontWeight.bold,
+              ),
             ),
-          ),
+          ]
         ],
       ),
     );
