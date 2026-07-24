@@ -48,6 +48,7 @@ This report provides an exhaustive, systematic analysis of the provided Flutter/
 | `EditProfileScreen`<br>(screens/profile/edit_profile_screen.dart) | Stateful (Holds 7 `TextEditingController`s) | Form to edit user data | `routes.dart` | Controllers disposed correctly. |
 | `MyProfileScreen`<br>(screens/profile/my_profile_screen.dart) | Stateful (Fetches data) | Displays logged-in user profile | `main_scaffold.dart` | `setState` rebuilds entire screen on load. |
 | `ProfileSetupScreen`<br>(screens/setup/profile_setup_screen.dart) | Stateful (Holds `PageController` & `TextEditingController`s) | Multi-step signup form | `routes.dart` | All controllers properly disposed. |
+| `PrivacyPolicyScreen`<br>(screens/utilities/privacy_policy_screen.dart) | Stateless | Static privacy policy placeholder | `routes.dart` | Good const usage. |
 | Utility Screens (Help, Notifications, Report, Filters, Settings) | Stateless | Standard static UI screens | `routes.dart` | Good const usage. |
 
 
@@ -91,6 +92,7 @@ This report provides an exhaustive, systematic analysis of the provided Flutter/
   - `/report_block` → `ReportBlockScreen` (utilities/report_block_screen.dart)
   - `/settings` → `SettingsScreen` (utilities/settings_screen.dart)
   - `/help_support` → `HelpSupportScreen` (utilities/help_support_screen.dart)
+  - `/privacy_policy` → `PrivacyPolicyScreen` (utilities/privacy_policy_screen.dart)
   - `/chats/individual` → `IndividualChatScreen` (chats/individual_chat_screen.dart)
   - `/edit_profile` → `EditProfileScreen` (profile/edit_profile_screen.dart)
 - **Transitions/Hero:** No custom `PageRouteBuilder` or `Hero` widgets are currently implemented.
@@ -129,16 +131,9 @@ This report provides an exhaustive, systematic analysis of the provided Flutter/
 
 ## === SECTION 8: DEAD CODE & RISK FLAGS ===
 
-### 🚨 Routing Crash Risks (CRITICAL)
-- **Settings Screen (`lib/screens/utilities/settings_screen.dart`):**
-  Tapping "Edit Profile" executes `Navigator.pushNamed(context, '/setup/preview')`. However, the `/setup/preview` route is **not defined** in `routes.dart`, which will cause the app to crash.
-- **My Profile Screen (`lib/screens/profile/my_profile_screen.dart`):**
-  Tapping "Privacy Policy" executes `Navigator.pushNamed(context, '/privacy_policy')`. The `/privacy_policy` route is **not defined** in `routes.dart`.
-
 ### 👻 Dead Code & Unused Elements
 - **Dead Import:** `lib/widgets/profile_photo_picker.dart` imports `../services/sticker_cutout_service.dart` but never calls it.
 - **Dead Service:** The entirety of `StickerCutoutService` (`lib/services/sticker_cutout_service.dart`) is never called by any active widget or service.
-- **Dead Function:** `AuthService.logout()` is defined but never called (settings screen simply navigates back to `/login` without clearing the cookie locally).
 - **Dead Widget:** `UserProfileScreen` (`lib/screens/home/user_profile_screen.dart`) is defined but not present in `routes.dart`, nor is it ever pushed using `MaterialPageRoute`.
 
 ### ⚠️ Implementation Risks
