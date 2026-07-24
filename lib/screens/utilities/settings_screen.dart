@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../theme/app_colors.dart';
+import '../../services/auth_service.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -15,7 +16,7 @@ class SettingsScreen extends StatelessWidget {
             ListTile(
               title: const Text('Edit Profile'),
               trailing: const Icon(Icons.arrow_forward_ios),
-              onTap: () => Navigator.pushNamed(context, '/setup/preview'),
+              onTap: () => Navigator.pushNamed(context, '/edit_profile'),
             ),
             const Divider(color: AppColors.lineBlack),
             ListTile(
@@ -32,7 +33,12 @@ class SettingsScreen extends StatelessWidget {
             const Divider(color: AppColors.lineBlack),
             ListTile(
               title: const Text('Log Out'),
-              onTap: () => Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false),
+              onTap: () async {
+                await AuthService.logout();
+                if (context.mounted) {
+                  Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+                }
+              },
             ),
           ],
         ),
