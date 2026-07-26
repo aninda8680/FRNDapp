@@ -23,26 +23,32 @@ class SketchyButton extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          if (showSparkles) const SparkleAccent(size: 24),
-          if (showSparkles) const SizedBox(width: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-            decoration: BoxDecoration(
-              color: AppColors.inkBlack,
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Text(
-              text.toUpperCase(),
-              style: GoogleFonts.spaceGrotesk(
-                color: AppColors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-                letterSpacing: 1.2,
+          if (showSparkles) const SparkleAccent(size: 20),
+          if (showSparkles) const SizedBox(width: 6),
+          Flexible(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+              decoration: BoxDecoration(
+                color: AppColors.inkBlack,
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  text.toUpperCase(),
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.spaceGrotesk(
+                    color: AppColors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                    letterSpacing: 1.0,
+                  ),
+                ),
               ),
             ),
           ),
-          if (showSparkles) const SizedBox(width: 8),
-          if (showSparkles) const SparkleAccent(size: 24),
+          if (showSparkles) const SizedBox(width: 6),
+          if (showSparkles) const SparkleAccent(size: 20),
         ],
       ),
     );

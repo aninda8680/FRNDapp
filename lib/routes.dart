@@ -13,6 +13,7 @@ import 'screens/utilities/help_support_screen.dart';
 import 'screens/utilities/privacy_policy_screen.dart';
 import 'screens/chats/individual_chat_screen.dart';
 import 'screens/profile/edit_profile_screen.dart';
+import 'screens/profile/subscription_screen.dart';
 
 class AppRoutes {
   static const String splash = '/';
@@ -30,6 +31,7 @@ class AppRoutes {
   static const String privacyPolicy = '/privacy_policy';
   static const String individualChat = '/chats/individual';
   static const String editProfile = '/edit_profile';
+  static const String subscription = '/subscription';
 
   static Map<String, WidgetBuilder> get routes => {
     splash: (context) => const SplashScreen(),
@@ -47,5 +49,6 @@ class AppRoutes {
     privacyPolicy: (context) => const PrivacyPolicyScreen(),
     individualChat: (context) => const IndividualChatScreen(),
     editProfile: (context) => const EditProfileScreen(),
+    subscription: (context) => const SubscriptionScreen(),
   };
 }

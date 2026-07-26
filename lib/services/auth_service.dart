@@ -26,6 +26,9 @@ class AuthService {
   // Store the session cookie (JWT token from the HTTP-only cookie header)
   static String? _cookie;
 
+  /// JWT token or auth cookie getter
+  static String? get token => _cookie;
+
   /// Initialize the auth service by loading the stored cookie.
   static Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();

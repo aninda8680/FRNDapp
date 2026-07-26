@@ -186,55 +186,16 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
             ),
           ),
           const SizedBox(height: 32),
-          // Premium Options
-          Text('PREMIUM', style: Theme.of(context).textTheme.labelLarge?.copyWith(color: AppColors.textColor2)),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: SketchyContainer(
-                  padding: const EdgeInsets.all(16),
-                  backgroundColor: Colors.grey[200], // Silver aesthetic
-                  child: Column(
-                    children: [
-                      const Text('SILVER', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.black87)),
-                      const SizedBox(height: 8),
-                      const Text('See who liked you', style: TextStyle(fontSize: 12, color: Colors.black54)),
-                      const SizedBox(height: 8),
-                      Text('\$4.99/mo', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.textColor2)),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: SketchyContainer(
-                  padding: const EdgeInsets.all(16),
-                  backgroundColor: const Color(0xFFFFF8D6), // Gold aesthetic
-                  child: Column(
-                    children: [
-                      const Text('GOLD', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.black87)),
-                      const SizedBox(height: 8),
-                      const Text('Unlimited swipes', style: TextStyle(fontSize: 12, color: Colors.black54)),
-                      const SizedBox(height: 8),
-                      Text('\$9.99/mo', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.textColor2)),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 32),
           // Settings Content
           Text('SETTINGS', style: Theme.of(context).textTheme.labelLarge?.copyWith(color: AppColors.textColor2)),
           const SizedBox(height: 12),
           Column(
             children: [
               ListTile(
-                title: const Text('Premium'),
+                title: const Text('Premium Passes'),
                 trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                 onTap: () {
-                  // Premium details functionality
+                  Navigator.pushNamed(context, '/subscription');
                 },
               ),
               const Divider(color: AppColors.lineBlack, height: 1),
