@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'dart:typed_data';
 import '../config/dev_config.dart';
 
 enum AuthResult {
@@ -263,10 +265,17 @@ class AuthService {
         request.headers['cookie'] = _cookie!;
       }
 
+      final Uint8List uint8ListBytes = imageBytes is Uint8List ? imageBytes : Uint8List.fromList(imageBytes);
+      final compressedBytes = await FlutterImageCompress.compressWithList(
+        uint8ListBytes,
+        minWidth: 1080,
+        quality: 80,
+      );
+
       request.files.add(
         http.MultipartFile.fromBytes(
           'picture',
-          imageBytes,
+          compressedBytes,
           filename: filename,
           contentType: MediaType('image', 'jpeg'),
         ),

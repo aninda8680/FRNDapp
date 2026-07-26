@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../widgets/sketchy_button.dart';
 import '../../widgets/sketchy_container.dart';
+import '../../widgets/app_image.dart';
 
 class UserProfileScreen extends StatelessWidget {
   const UserProfileScreen({super.key});
@@ -29,7 +30,13 @@ class UserProfileScreen extends StatelessWidget {
                   border: Border.all(color: Theme.of(context).primaryColor, width: 2),
                   borderRadius: BorderRadius.circular(16),
                 ),
-                child: const Center(child: Text('[ User Photo Gallery ]')),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(14),
+                  child: const AppImage(
+                    url: 'https://dummyimage.com/600x800',
+                    fit: BoxFit.cover,
+                  ),
+                ),
               ),
               const SizedBox(height: 24),
               Text('SAM, lv. 19', style: Theme.of(context).textTheme.displayMedium),

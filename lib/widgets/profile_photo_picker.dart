@@ -8,6 +8,7 @@ import '../services/sticker_cutout_service.dart';
 import '../theme/app_colors.dart';
 import 'sketchy_button.dart';
 import 'sticker_reveal.dart';
+import 'app_image.dart';
 
 class ProfilePhotoPicker extends StatefulWidget {
   final void Function(List<String> imagePaths, List<Uint8List?> processedBytes) onPhotosSet;
@@ -213,20 +214,10 @@ class _ProfilePhotoPickerState extends State<ProfilePhotoPicker> {
       return ClipRRect(
         borderRadius: BorderRadius.circular(widget.isBorderless ? 16 : 14),
         child: isNetworkUrl
-            ? Image.network(
-                _originalImagePath!,
+            ? AppImage(
+                url: _originalImagePath!,
                 fit: BoxFit.cover,
-                loadingBuilder: (context, child, progress) {
-                  if (progress == null) return child;
-                  return const Center(
-                    child: CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(AppColors.textColor2),
-                    ),
-                  );
-                },
-                errorBuilder: (_, __, ___) => const Center(
-                  child: Icon(Icons.broken_image, color: AppColors.lineBlack, size: 40),
-                ),
+                isThumbnail: true,
               )
             : Image.file(
                 File(_originalImagePath!),

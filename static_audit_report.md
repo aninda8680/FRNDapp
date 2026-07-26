@@ -17,6 +17,8 @@ This report provides an exhaustive, systematic analysis of the provided Flutter/
 | **http** | `^1.6.0` | Network requests | Networking | `lib/services/auth_service.dart` | `http.post()`, `http.get()`, `http.put()`, `http.MultipartRequest()`, `http.MultipartFile.fromBytes()` |
 | **http_parser** | `^4.0.2` | HTTP media types | Networking | `lib/services/auth_service.dart` | `MediaType()` |
 | **shared_preferences** | `^2.2.3` | Local KV storage | Storage | `lib/services/auth_service.dart` | `SharedPreferences.getInstance()`, `getString()`, `setString()`, `remove()` |
+| **cached_network_image** | `^3.4.1` | Network image caching | UI | `lib/widgets/app_image.dart`, `lib/screens/home/discover_feed_screen.dart` | `CachedNetworkImage()`, `CachedNetworkImageProvider()` |
+| **flutter_image_compress** | `^2.5.1` | Client-side image compression | Utility | `lib/services/auth_service.dart` | `FlutterImageCompress.compressWithList()` |
 
 > **⚠️ Dead Dependency Flag:** `google_mlkit_selfie_segmentation`, `image`, and `path_provider` are used exclusively in `lib/services/sticker_cutout_service.dart`. However, the `StickerCutoutService` class is never actually called anywhere in the app, making these packages effectively dead dependencies taking up bundle size.
 
@@ -26,6 +28,7 @@ This report provides an exhaustive, systematic analysis of the provided Flutter/
 | Widget / File | Type / Reason | Purpose | Parent Callers | Const/Rebuild Flags & Disposals |
 | :--- | :--- | :--- | :--- | :--- |
 | `FrndApp`<br>(main.dart) | Stateless | Root app, defines theme & routes | `main()` | Const constructors used well. |
+| `AppImage`<br>(widgets/app_image.dart) | Stateless | Reusable network image with caching & placeholder | Used across profile and feed screens | Good const usage. |
 | `ProfileCard`<br>(widgets/profile_card.dart) | Stateless | Displays user info over a background photo | `my_profile_screen.dart` | Good const usage. |
 | `ProfilePhotoPicker`<br>(widgets/profile_photo_picker.dart) | Stateful (Manages image paths, `_isProcessing` state) | Allows users to pick and crop photos | `edit_profile_screen.dart`, `profile_setup_screen.dart` | Rebuilds locally on image pick. |
 | `SketchyButton`<br>(widgets/sketchy_button.dart) | Stateless | Reusable themed button with sparkles | Used across almost all screens | Good const usage. |
@@ -42,7 +45,7 @@ This report provides an exhaustive, systematic analysis of the provided Flutter/
 | `CampusEventsScreen`<br>(screens/campus/campus_events_screen.dart) | Stateless | List of events | `main_scaffold.dart` | Could use more consts internally (e.g. list items). |
 | `ChatListScreen`<br>(screens/chats/chat_list_screen.dart) | Stateless | List of chats | `main_scaffold.dart` | Hardcoded data loop. |
 | `IndividualChatScreen`<br>(screens/chats/individual_chat_screen.dart) | Stateless | Message thread | `routes.dart` | Hardcoded dummy data. |
-| `DiscoverFeedScreen`<br>(screens/home/discover_feed_screen.dart) | Stateless | Main discovery feed | `main_scaffold.dart` | Hardcoded dummy data. |
+| `DiscoverFeedScreen`<br>(screens/home/discover_feed_screen.dart) | Stateful (Tracks `_currentIndex` and prefetching) | Main discovery feed | `main_scaffold.dart` | Manages mock state and caches upcoming images via `precacheImage`. |
 | `UserProfileScreen`<br>(screens/home/user_profile_screen.dart) | Stateless | External profile view | `routes.dart` (Wait, unused? Found no direct calls to it in other widgets, only defined but not routed!) | Not in `routes.dart`! Dead widget. |
 | `LikesMatchesScreen`<br>(screens/matches/likes_matches_screen.dart) | Stateless | Match grid | `main_scaffold.dart` | Hardcoded dummy data. |
 | `EditProfileScreen`<br>(screens/profile/edit_profile_screen.dart) | Stateful (Holds 7 `TextEditingController`s) | Form to edit user data | `routes.dart` | Controllers disposed correctly. |
@@ -140,3 +143,25 @@ This report provides an exhaustive, systematic analysis of the provided Flutter/
 - **Concurrency & Memory Issue (`ProfilePhotoPicker`):** The image picker allows the user to pick up to 4 images at once. It loops over them and crops them synchronously, returning unoptimized full-size `Uint8List` byte arrays into memory. This has a high risk of triggering OOM (Out of Memory) crashes on lower-end devices.
 - **Performance (`StickerCutoutService`):** Though dead code, if invoked, `_processPixels` iterates sequentially over an unscaled image (O(N*M)). Even inside an isolate, instantiating massive `img.Image` objects will cause severe performance degradation.
 - **State Handling (`AuthService.signupOrLogin`):** The logic relies on trying signup, and if it fails (assuming email exists), falling back to login. The failure block quietly returns `AuthResult.failure` without exposing the exact server status code (e.g. 500 vs 403), making network issue debugging difficult.
+- **Cache Correctness (Profile Image Re-upload):** When a user updates their profile picture in `EditProfileScreen`, the app uploads the new image with a hardcoded filename (`profile_pic_$i.jpg`). If the backend overwrites the existing file and returns the *exact same URL*, `AppImage` (via `cached_network_image`) will serve the stale image from the local cache. There is no cache-busting mechanism (e.g., appending a timestamp `?v=123` or forcing a new cache key) currently implemented to invalidate the old image.
+
+## === SECTION 9: IMAGE LOADING & CACHING (UPDATED) ===
+
+### 1. Image Display Widgets
+- The app uses the custom `AppImage` widget (wrapping `CachedNetworkImage`) to display remote images consistently (`ProfileCard`, `MyProfileScreen`, `ProfilePhotoPicker`, `DiscoverFeedScreen`, `UserProfileScreen`).
+
+### 2. Caching Mechanism
+- **Disk & Memory Caching:** Managed by `AppImageCacheManager` (via `flutter_cache_manager`).
+- **Cache Limits:** Configured to retain images on disk for up to 14 days (`stalePeriod`) and up to 300 items (`maxNrOfCacheObjects`) to balance fast loading and device storage constraints.
+
+### 3. Image Upload Flow & Compression
+- **Flow:** Users pick images via `image_picker`, crop them to a 3:4 aspect ratio using `image_cropper`.
+- **Compression:** The cropped bytes are compressed client-side using `flutter_image_compress` (minWidth: 1080, quality: 80) drastically reducing the upload payload.
+- **Upload:** The compressed bytes are sent via `http.MultipartRequest` to the backend.
+
+### 4. Feed/Swipe Prefetching
+- **Current State:** `DiscoverFeedScreen` is stateful and tracks `_currentIndex`. 
+- **Prefetching:** Uses `precacheImage` with `CachedNetworkImageProvider` to actively fetch the next 2 profiles in the background when the user swipes, ensuring a seamless, zero-pop-in experience.
+
+### 5. Network Optimization (ImageKit)
+- The `AppImage` widget conditionally appends ImageKit transformation parameters (`?tr=w-400,h-533`) when `isThumbnail` is true, ensuring lower resolution images are fetched for thumbnails and full-size only for details.

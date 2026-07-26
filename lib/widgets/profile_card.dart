@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
+import 'app_image.dart';
 
 class ProfileCard extends StatelessWidget {
   final String name;
@@ -186,12 +187,10 @@ class ProfileCard extends StatelessWidget {
       );
     }
     if (networkImageUrl != null && networkImageUrl!.isNotEmpty) {
-      return Image.network(
-        networkImageUrl!,
+      return AppImage(
+        url: networkImageUrl!,
         fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) => const Center(
-          child: Icon(Icons.person, size: 80, color: AppColors.lineBlack),
-        ),
+        isThumbnail: true,
       );
     }
     return const Center(
