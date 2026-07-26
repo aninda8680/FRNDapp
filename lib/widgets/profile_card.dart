@@ -35,16 +35,17 @@ class ProfileCard extends StatelessWidget {
     return Container(
       height: 480,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: const [
+        borderRadius: BorderRadius.circular(32),
+        boxShadow: [
           BoxShadow(
-            color: AppColors.lineBlack,
-            offset: Offset(4, 4),
+            color: Colors.black.withOpacity(0.12),
+            blurRadius: 32,
+            offset: const Offset(0, 16),
           )
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(32),
         child: Stack(
           fit: StackFit.expand,
           children: [
@@ -59,7 +60,7 @@ class ProfileCard extends StatelessWidget {
               bottom: 0,
               left: 0,
               right: 0,
-              height: 250,
+              height: 320,
               child: Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
@@ -67,7 +68,7 @@ class ProfileCard extends StatelessWidget {
                     end: Alignment.topCenter,
                     colors: [
                       Colors.black.withOpacity(0.9),
-                      Colors.black.withOpacity(0.6),
+                      Colors.black.withOpacity(0.4),
                       Colors.transparent,
                     ],
                   ),
@@ -77,9 +78,9 @@ class ProfileCard extends StatelessWidget {
 
             // 3. Info Overlay
             Positioned(
-              bottom: 20,
-              left: 20,
-              right: 20,
+              bottom: 24,
+              left: 24,
+              right: 24,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -92,22 +93,26 @@ class ProfileCard extends StatelessWidget {
                           '$name, $age',
                           style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                             color: Colors.white,
-                            fontWeight: FontWeight.bold,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.5,
                           ),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 8),
                   // Department & Year
                   Row(
                     children: [
-                      const Icon(Icons.school_outlined, size: 20, color: Colors.white70),
+                      Icon(Icons.school_outlined, size: 18, color: Colors.white.withOpacity(0.85)),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           '$school • $course',
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.white70),
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            color: Colors.white.withOpacity(0.9),
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ),
                     ],
@@ -115,20 +120,25 @@ class ProfileCard extends StatelessWidget {
                   
                   // Tags
                   if (hobbies.isNotEmpty) ...[
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 16),
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,
                       children: hobbies.take(3).map((e) => Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
+                          color: Colors.white.withOpacity(0.15),
                           borderRadius: BorderRadius.circular(999),
-                          border: Border.all(color: Colors.white30, width: 1),
+                          border: Border.all(color: Colors.white.withOpacity(0.2), width: 1.5),
                         ),
                         child: Text(
                           e, 
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white)
+                          style: const TextStyle(
+                            fontSize: 13, 
+                            fontWeight: FontWeight.w600, 
+                            color: Colors.white,
+                            letterSpacing: 0.2,
+                          )
                         ),
                       )).toList(),
                     ),
@@ -137,10 +147,10 @@ class ProfileCard extends StatelessWidget {
                   // Bio
                   const SizedBox(height: 16),
                   Text(
-                    '"$bio"',
+                    bio,
                     style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      fontStyle: FontStyle.italic,
-                      color: Colors.white,
+                      color: Colors.white.withOpacity(0.9),
+                      height: 1.5,
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
@@ -148,18 +158,23 @@ class ProfileCard extends StatelessWidget {
                   
                   // Preference
                   if (lookingFor != null) ...[
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 16),
                     Row(
                       children: [
                         Icon(
                           lookingFor == 'dating' ? Icons.favorite : Icons.people, 
-                          color: Colors.white,
+                          color: Colors.white.withOpacity(0.7),
                           size: 16,
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          'Looking for $lookingFor',
-                          style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 12),
+                          'LOOKING FOR ${lookingFor!.toUpperCase()}',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold, 
+                            color: Colors.white.withOpacity(0.7), 
+                            fontSize: 11,
+                            letterSpacing: 1.5,
+                          ),
                         ),
                       ],
                     ),
@@ -193,8 +208,8 @@ class ProfileCard extends StatelessWidget {
         isThumbnail: true,
       );
     }
-    return const Center(
-      child: Icon(Icons.person, size: 80, color: AppColors.lineBlack),
+    return Center(
+      child: Icon(Icons.person, size: 80, color: AppColors.inkBlack.withOpacity(0.2)),
     );
   }
 }
