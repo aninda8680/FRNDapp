@@ -25,6 +25,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   String? _selectedLookingFor;
   String? _selectedSexualOrientation;
+  String? _selectedGender;
   
   final List<String?> _photoPaths = List.filled(4, null);
   final List<Uint8List?> _photoBytes = List.filled(4, null);
@@ -64,6 +65,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         _heightController.text = data['height']?.toString() ?? '';
         _selectedLookingFor = data['lookingFor'];
         _selectedSexualOrientation = data['sexualOrientation'];
+        _selectedGender = data['gender'];
         
         final pictures = data['pictures'] as List<dynamic>?;
         if (pictures != null) {
@@ -102,6 +104,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
     if (_selectedSexualOrientation != null) {
       data["sexualOrientation"] = _selectedSexualOrientation!;
+    }
+    if (_selectedGender != null) {
+      data["gender"] = _selectedGender!;
     }
 
     // Process pictures
@@ -231,6 +236,29 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   _buildTextField('USERNAME', _usernameController),
                   _buildTextField('NAME', _nameController),
                   _buildTextField('AGE', _ageController, keyboardType: TextInputType.number),
+                  
+                  Text('GENDER', style: Theme.of(context).textTheme.labelLarge?.copyWith(color: AppColors.textColor2)),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 12,
+                    children: ['male', 'female', 'non-binary'].map((e) {
+                      final isSelected = _selectedGender == e;
+                      return GestureDetector(
+                        onTap: () => setState(() => _selectedGender = e),
+                        child: SketchyContainer(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          borderRadius: 999,
+                          backgroundColor: isSelected ? AppColors.textColor2 : AppColors.cream,
+                          child: Text(e.toUpperCase(), style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                            color: isSelected ? AppColors.cream : AppColors.textColor2,
+                          )),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 24),
+
                   _buildTextField('BIO', _bioController, maxLines: 3),
                   _buildTextField('SCHOOL', _schoolController),
                   _buildTextField('COURSE', _courseController),

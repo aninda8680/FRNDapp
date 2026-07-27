@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'dart:math' as math;
 import '../../services/discover_service.dart';
+import '../../widgets/full_profile_sheet.dart';
+import '../chats/individual_chat_screen.dart';
 
 // ─── Color tokens ──────────────────────────────────────────────────────────
 const _bgCream = Color(0xFFFDF4E5);
@@ -101,28 +103,152 @@ class _DiscoverFeedScreenState extends State<DiscoverFeedScreen>
     if (profile == null) return;
     final id = profile['_id'] as String? ?? '';
 
-    // Fire-and-forget API calls for non-mock IDs
+    Map<String, dynamic>? res;
     if (!id.startsWith('mock')) {
-      if (action == 'like') DiscoverService.likeProfile(id);
+      if (action == 'like') res = await DiscoverService.likeProfile(id);
       if (action == 'pass') DiscoverService.passProfile(id);
-      if (action == 'superlike') DiscoverService.superlikeProfile(id);
+      if (action == 'superlike') res = await DiscoverService.superlikeProfile(id);
     }
 
-    // Close details if open, then advance
+    // Close details if open
     if (_detailsVisible) {
       await _detailsCtrl.animateTo(0.0,
           duration: const Duration(milliseconds: 200), curve: Curves.easeIn);
     }
 
+    // Advance card
     setState(() {
       _cardPhotoIndex = 0;
       _currentIndex++;
     });
 
+    // Check if a mutual match was formed!
+    if (res != null && (res['matchFormed'] == true || res['conversationId'] != null) && mounted) {
+      final convId = res['conversationId'] as String?;
+      if (convId != null) {
+        _showMatchDialog(profile, convId);
+      }
+    }
+
     // Load more if near end
     if (_currentIndex >= _profiles.length - 3 && _hasMore && !_isLoading) {
       _fetchFeed();
     }
+  }
+
+  void _showMatchDialog(Map<String, dynamic> partner, String conversationId) {
+    final name = partner['name'] ?? 'Match';
+    final photoUrl = _getPhoto(partner);
+
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(28),
+            boxShadow: const [
+              BoxShadow(color: Colors.black26, blurRadius: 20, offset: Offset(0, 8)),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                "IT'S A MATCH! 🎉",
+                style: TextStyle(
+                  fontFamily: 'monospace',
+                  fontSize: 16,
+                  fontWeight: FontWeight.w900,
+                  color: _burgundy,
+                  letterSpacing: 2,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                width: 90,
+                height: 90,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: _burgundy, width: 2.5),
+                ),
+                child: ClipOval(
+                  child: photoUrl.isNotEmpty
+                      ? CachedNetworkImage(imageUrl: photoUrl, fit: BoxFit.cover)
+                      : Container(color: Colors.grey[200]),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'You and $name liked each other!',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.black,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Start a conversation now.',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Colors.black.withOpacity(0.5),
+                ),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                height: 46,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => IndividualChatScreen(
+                          conversationId: conversationId,
+                          partner: partner,
+                        ),
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _burgundy,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(23)),
+                    elevation: 0,
+                  ),
+                  child: const Text(
+                    'SEND A MESSAGE',
+                    style: TextStyle(
+                      fontFamily: 'monospace',
+                      fontSize: 12,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 1,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(
+                  'Keep Swiping',
+                  style: TextStyle(
+                    color: Colors.black.withOpacity(0.4),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   String _getPhoto(Map<String, dynamic>? profile, {int photoIndex = 0}) {
@@ -320,349 +446,11 @@ class _DiscoverFeedScreenState extends State<DiscoverFeedScreen>
   }
 
   Widget _buildFullDetailsSheet() {
-    final profile = _currentProfile!;
-    final photoCount = _getPhotoCount(profile);
-
-    return Material(
-      color: Colors.transparent,
-      child: Container(
-          color: const Color(0xFFFFF5E9),
-          child: SafeArea(
-            child: Column(
-              children: [
-                // Header bar
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFFF5E9).withOpacity(0.97),
-                    border: Border(bottom: BorderSide(color: Colors.black.withOpacity(0.08))),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'STUDENT PROFILE',
-                        style: TextStyle(
-                          color: _burgundy,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 2,
-                        ),
-                      ),
-                      GestureDetector(
-                        onTap: _closeDetails,
-                        child: Container(
-                          width: 32,
-                          height: 32,
-                          decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.06),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(Icons.close, size: 18),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Scrollable content
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Photo 1
-                        _detailPhoto(_getPhoto(profile, photoIndex: 0)),
-
-                        const SizedBox(height: 16),
-
-                        // Name & vitals card
-                        _detailCard(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Text(
-                                    '${profile['name']}, ${profile['age']}',
-                                    style: const TextStyle(
-                                      fontSize: 28,
-                                      fontWeight: FontWeight.w900,
-                                      color: Color(0xFF040404),
-                                    ),
-                                  ),
-                                  if (profile['identityStatus'] == 'verified') ...[
-                                    const SizedBox(width: 8),
-                                    const Icon(Icons.verified, color: _burgundy, size: 22),
-                                  ],
-                                ],
-                              ),
-                              const SizedBox(height: 10),
-                              Wrap(
-                                spacing: 8,
-                                runSpacing: 8,
-                                children: [
-                                  if (profile['height'] != null)
-                                    _chip(
-                                      '${_formatHeight(profile['height'])}',
-                                      icon: Icons.straighten_rounded,
-                                    ),
-                                  if (profile['sexualOrientation'] != null)
-                                    _chip('${profile['sexualOrientation']}'),
-                                  if (profile['lookingFor'] != null)
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                                      decoration: BoxDecoration(
-                                        color: _burgundy,
-                                        borderRadius: BorderRadius.circular(40),
-                                      ),
-                                      child: Text(
-                                        (profile['lookingFor'] as String).toUpperCase(),
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.w900,
-                                          letterSpacing: 1,
-                                        ),
-                                      ),
-                                    ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        // Photo 2
-                        if (photoCount > 1) ...[
-                          const SizedBox(height: 16),
-                          _detailPhoto(_getPhoto(profile, photoIndex: 1)),
-                        ],
-
-                        // School & Course
-                        if (profile['school'] != null || profile['course'] != null) ...[
-                          const SizedBox(height: 16),
-                          _detailCard(
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: 48,
-                                  height: 48,
-                                  decoration: BoxDecoration(
-                                    color: _burgundy.withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(14),
-                                    border: Border.all(color: _burgundy.withOpacity(0.3)),
-                                  ),
-                                  child: const Icon(Icons.school_rounded, color: _burgundy, size: 24),
-                                ),
-                                const SizedBox(width: 14),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      const Text(
-                                        'UNIVERSITY & COURSE',
-                                        style: TextStyle(color: _burgundy, fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 1.5),
-                                      ),
-                                      const SizedBox(height: 3),
-                                      Text(
-                                        profile['school'] ?? 'Campus Student',
-                                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Color(0xFF040404)),
-                                      ),
-                                      if (profile['course'] != null)
-                                        Text(
-                                          profile['course'],
-                                          style: const TextStyle(fontSize: 12, color: Colors.black54),
-                                        ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-
-                        // Photo 3
-                        if (photoCount > 2) ...[
-                          const SizedBox(height: 16),
-                          _detailPhoto(_getPhoto(profile, photoIndex: 2)),
-                        ],
-
-                        // Bio
-                        if (profile['bio'] != null && (profile['bio'] as String).isNotEmpty) ...[
-                          const SizedBox(height: 16),
-                          _detailCard(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'ABOUT ME',
-                                  style: TextStyle(color: _burgundy, fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 1.5),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  '"${profile['bio']}"',
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    height: 1.6,
-                                    fontStyle: FontStyle.italic,
-                                    color: Color(0xFF040404),
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-
-                        // Hobbies & Skills
-                        if ((profile['hobbies'] as List?)?.isNotEmpty == true ||
-                            (profile['skills'] as List?)?.isNotEmpty == true) ...[
-                          const SizedBox(height: 16),
-                          _detailCard(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'INTERESTS & HOBBIES',
-                                  style: TextStyle(color: _burgundy, fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 1.5),
-                                ),
-                                const SizedBox(height: 12),
-                                Wrap(
-                                  spacing: 8,
-                                  runSpacing: 8,
-                                  children: [
-                                    ...?(profile['hobbies'] as List?)?.map((h) => _hobbyChip(h.toString())),
-                                    ...?(profile['skills'] as List?)?.map((s) => _hobbyChip(s.toString())),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-
-                        const SizedBox(height: 16),
-                      ],
-                    ),
-                  ),
-                ),
-
-                // Sticky bottom action buttons
-                Container(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.95),
-                    border: Border(top: BorderSide(color: Colors.black.withOpacity(0.08))),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: () => _onAction('pass'),
-                          icon: const Icon(Icons.close_rounded, size: 16),
-                          label: const Text('PASS'),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: Colors.black87,
-                            side: BorderSide(color: Colors.black.withOpacity(0.15)),
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40)),
-                            textStyle: const TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1, fontSize: 11),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: () => _onAction('like'),
-                          icon: const Icon(Icons.favorite_rounded, size: 16),
-                          label: const Text('LIKE'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: _burgundy,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40)),
-                            textStyle: const TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1, fontSize: 11),
-                            elevation: 4,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-    );
-  }
-
-  Widget _detailPhoto(String url) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(28),
-      child: Container(
-        width: double.infinity,
-        height: 400,
-        decoration: BoxDecoration(
-          color: Colors.grey.shade200,
-          borderRadius: BorderRadius.circular(28),
-          border: Border.all(color: Colors.black.withOpacity(0.08)),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 20, offset: const Offset(0, 8))],
-        ),
-        child: url.isNotEmpty
-            ? CachedNetworkImage(imageUrl: url, fit: BoxFit.cover, errorWidget: (_, __, ___) => const Icon(Icons.person, size: 80, color: Colors.grey))
-            : const Icon(Icons.person, size: 80, color: Colors.grey),
-      ),
-    );
-  }
-
-  Widget _detailCard({required Widget child}) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.black.withOpacity(0.08)),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 12, offset: const Offset(0, 4))],
-      ),
-      child: child,
-    );
-  }
-
-  Widget _chip(String label, {IconData? icon}) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-      decoration: BoxDecoration(
-        color: _bgCream,
-        borderRadius: BorderRadius.circular(40),
-        border: Border.all(color: Colors.black.withOpacity(0.1)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (icon != null) ...[Icon(icon, size: 13, color: _burgundy), const SizedBox(width: 4)],
-          Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
-        ],
-      ),
-    );
-  }
-
-  Widget _hobbyChip(String label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      decoration: BoxDecoration(
-        color: _bgCream,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.black.withOpacity(0.1)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.label_outline_rounded, size: 13, color: _burgundy),
-          const SizedBox(width: 5),
-          Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-        ],
-      ),
+    return FullProfileSheet(
+      profile: _currentProfile!,
+      onClose: _closeDetails,
+      onLike: () => _onAction('like'),
+      onPass: () => _onAction('pass'),
     );
   }
 }
@@ -749,7 +537,7 @@ class _SwipeCardState extends State<_SwipeCard> with SingleTickerProviderStateMi
 
   void _snapBack() {
     _snapAnim = Tween<Offset>(begin: _drag, end: Offset.zero).animate(
-      CurvedAnimation(parent: _animCtrl, curve: Curves.elasticOut),
+      CurvedAnimation(parent: _animCtrl, curve: Curves.easeOut),
     );
     _animCtrl.forward(from: 0).then((_) {
       setState(() {
@@ -924,7 +712,7 @@ class _SwipeCardState extends State<_SwipeCard> with SingleTickerProviderStateMi
 
                   // ── Profile info ───────────────────────────────────────
                   Positioned(
-                    bottom: 100,
+                    bottom: 125,
                     left: 20,
                     right: 20,
                     child: GestureDetector(

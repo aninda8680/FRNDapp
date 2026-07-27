@@ -78,6 +78,15 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
             ),
             child: const Text('RETRY'),
           ),
+          const SizedBox(height: 16),
+          TextButton.icon(
+            onPressed: () => Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false),
+            icon: const Icon(Icons.logout_rounded, size: 16, color: _mutedGray),
+            label: const Text(
+              'Log Out',
+              style: TextStyle(color: _mutedGray, fontWeight: FontWeight.w500),
+            ),
+          ),
         ],
       ),
     );
@@ -148,6 +157,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
                       hobbies: hobbies,
                       lookingFor: lookingFor,
                       networkImageUrl: networkImageUrl,
+                      fullProfile: _profileData,
                     ),
                   ),
                 );

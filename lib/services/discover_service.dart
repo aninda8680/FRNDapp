@@ -35,27 +35,33 @@ class DiscoverService {
     }
   }
 
-  /// Like a profile
-  static Future<bool> likeProfile(String targetId) async {
+  /// Like a profile. Returns response map (e.g. {matchFormed: true, conversationId: '...'})
+  static Future<Map<String, dynamic>?> likeProfile(String targetId) async {
     try {
       final url = Uri.parse('$baseUrl/like/$targetId');
       final response = await http.post(url, headers: _headers);
-      return response.statusCode == 200;
+      if (response.statusCode == 200) {
+        return json.decode(response.body) as Map<String, dynamic>?;
+      }
+      return null;
     } catch (e) {
       print('Error liking profile: $e');
-      return false;
+      return null;
     }
   }
 
-  /// Superlike a profile
-  static Future<bool> superlikeProfile(String targetId) async {
+  /// Superlike a profile. Returns response map
+  static Future<Map<String, dynamic>?> superlikeProfile(String targetId) async {
     try {
       final url = Uri.parse('$baseUrl/superlike/$targetId');
       final response = await http.post(url, headers: _headers);
-      return response.statusCode == 200;
+      if (response.statusCode == 200) {
+        return json.decode(response.body) as Map<String, dynamic>?;
+      }
+      return null;
     } catch (e) {
       print('Error superliking profile: $e');
-      return false;
+      return null;
     }
   }
 

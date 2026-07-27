@@ -25,6 +25,9 @@ class AuthService {
 
   // Store the session cookie (JWT token from the HTTP-only cookie header)
   static String? _cookie;
+  
+  /// The logged-in user's MongoDB _id, populated after getProfile() succeeds
+  static String? userId;
 
   /// JWT token or auth cookie getter
   static String? get token => _cookie;
@@ -234,7 +237,11 @@ class AuthService {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        return data['user'] as Map<String, dynamic>?;
+        final user = data['user'] as Map<String, dynamic>?;
+        if (user != null) {
+          userId = user['_id'] as String?;
+        }
+        return user;
       }
       print('Failed to fetch profile: ${response.body}');
       return null;

@@ -12,7 +12,6 @@ import 'screens/utilities/report_block_screen.dart';
 import 'screens/utilities/settings_screen.dart';
 import 'screens/utilities/help_support_screen.dart';
 import 'screens/utilities/privacy_policy_screen.dart';
-import 'screens/chats/individual_chat_screen.dart';
 import 'screens/profile/edit_profile_screen.dart';
 import 'screens/profile/subscription_screen.dart';
 import 'screens/profile/profile_updated_screen.dart';
@@ -31,7 +30,6 @@ class AppRoutes {
   static const String settings = '/settings';
   static const String helpSupport = '/help_support';
   static const String privacyPolicy = '/privacy_policy';
-  static const String individualChat = '/chats/individual';
   static const String myProfile = '/my_profile';
   static const String editProfile = '/edit_profile';
   static const String subscription = '/subscription';
@@ -54,7 +52,6 @@ class AppRoutes {
     settings: (context) => const SettingsScreen(),
     helpSupport: (context) => const HelpSupportScreen(),
     privacyPolicy: (context) => const PrivacyPolicyScreen(),
-    individualChat: (context) => const IndividualChatScreen(),
     editProfile: (context) => const EditProfileScreen(),
     subscription: (context) => const SubscriptionScreen(),
     

@@ -43,6 +43,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   bool _drink = false;
   bool _pets = false;
 
+  String? _selectedGender;
   String? _selectedLookingFor;
   String? _selectedSexualOrientation;
   bool _isSaving = false;
@@ -190,6 +191,27 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
               keyboardType: TextInputType.number, 
               decoration: InputDecoration(isDense: true, border: InputBorder.none, hintText: '21', hintStyle: TextStyle(color: AppColors.textColor1.withOpacity(0.5))),
             ),
+          ),
+          const SizedBox(height: 24),
+          Text('GENDER', style: Theme.of(context).textTheme.labelLarge?.copyWith(color: AppColors.textColor2)),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: ['male', 'female', 'non-binary'].map((e) {
+              final isSelected = _selectedGender == e;
+              return GestureDetector(
+                onTap: () => setState(() => _selectedGender = e),
+                child: SketchyContainer(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  borderRadius: 999,
+                  backgroundColor: isSelected ? AppColors.textColor2 : AppColors.cream,
+                  child: Text(e.toUpperCase(), style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    color: isSelected ? AppColors.cream : AppColors.textColor2,
+                  )),
+                ),
+              );
+            }).toList(),
           ),
           const SizedBox(height: 24),
           Text('BIO', style: Theme.of(context).textTheme.labelLarge?.copyWith(color: AppColors.textColor2)),
@@ -501,6 +523,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       "school": _schoolController.text.trim(),
       "course": _courseController.text.trim(),
       "height": int.tryParse(_heightController.text.trim()) ?? 170,
+      "gender": _selectedGender ?? 'other',
       "hobbies": _selectedHobbies.toList(),
       "skills": _selectedSkills.toList(),
       "lookingFor": _selectedLookingFor ?? 'dating',

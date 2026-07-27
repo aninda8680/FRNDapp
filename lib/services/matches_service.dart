@@ -32,4 +32,22 @@ class MatchesService {
       return [];
     }
   }
+
+  /// Fetch incoming likes
+  static Future<Map<String, dynamic>> getIncomingLikes() async {
+    try {
+      final url = Uri.parse('$baseUrl/likes/received');
+      print('Fetching incoming likes from: $url');
+      final response = await http.get(url, headers: _headers);
+      print('Incoming Likes API Status: ${response.statusCode}');
+      print('Incoming Likes API Body: ${response.body}');
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      }
+      return {};
+    } catch (e) {
+      print('Error fetching incoming likes: $e');
+      return {};
+    }
+  }
 }

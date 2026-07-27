@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import 'app_image.dart';
+import 'full_profile_sheet.dart';
 
 class ProfileCard extends StatelessWidget {
   final String name;
@@ -15,6 +16,9 @@ class ProfileCard extends StatelessWidget {
   final String? localImagePath;
   final Uint8List? localImageBytes;
   final String? networkImageUrl;
+  final Map<String, dynamic>? fullProfile;
+  final VoidCallback? onLike;
+  final VoidCallback? onPass;
 
   const ProfileCard({
     super.key,
@@ -28,25 +32,68 @@ class ProfileCard extends StatelessWidget {
     this.localImagePath,
     this.localImageBytes,
     this.networkImageUrl,
+    this.fullProfile,
+    this.onLike,
+    this.onPass,
   });
+
+  void _showFullProfile(BuildContext context) {
+    if (fullProfile == null) return;
+    
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (bottomSheetContext) => SizedBox(
+        height: MediaQuery.of(context).size.height * 0.9,
+        child: FullProfileSheet(
+          profile: fullProfile!,
+          onClose: () => Navigator.pop(bottomSheetContext),
+          onLike: onLike != null ? () {
+            onLike!();
+            Navigator.pop(bottomSheetContext); // Close sheet
+          } : null,
+          onPass: onPass != null ? () {
+            onPass!();
+            Navigator.pop(bottomSheetContext); // Close sheet
+          } : null,
+        ),
+      ),
+    ).then((_) {
+      if (context.mounted) {
+        Navigator.pop(context);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 480,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(32),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.12),
-            blurRadius: 32,
-            offset: const Offset(0, 16),
-          )
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(32),
-        child: Stack(
+    return GestureDetector(
+      onVerticalDragEnd: (details) {
+        if (details.primaryVelocity != null && details.primaryVelocity! < -300) {
+          _showFullProfile(context);
+        } else if (details.primaryVelocity != null && details.primaryVelocity! > 300) {
+          if (context.mounted) {
+            Navigator.pop(context);
+          }
+        }
+      },
+      onTap: () => _showFullProfile(context),
+      child: Container(
+        height: 480,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(32),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.12),
+              blurRadius: 32,
+              offset: const Offset(0, 16),
+            )
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(32),
+          child: Stack(
           fit: StackFit.expand,
           children: [
             // 1. Background Photo
@@ -185,7 +232,7 @@ class ProfileCard extends StatelessWidget {
           ],
         ),
       ),
-    );
+    ));
   }
 
   Widget _buildBackgroundImage() {

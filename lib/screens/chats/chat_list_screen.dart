@@ -6,11 +6,16 @@ import 'individual_chat_screen.dart';
 class ChatListScreen extends StatefulWidget {
   const ChatListScreen({super.key});
 
+  /// Called by MainScaffold when the Chats tab is tapped — triggers a list refresh.
+  static VoidCallback? triggerRefresh;
+
   @override
-  State<ChatListScreen> createState() => _ChatListScreenState();
+  // ignore: library_private_types_in_public_api
+  _ChatListRefreshState createState() => _ChatListRefreshState();
 }
 
-class _ChatListScreenState extends State<ChatListScreen> {
+// Public state class so MainScaffold can call refresh() via GlobalKey
+class _ChatListRefreshState extends State<ChatListScreen> {
   static const Color _burgundy = Color(0xFFA41534);
 
   List<Map<String, dynamic>> _matches = [];
@@ -21,18 +26,23 @@ class _ChatListScreenState extends State<ChatListScreen> {
   @override
   void initState() {
     super.initState();
+    // Register the static refresh trigger
+    ChatListScreen.triggerRefresh = () => _fetchMatches();
     _fetchMatches();
     _searchCtrl.addListener(_onSearchChanged);
   }
 
   @override
   void dispose() {
+    ChatListScreen.triggerRefresh = null;
     _searchCtrl.dispose();
     super.dispose();
   }
 
   Future<void> _fetchMatches() async {
-    setState(() => _isLoading = true);
+    if (_matches.isEmpty) {
+      setState(() => _isLoading = true);
+    }
     final matches = await MatchesService.getMatches();
     if (mounted) {
       setState(() {
@@ -42,6 +52,9 @@ class _ChatListScreenState extends State<ChatListScreen> {
       });
     }
   }
+
+  /// Called by MainScaffold when user taps the Chats tab
+  void refresh() => _fetchMatches();
 
   void _onSearchChanged() {
     final query = _searchCtrl.text.toLowerCase();
@@ -72,11 +85,15 @@ class _ChatListScreenState extends State<ChatListScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: SafeArea(
-        bottom: false,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: Column(
+      body: RefreshIndicator(
+        color: _burgundy,
+        backgroundColor: Colors.white,
+        onRefresh: _fetchMatches,
+        child: SafeArea(
+          bottom: false,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const SizedBox(height: 16),
@@ -146,45 +163,54 @@ class _ChatListScreenState extends State<ChatListScreen> {
           ),
         ),
       ),
+    ),
     );
   }
 
   Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.chat_bubble_outline_rounded,
-            size: 64,
-            color: _burgundy.withOpacity(0.3),
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'No Active Chats',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w800,
-              color: Colors.black,
+    return LayoutBuilder(
+      builder: (context, constraints) => SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minHeight: constraints.maxHeight),
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.chat_bubble_outline_rounded,
+                  size: 64,
+                  color: _burgundy.withOpacity(0.3),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'No Active Chats',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.black,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 32.0),
+                  child: Text(
+                    _searchCtrl.text.isNotEmpty
+                        ? 'No matches found matching "${_searchCtrl.text}".'
+                        : 'Match with students to unlock direct messaging!\n\n(Pull down to refresh)',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.black.withOpacity(0.5),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 120),
+              ],
             ),
           ),
-          const SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32.0),
-            child: Text(
-              _searchCtrl.text.isNotEmpty
-                  ? 'No matches found matching "${_searchCtrl.text}".'
-                  : 'Match with students to unlock direct messaging!',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.black.withOpacity(0.5),
-              ),
-            ),
-          ),
-          const SizedBox(height: 120),
-        ],
+        ),
       ),
     );
   }
@@ -207,6 +233,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(24),
         child: ListView.separated(
+          physics: const AlwaysScrollableScrollPhysics(),
           padding: EdgeInsets.zero,
           itemCount: _filteredMatches.length,
           separatorBuilder: (context, index) => Divider(
@@ -221,9 +248,15 @@ class _ChatListScreenState extends State<ChatListScreen> {
 
             return InkWell(
               onTap: () {
-                // For now, navigate to IndividualChatScreen placeholder
+                if (match['conversationId'] == null) return;
+                
                 Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const IndividualChatScreen()),
+                  MaterialPageRoute(
+                    builder: (_) => IndividualChatScreen(
+                      conversationId: match['conversationId'],
+                      partner: partner,
+                    ),
+                  ),
                 );
               },
               highlightColor: Colors.black.withOpacity(0.03),

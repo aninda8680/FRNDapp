@@ -301,7 +301,8 @@ Fetch the authenticated user's own full profile. Requires authentication cookie.
     "isPremium": false,
     "tier": "free",
     "badges": [],
-    "openFlagCount": 0
+    "openFlagCount": 0,
+    "profileCompletionPercentage": 95
   }
 }
 ```
@@ -671,6 +672,45 @@ Fetch incoming likes that other users have sent to the authenticated user ("Who 
         "bio": "Coffee lover & software enthusiast",
         "hobbies": ["Music", "Reading"],
         "skills": ["Python"],
+        "identityStatus": "verified",
+        "badges": []
+      }
+    }
+  ]
+}
+```
+
+---
+
+#### GET `/api/likes/given`
+#### GET `/api/likes/sent`
+
+Fetch history of all user accounts liked or superliked in the past by the authenticated user. Requires authentication cookie or Bearer token.
+
+**Query Params:** `?page=1&limit=50`
+
+**Response (200 OK):**
+```json
+{
+  "totalCount": 1,
+  "page": 1,
+  "limit": 50,
+  "likes": [
+    {
+      "likeId": "651a2b3c4d5e6f7a8b9c0d89",
+      "type": "like",
+      "likedAt": "2026-07-27T14:00:00.000Z",
+      "profile": {
+        "_id": "651a2b3c4d5e6f7a8b9c0d3f",
+        "name": "Jane Smith",
+        "age": 20,
+        "school": "Adamas University",
+        "course": "CSE",
+        "gender": "female",
+        "pictures": [{ "url": "https://...", "fileId": "file_789" }],
+        "bio": "Loves music and traveling",
+        "hobbies": ["Music"],
+        "skills": ["Design"],
         "identityStatus": "verified",
         "badges": []
       }

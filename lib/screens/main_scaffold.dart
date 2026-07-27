@@ -17,13 +17,27 @@ class MainScaffold extends StatefulWidget {
 class _MainScaffoldState extends State<MainScaffold> {
   int _currentIndex = 0;
 
-  final List<Widget> _screens = const [
-    DiscoverFeedScreen(),
-    LikesMatchesScreen(),
-    ChatListScreen(),
-    CampusEventsScreen(),
-    MyProfileScreen(),
-  ];
+  late final List<Widget> _screens;
+
+  @override
+  void initState() {
+    super.initState();
+    _screens = [
+      const DiscoverFeedScreen(),
+      const LikesMatchesScreen(),
+      const ChatListScreen(),
+      const CampusEventsScreen(),
+      const MyProfileScreen(),
+    ];
+  }
+
+  void _onTabSelected(int index) {
+    // Auto-refresh chat list whenever user switches to Chats tab
+    if (index == 2) {
+      ChatListScreen.triggerRefresh?.call();
+    }
+    setState(() => _currentIndex = index);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -80,7 +94,7 @@ class _MainScaffoldState extends State<MainScaffold> {
     final color = isSelected ? const Color(0xFF6B1B35) : const Color(0xFF9E9E9E);
     
     return GestureDetector(
-      onTap: () => setState(() => _currentIndex = index),
+      onTap: () => _onTabSelected(index),
       behavior: HitTestBehavior.opaque,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
