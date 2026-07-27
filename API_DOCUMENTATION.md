@@ -1,0 +1,1530 @@
+# College Dating App — Backend API Specification & Integration Guide
+
+This document provides complete instructions for developers integrating with the backend API and Chat services.
+
+---
+
+## 1. Environment & Architecture Overview
+
+The backend consists of two separate services running in parallel, connected to MongoDB Atlas and Upstash Redis.
+
+### Deployment Endpoints
+- **Production REST API Base URL**: `https://frnd-api-n3hv.onrender.com`
+- **Production Chat WebSocket URL**: `https://frnd-chat-a2cm.onrender.com`
+- **Local Dev REST API**: `http://localhost:5000`
+- **Local Dev Chat WebSocket**: `http://localhost:5001`
+
+### CORS Policy
+
+| Route group | Allowed origins |
+|---|---|
+| `/api/admin/*` | `ADMIN_PANEL_ORIGIN` only (env var) — any other origin receives HTTP 403 |
+| All other `/api/*` | Origins listed in `APP_ORIGINS` env var (comma-separated) — any other origin receives HTTP 403 |
+| Socket.IO (Chat) | Same `APP_ORIGINS` allowlist |
+
+> **Note:** Both services require an `APP_ORIGINS` environment variable listing permitted frontend origins (e.g. `http://localhost:3000,http://localhost:5173` or your production Vercel/Netlify URLs). Requests from unlisted origins are rejected with CORS policy errors.
+
+---
+
+## 1.1. Quick Integration Guide for Frontend Developers
+
+### A. How to Authenticate & Pass the Token
+To make integration smooth, the API supports two ways to authenticate:
+
+1. **Automatic Cookie-Based (Recommended for Web)**
+   - When you call `/api/auth/signup` or `/api/auth/login`, the server automatically sends back a secure `SameSite=Lax` cookie named `token` containing your JWT.
+   - For all subsequent requests, make sure your HTTP client includes credentials:
+     - **Fetch API**: Pass `{ credentials: 'include' }` in the options.
+     - **Axios**: Set `withCredentials: true` in your global config or request options.
+   - *Note on local testing:* If you are running the frontend on `localhost` and calling the production Render API, Chrome/Safari may block cross-origin cookies. If that happens, use the Authorization header fallback below.
+
+2. **Authorization Header Fallback (Recommended for Testing & Native Apps)**
+   - After signing up or logging in, the server returns the user object. Although the HTTP-only cookie is set, you can also authenticate on subsequent requests by sending the token manually:
+     - Header: `Authorization: Bearer <your_jwt_token>`
+   - For admins, **only** the Authorization header is accepted (using `Authorization: Bearer <admin_token>`).
+
+### B. Testing your requests locally
+You can use tools like Postman, Thunder Client, or cURL to query the endpoints. Since cURL/Postman do not enforce browser CORS policies, you can query directly.
+Example login:
+```bash
+curl -X POST https://frnd-api-n3hv.onrender.com/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"identity": "arjun_s", "password": "Password@123"}'
+```
+
+---
+
+## 2. Authentication Model
+
+### Regular Users
+- JWT delivered as an **HTTP-only `SameSite=Lax` cookie** named `token`.
+- Set automatically on signup and login; cleared on logout.
+- Expires in 7 days.
+- All protected routes read this cookie — no `Authorization` header needed.
+
+### Admin Users
+- Separate identity model — no overlap with regular `users` collection.
+- JWT delivered as a **bearer token** in the response body (held in SPA memory).
+- All admin routes require `Authorization: Bearer <admin_token>` header.
+- Admin tokens carry `aud: 'admin-panel'` claim — rejected on all regular user routes.
+- Expires in 24 hours.
+
+---
+
+## 3. Regular User REST API
+
+### Authentication (`/api/auth`)
+
+#### POST `/api/auth/signup`
+
+Create a new user account.
+
+**Headers:** `Content-Type: application/json`
+
+**Body:**
+```json
+{
+  "email": "student@stu.adamasuniversity.ac.in",
+  "username": "johndoe",
+  "password": "securepassword123",
+  "name": "John Doe",
+  "age": 20,
+  "gender": "male",
+  "lookingFor": "dating",
+  "bio": "Optional bio text"
+}
+```
+
+| Field | Required | Rules |
+|---|---|---|
+| `email` | Yes | Any valid email |
+| `username` | No | Max 50 chars, unique. Auto-generated from email prefix if omitted. |
+| `password` | Yes | 8–128 chars |
+| `name` | No | Max 100 chars. Defaults to username if omitted. |
+| `age` | No | Integer, minimum 18 (validated only if supplied). |
+| `gender` | No | `"male"` \| `"female"` \| `"other"` |
+| `lookingFor` | No | `"friends"` \| `"dating"` |
+| `bio` | No | Max 500 chars |
+
+**Response (201 Created):**
+```json
+{
+  "message": "Signup successful",
+  "user": {
+    "id": "651a2b3c4d5e6f7a8b9c0d1e",
+    "email": "student@stu.adamasuniversity.ac.in",
+    "username": "johndoe",
+    "name": "John Doe",
+    "emailVerified": false,
+    "identityStatus": "not_submitted"
+  },
+  "otpSent": true
+}
+```
+
+> If the email matches `/@stu\.adamasuniversity\.ac\.in$/i`, a 6-digit OTP is sent for college email verification. The session cookie is set immediately after signup.
+
+---
+
+#### POST `/api/auth/verify-otp`
+
+Confirm the email OTP sent at signup. Requires authentication cookie.
+
+**Body:**
+```json
+{ "otp": "123456" }
+```
+
+**Response (200 OK):**
+```json
+{ "message": "Email verified successfully", "emailVerified": true }
+```
+
+- OTP expires after 10 minutes.
+- Max **5 incorrect attempts** before the code is locked (request a new one with resend-otp).
+
+---
+
+#### POST `/api/auth/resend-otp`
+
+Request a fresh OTP. Requires authentication cookie or Bearer token.
+
+**Response (200 OK):**
+```json
+{ "message": "Verification code sent successfully" }
+```
+
+- Rate-limited: Cooldown of **2 minutes (120 seconds)** between requests.
+- Limit: Maximum of **3 OTP resends** allowed per verification session.
+
+---
+
+#### POST `/api/auth/login`
+
+Log in with email or username.
+
+**Body:**
+```json
+{
+  "identity": "johndoe",
+  "password": "securepassword123"
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "message": "Login successful",
+  "user": {
+    "id": "651a2b3c4d5e6f7a8b9c0d1e",
+    "email": "student@stu.adamasuniversity.ac.in",
+    "username": "johndoe",
+    "name": "John Doe",
+    "emailVerified": true,
+    "identityStatus": "verified"
+  }
+}
+```
+
+> Sets an HTTP-only secure cookie named `token`. After 5 consecutive failed login attempts for an account, a `login_brute_force` flag is raised for admin review.
+
+---
+
+#### POST `/api/auth/logout`
+
+Clear the session cookie. Requires authentication cookie.
+
+**Response (200 OK):**
+```json
+{ "message": "Logout successful" }
+```
+
+---
+
+#### POST `/api/auth/forgot-password`
+
+Send a password reset link to the user's email. No login required.
+
+**Body:**
+```json
+{
+  "email": "student@stu.adamasuniversity.ac.in"
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "message": "If this email is registered, a password reset link has been sent."
+}
+```
+
+> **Security Note:** To prevent email enumeration, this endpoint returns the same success response regardless of whether the email exists in the database.
+
+---
+
+#### POST `/api/auth/reset-password`
+
+Confirm token and reset password directly. No login required.
+
+**Body:**
+```json
+{
+  "email": "student@stu.adamasuniversity.ac.in",
+  "token": "4a1b2c3d4e5f...",
+  "newPassword": "myNewSecurePassword123"
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "message": "Your password has been reset successfully. You can now log in."
+}
+```
+
+> **Behavior**:
+> - Validates that the token exists, matches, and has not expired (**10 minutes expiration window**).
+> - Updates the user's password directly with `newPassword`.
+> - Enforces standard user password rules (8–128 characters).
+
+---
+
+### Own Profile & Media (`/api/users` & `/api/upload`)
+
+#### POST `/api/upload/picture`
+
+Upload a normal profile picture. Uploads the image file and returns the generated CDN `url` and `fileId` for profile assignment. Requires authentication cookie or Bearer token.
+
+**Content-Type:** `multipart/form-data`  
+**Field Name:** `picture` (or `file`)  
+**Optional Body Field:** `autoSave` (`true` to automatically append the picture to `user.pictures` array)
+
+**Response (201 Created):**
+```json
+{
+  "message": "Picture uploaded successfully",
+  "picture": {
+    "url": "https://res.cloudinary.com/wxbw5yo4/image/upload/v12345/user_pictures/pic_123456.jpg",
+    "fileId": "user_pictures/pic_123456"
+  }
+}
+```
+
+---
+
+#### GET `/api/users/me`
+
+Fetch the authenticated user's own full profile. Requires authentication cookie.
+
+**Response (200 OK):**
+```json
+{
+  "user": {
+    "_id": "651a2b3c4d5e6f7a8b9c0d1e",
+    "email": "student@stu.adamasuniversity.ac.in",
+    "username": "johndoe",
+    "name": "John Doe",
+    "age": 20,
+    "gender": "male",
+    "height": 178,
+    "sexualOrientation": "straight",
+    "school": "Adamas University",
+    "course": "CSE",
+    "bio": "My bio",
+    "hobbies": ["Coding", "Chess"],
+    "skills": ["JavaScript"],
+    "pictures": [{ "url": "https://...", "fileId": "file_123" }],
+    "lookingFor": "dating",
+    "emailVerified": true,
+    "identityStatus": "verified",
+    "isPremium": false,
+    "tier": "free",
+    "badges": [],
+    "openFlagCount": 0
+  }
+}
+```
+
+---
+
+## Subscription Tiers & Razorpay Autopay (`/api/payments`)
+
+### Tier Summary & Features
+
+| Feature | Free Tier | Silver Pass (₹39/mo Autopay) | Gold Pass (₹49/mo Autopay) |
+|---|---|---|---|
+| **Price** | ₹0 | **₹39 / 30 Days** | **₹49 / 30 Days** |
+| **Autopay Recurring** | No | **Yes (Auto-renews every 30 days)** | **Yes (Auto-renews every 30 days)** |
+| **Normal Likes** | 15 / day | 25 / day | 50 / day |
+| **Super Likes** | 3 / day | 6 / day | 12 / day |
+| **Feed Profile Boost** | 1x Standard | 3x Higher Visibility | 6x Maximum Visibility |
+
+---
+
+#### GET `/api/payments/tiers`
+
+Fetch all available subscription tier configurations and pricing. No authentication required.
+
+**Response (200 OK):**
+```json
+{
+  "currency": "INR",
+  "billingCycle": "30 Days Autopay Recurring",
+  "tiers": {
+    "free": { "tier": "free", "name": "Free Tier", "priceINR": 0, "pricePaise": 0, "validityDays": 30, "likesLimit": 15, "superlikesLimit": 3, "profileBoost": 1, "isAutopay": false },
+    "silver": { "tier": "silver", "name": "Silver Pass Autopay", "priceINR": 39, "pricePaise": 3900, "validityDays": 30, "likesLimit": 25, "superlikesLimit": 6, "profileBoost": 3, "isAutopay": true },
+    "gold": { "tier": "gold", "name": "Gold Pass Autopay", "priceINR": 49, "pricePaise": 4900, "validityDays": 30, "likesLimit": 50, "superlikesLimit": 12, "profileBoost": 6, "isAutopay": true }
+  }
+}
+```
+
+---
+
+#### POST `/api/payments/create-subscription`
+
+Initialize a Razorpay Autopay Subscription for Silver or Gold tier. Requires authentication cookie or Bearer token. *(Alias: `POST /api/payments/create-order`)*
+
+**Body:**
+```json
+{
+  "tier": "gold" // "silver" or "gold"
+}
+```
+
+**Response (201 Created):**
+```json
+{
+  "message": "Razorpay Autopay Subscription initialized successfully",
+  "subscriptionId": "sub_M1234567890",
+  "planId": "plan_gold_4900",
+  "amount": 4900,
+  "amountINR": 49,
+  "currency": "INR",
+  "keyId": "rzp_test_...",
+  "tier": "gold",
+  "tierName": "Gold Pass Autopay",
+  "validityDays": 30,
+  "isAutopay": true
+}
+```
+
+---
+
+#### POST `/api/payments/verify-subscription`
+
+Verify the Razorpay Autopay subscription signature and activate 30-day recurring validity. Requires authentication cookie or Bearer token. *(Alias: `POST /api/payments/verify`)*
+
+**Body:**
+```json
+{
+  "razorpay_subscription_id": "sub_M1234567890",
+  "razorpay_payment_id": "pay_M9876543210",
+  "razorpay_signature": "9a8b7c6d5e4f3a..."
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "message": "🎉 Gold Pass Autopay activated! Autopay will automatically renew every 30 days.",
+  "tier": "gold",
+  "isPremium": true,
+  "autopayStatus": "active",
+  "subscriptionExpiresAt": "2026-08-20T18:00:00.000Z",
+  "limits": {
+    "likesLimit": 50,
+    "superlikesLimit": 12,
+    "profileBoost": 6
+  }
+}
+```
+
+---
+
+#### POST `/api/payments/cancel-subscription`
+
+Cancel recurring Autopay subscription. The user keeps Silver/Gold benefits until their current 30-day period expires. Requires authentication cookie or Bearer token.
+
+**Response (200 OK):**
+```json
+{
+  "message": "Autopay recurring subscription cancelled successfully. Your benefits remain active until your current 30-day period expires.",
+  "autopayStatus": "cancelled",
+  "tier": "gold",
+  "subscriptionExpiresAt": "2026-08-20T18:00:00.000Z"
+}
+```
+
+---
+
+#### GET `/api/payments/subscription-status`
+
+Fetch current user tier status, autopay state, remaining validity days, and active limits. Requires authentication cookie or Bearer token.
+
+**Response (200 OK):**
+```json
+{
+  "tier": "gold",
+  "isPremium": true,
+  "autopayStatus": "active",
+  "subscriptionExpiresAt": "2026-08-20T18:00:00.000Z",
+  "validityDaysRemaining": 30,
+  "limits": {
+    "likesLimit": 50,
+    "superlikesLimit": 12,
+    "profileBoost": 6
+  }
+}
+```
+
+---
+
+#### POST `/api/payments/webhook`
+
+Razorpay server-to-server webhook callback for automated 30-day Autopay renewals (`subscription.charged`, `payment.captured`). Validates HMAC `x-razorpay-signature` header using `RAZORPAY_WEBHOOK_SECRET`.
+
+---
+
+#### PUT `/api/users/me`
+
+Update the authenticated user's own profile. Requires authentication cookie.
+
+> Only the fields listed below can be updated. Fields like `email`, `password`, `banned`, `isPremium`, and `badges` are immutable through this endpoint.
+
+**Body (all fields optional — send only what you want to update):**
+```json
+{
+  "username": "newusername",
+  "name": "John Updated",
+  "age": 21,
+  "bio": "New bio text",
+  "school": "Adamas University",
+  "course": "CSE",
+  "height": 175,
+  "hobbies": ["Coding", "Chess"],
+  "skills": ["JavaScript", "Python"],
+  "lookingFor": "dating",
+  "sexualOrientation": "straight",
+  "tags": { "smoke": false, "drink": false, "pets": true },
+  "pictures": [
+    { "url": "https://...", "fileId": "imagekit_file_id" }
+  ]
+}
+```
+
+| Field | Rules |
+|---|---|
+| `name` | Max 100 chars |
+| `bio` | Max 500 chars |
+| `school` | Max 150 chars |
+| `course` | Max 150 chars |
+| `height` | Number (cm) |
+| `hobbies` | Array, max 20 items |
+| `skills` | Array, max 20 items |
+| `lookingFor` | `"friends"` \| `"dating"` |
+| `pictures` | Array, max 4 items; each must have `url` and `fileId` |
+
+**Response (200 OK):**
+```json
+{ "message": "Profile updated successfully", "user": { ... } }
+```
+
+---
+
+### Identity Verification (`/api/verification`)
+
+#### POST `/api/verification/identity/submit`
+
+Submit ID card and face images for identity verification. Requires authentication cookie.
+
+**Headers:** `Content-Type: multipart/form-data`
+
+**Multipart fields:**
+
+| Field | Required | Rules |
+|---|---|---|
+| `idCard` | Yes | JPEG, PNG, or WebP only — max 5 MB |
+| `face` | Yes | JPEG, PNG, or WebP only — max 5 MB |
+
+**Response (201 Created):**
+```json
+{
+  "message": "Identity verification request submitted successfully",
+  "status": "pending"
+}
+```
+
+> - Only callable when `identityStatus` is `"not_submitted"`.
+> - Perceptual hash is computed on both images and checked against all existing submissions. A match on another user's account raises a `duplicate_identity_document` flag immediately.
+> - Images are uploaded to Cloudinary with `authenticated` (private) delivery.
+
+---
+
+#### POST `/api/verification/identity/resubmit`
+
+Resubmit after a rejection. Same body as submit. Only callable when `identityStatus` is `"unverified"`.
+
+> If the account has 2 or more prior rejections, a `repeated_verification_rejection` flag (medium severity) is automatically raised.
+
+---
+
+#### GET `/api/verification/identity/status`
+
+Check own verification status. Requires authentication cookie.
+
+**Response (200 OK):**
+```json
+{
+  "identityStatus": "pending",
+  "requestDetails": {
+    "status": "pending",
+    "submittedAt": "2026-07-19T11:00:00.000Z",
+    "reviewedAt": null,
+    "reason": null
+  }
+}
+```
+
+---
+
+### Discovery & Social (`/api`)
+
+#### GET `/api/discover`
+
+Paginated discovery feed. Requires authentication cookie.
+
+**Query params:** `?page=1&limit=10` (limit capped at 50)
+
+**Response (200 OK):**
+```json
+{
+  "profiles": [
+    {
+      "_id": "651a2b3c4d5e6f7a8b9c0d2f",
+      "name": "Jane Smith",
+      "age": 20,
+      "school": "Adamas University",
+      "course": "CSE",
+      "gender": "female",
+      "pictures": [{ "url": "https://...", "fileId": "file_123" }],
+      "bio": "Loves coding",
+      "hobbies": ["Coding", "Chess"],
+      "skills": ["JavaScript"],
+      "identityStatus": "verified",
+      "badges": []
+    }
+  ],
+  "page": 1,
+  "limit": 10
+}
+```
+
+> **Profile Visibility Boost Algorithm**:
+> - Automatically excludes: self, blocked users (both directions), **already-liked users**, **disliked/passed users**, and **existing matches**.
+> - Applies a **weighted probability discovery algorithm** based on profile tier boost:
+>   - **Gold Pass**: **6x boost multiplier** (Highest priority in discovery feeds)
+>   - **Silver Pass**: **3x boost multiplier** (Enhanced visibility)
+>   - **Free Tier**: **1x standard multiplier**
+
+---
+
+#### POST `/api/like/:targetId`
+#### POST `/api/superlike/:targetId`
+
+Like or superlike another user (Right Swipe). Requires authentication cookie or Bearer token.
+
+**Tier Daily Quota Limits (Reset at UTC Midnight):**
+- **Free Tier**: 15 Likes / day, 3 Super Likes / day
+- **Silver Pass**: 25 Likes / day, 6 Super Likes / day
+- **Gold Pass**: 50 Likes / day, 12 Super Likes / day
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "matchFormed": true,
+  "conversationId": "conv_651a...1e_651a...2f"
+}
+```
+
+---
+
+#### POST `/api/dislike/:targetId`
+#### POST `/api/pass/:targetId`
+
+Dislike or pass a profile (Left Swipe). Requires authentication cookie or Bearer token.
+
+> Immediately stores the pass record and excludes the target profile from the user's discovery feed so it is **never suggested again**. Passing is unlimited and does not consume daily like quotas.
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Profile passed successfully"
+}
+```
+
+---
+
+#### GET `/api/likes/received`
+#### GET `/api/likes/incoming`
+
+Fetch incoming likes that other users have sent to the authenticated user ("Who Liked You"). Requires authentication cookie or Bearer token.
+
+> **Tier Gated Behavior**:
+> - **Free Tier (`tier: "free"`)**: Returns total incoming like count (`totalLikesCount`). Detailed profiles are **hidden/locked** (`isLocked: true`, `hasAccess: false`, `likers: []`).
+> - **Silver / Gold Tier Subscriptions**: Returns total count AND **full profiles of every user who liked you** (`isLocked: false`, `hasAccess: true`, `likers: [...]`).
+
+**Free Tier Response (200 OK):**
+```json
+{
+  "totalLikesCount": 14,
+  "hasAccess": false,
+  "isLocked": true,
+  "tier": "free",
+  "message": "Upgrade to Silver or Gold Pass to unlock and see full profiles of users who liked you!",
+  "likers": []
+}
+```
+
+**Silver / Gold Subscriber Response (200 OK):**
+```json
+{
+  "totalLikesCount": 14,
+  "hasAccess": true,
+  "isLocked": false,
+  "tier": "gold",
+  "likers": [
+    {
+      "likeId": "651a2b3c4d5e6f7a8b9c0d88",
+      "type": "like",
+      "likedAt": "2026-07-27T12:00:00.000Z",
+      "profile": {
+        "_id": "651a2b3c4d5e6f7a8b9c0d2f",
+        "name": "Priya Sharma",
+        "age": 21,
+        "school": "Adamas University",
+        "course": "B.Tech CSE",
+        "gender": "female",
+        "pictures": [{ "url": "https://...", "fileId": "file_456" }],
+        "bio": "Coffee lover & software enthusiast",
+        "hobbies": ["Music", "Reading"],
+        "skills": ["Python"],
+        "identityStatus": "verified",
+        "badges": []
+      }
+    }
+  ]
+}
+```
+
+---
+
+#### GET `/api/matches`
+
+List all mutual matches. Requires authentication cookie.
+
+**Response (200 OK):**
+```json
+{
+  "matches": [
+    {
+      "id": "651a2b3c4d5e6f7a8b9c0d3a",
+      "matchedAt": "2026-07-19T11:10:00.000Z",
+      "conversationId": "conv_651a...1e_651a...2f",
+      "partner": {
+        "name": "Jane Smith",
+        "age": 20,
+        "gender": "female",
+        "identityStatus": "verified",
+        "isOnline": true
+      }
+    }
+  ]
+}
+```
+
+> Partners that have since blocked you (or whom you have blocked) are automatically filtered out of the response.
+
+---
+
+#### POST `/api/block/:targetId`
+
+Block a user. Requires authentication cookie.
+
+**Response (200 OK):**
+```json
+{ "message": "User blocked successfully" }
+```
+
+> Receiving more than 10 blocks in an hour triggers a `mass_block_target` flag (medium severity) on the blocked user's account.
+
+---
+
+#### DELETE `/api/block/:targetId`
+
+Unblock a user. Requires authentication cookie.
+
+**Response (200 OK):**
+```json
+{ "message": "User unblocked successfully" }
+```
+
+---
+
+#### POST `/api/report`
+
+Report a user or an anonymous post. Requires authentication cookie.
+
+**Body:**
+```json
+{
+  "targetUserId": "651a2b3c4d5e6f7a8b9c0d2f",
+  "reason": "Harassment"
+}
+```
+
+| Field | Rules |
+|---|---|
+| `targetUserId` | ObjectId — provide either this or `targetPostId` |
+| `targetPostId` | ObjectId — provide either this or `targetUserId` |
+| `reason` | Required, max 1000 chars |
+
+**Response (201 Created):**
+```json
+{ "message": "Report submitted successfully" }
+```
+
+> Receiving more than 5 reports in an hour triggers a `mass_report_target` flag (high severity).
+
+---
+
+#### POST `/api/posts`
+
+Create an anonymous post. Requires authentication cookie.
+
+**Body:**
+```json
+{ "content": "Post content here" }
+```
+
+| Field | Rules |
+|---|---|
+| `content` | Required, max 1000 chars |
+
+**Response (201 Created):**
+```json
+{
+  "message": "Post created successfully",
+  "post": {
+    "_id": "651a2b3c4d5e6f7a8b9c0d4b",
+    "content": "Post content here",
+    "postedAt": "2026-07-19T12:00:00.000Z"
+  }
+}
+```
+
+> More than 5 posts in an hour triggers a `post_spam` flag (low severity).
+
+---
+
+#### GET `/api/posts`
+
+List anonymous posts. Requires authentication cookie.
+
+**Query params:** `?page=1&limit=20` (limit capped at 50)
+
+**Response (200 OK):**
+```json
+{
+  "posts": [
+    {
+      "_id": "651a2b3c4d5e6f7a8b9c0d4b",
+      "content": "Post content here",
+      "postedAt": "2026-07-19T12:00:00.000Z"
+    }
+  ],
+  "page": 1,
+  "limit": 20,
+  "total": 142
+}
+```
+
+---
+
+#### POST `/api/feedback`
+
+Submit feedback. Requires authentication cookie.
+
+**Body:**
+```json
+{ "content": "The app is great but I'd love a dark mode." }
+```
+
+| Field | Rules |
+|---|---|
+| `content` | Required, max 2000 chars |
+
+**Response (201 Created):**
+```json
+{ "message": "Feedback submitted successfully" }
+```
+
+---
+
+#### GET `/api/health`
+
+Service health check. No authentication required.
+
+**Response (200 OK):**
+```json
+{
+  "status": "healthy",
+  "timestamp": "2026-07-19T12:00:00.000Z",
+  "redis": { "isMock": false, "connected": true },
+  "mongo": "connected"
+}
+```
+
+---
+
+#### GET `/api/conversations/:conversationId/messages`
+
+Fetch the paginated historical messages of a specific match conversation. Requires authentication cookie or Bearer token.
+
+**Query params:** `?page=1&limit=50` (limit capped at 100)
+
+**Response (200 OK):**
+```json
+{
+  "messages": [
+    {
+      "_id": "651a2b3c4d5e6f7a8b9c0d5a",
+      "conversationId": "conv_651a...1e_651a...2f",
+      "senderId": "651a2b3c4d5e6f7a8b9c0d1e",
+      "ciphertext": "a1f2b3e4...",
+      "iv": "x9y8z7w6...",
+      "timestamp": "2026-07-19T11:12:00.000Z",
+      "delivered": true
+    }
+  ],
+  "page": 1,
+  "limit": 50,
+  "total": 12
+}
+```
+
+> **Security Guard:** Rejects requests with HTTP 403 if the authenticated user is not one of the two matched participants.
+
+---
+
+#### GET `/api/announcements`
+
+List system announcements for regular users. Requires authentication cookie or Bearer token.
+
+**Response (200 OK):**
+```json
+{
+  "announcements": [
+    {
+      "_id": "651a2b3c4d5e6f7a8b9c0d5b",
+      "title": "🎉 Welcome to Frnd Beta!",
+      "content": "Explore, connect, and enjoy dating and friends discovery!",
+      "createdAt": "2026-07-19T11:00:00.000Z"
+    }
+  ]
+}
+```
+
+---
+
+#### POST `/api/waitlist`
+
+Sign up for the app's waitlist. Captures unique client IP and optional device fingerprint parameters. No authentication required.
+
+**Body (All optional, email triggers confirmation message):**
+```json
+{
+  "email": "prospective@gmail.com",
+  "userAgent": "Mozilla/5.0 ...",
+  "language": "en-US",
+  "platform": "MacIntel",
+  "screenResolution": "1920x1080",
+  "referrer": "https://google.com",
+  "country": "India",
+  "region": "West Bengal",
+  "city": "Kolkata"
+}
+```
+
+**Response (201 Created):**
+```json
+{
+  "message": "Successfully joined the waitlist!"
+}
+```
+
+> **Note:** A successful sign-up automatically triggers a welcome email confirmation sent via the Resend SDK if `email` is supplied. Limit of **one sign-up per client IP address** is enforced.
+
+---
+
+## 4. Real-Time Chat Service (Socket.IO — Port 5001)
+
+### Connection Handshake
+
+Connect to the Socket.IO service at port 5001 (or the production endpoint `https://frnd-chat-a2cm.onrender.com`). The JWT cookie is picked up automatically by the browser for same-site connections; alternatively pass the token in `auth` or `query`.
+
+```javascript
+// Option A: cookie is sent automatically by the browser (production endpoint example)
+const socket = io("https://frnd-chat-a2cm.onrender.com", { transports: ['websocket'] });
+
+// Option B: explicit auth (cross-origin SPA or native apps)
+const socket = io("https://frnd-chat-a2cm.onrender.com", {
+  auth: { token: jwtToken },
+  transports: ['websocket']
+});
+```
+
+Connection is rejected with an error event if the token is missing, invalid, or is an admin token.
+
+---
+
+### Client → Server Events
+
+#### `join_conversation`
+
+Join a conversation room before sending or receiving messages.
+
+```json
+{ "conversationId": "conv_651a...1e_651a...2f" }
+```
+
+Access is verified server-side — the user must be one of the two matched parties.
+
+---
+
+#### `send_message`
+
+Send an AES-GCM encrypted message.
+
+```json
+{
+  "conversationId": "conv_651a...1e_651a...2f",
+  "ciphertext": "a1f2b3e4...",
+  "iv": "x9y8z7w6..."
+}
+```
+
+The server stores and relays only the `ciphertext` and `iv` — plaintext is never visible to the server.
+
+---
+
+#### `heartbeat`
+
+Renew presence (keeps the user marked online for 2 minutes).
+
+---
+
+### Server → Client Events
+
+#### `message_received`
+
+Emitted to the other participant in a conversation.
+
+```json
+{
+  "conversationId": "conv_...",
+  "senderId": "651a2b3c4d5e6f7a8b9c0d1e",
+  "ciphertext": "a1f2b3e4...",
+  "iv": "x9y8z7w6...",
+  "timestamp": "2026-07-19T11:12:00.000Z",
+  "delivered": false
+}
+```
+
+---
+
+#### `message_sent`
+
+Acknowledgment to the sender after the message is accepted.
+
+```json
+{
+  "conversationId": "conv_...",
+  "timestamp": "2026-07-19T11:12:00.000Z"
+}
+```
+
+---
+
+#### `chat_error`
+
+Emitted when a validation or access error occurs.
+
+```json
+{ "error": "Access denied to this conversation" }
+```
+
+---
+
+## 5. Admin API (`/api/admin/*`)
+
+> **All admin routes** require:
+> - `Authorization: Bearer <admin_token>` header
+> - Request must originate from the configured `ADMIN_PANEL_ORIGIN`
+
+### Admin Authentication
+
+#### POST `/api/admin/auth/signup`
+
+One-time admin account creation (per email).
+
+**Body:**
+```json
+{
+  "email": "admin@stu.adamasuniversity.ac.in",
+  "password": "strongAdminPassword123!"
+}
+```
+
+- Password must be **at least 12 characters**.
+- `email` must be present in the `ADMIN_EMAILS` environment variable allowlist.
+- A given email can only sign up once — subsequent attempts are rejected.
+
+**Response (201 Created):**
+```json
+{ "message": "Admin account registered successfully" }
+```
+
+---
+
+#### POST `/api/admin/auth/login`
+
+Three-factor admin login: email + personal password + shared common password.
+
+**Body:**
+```json
+{
+  "email": "admin@stu.adamasuniversity.ac.in",
+  "password": "adminPersonalPassword",
+  "commonPass": "sharedTeamCommonPassword"
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "message": "Admin login successful",
+  "token": "<admin_scoped_jwt_token>",
+  "email": "admin@stu.adamasuniversity.ac.in"
+}
+```
+
+---
+
+### Dashboard Metrics & Revenue Analytics
+
+#### GET `/api/admin/stats`
+
+Fetch comprehensive live system metrics, revenue totals, user tier distributions, and activity statistics. Requires admin Bearer token.
+
+**Response (200 OK):**
+```json
+{
+  "overview": {
+    "totalUsers": 1250,
+    "premiumUsers": 320,
+    "freeUsers": 930,
+    "silverUsers": 200,
+    "goldUsers": 120,
+    "verifiedUsers": 410,
+    "bannedUsers": 15
+  },
+  "financials": {
+    "totalRevenueINR": 13680,
+    "silverRevenueINR": 7800,
+    "goldRevenueINR": 5880,
+    "activeSubscriptionsCount": 320,
+    "totalTransactionsCount": 350
+  },
+  "activity": {
+    "totalMatches": 450,
+    "totalLikes": 3800,
+    "pendingVerifications": 8,
+    "openFlags": 3
+  }
+}
+```
+
+---
+
+#### GET `/api/admin/payments`
+
+Fetch paginated payment transaction logs with user email/name, tier, amount, Razorpay IDs, and status. Requires admin Bearer token.
+
+**Query Params:** `?page=1&limit=50&tier=gold|silver`
+
+**Response (200 OK):**
+```json
+{
+  "payments": [
+    {
+      "_id": "651a2b3c4d5e6f7a8b9c0d90",
+      "userId": {
+        "_id": "651a2b3c4d5e6f7a8b9c0d1e",
+        "name": "Jane Doe",
+        "email": "jane@stu.adamasuniversity.ac.in",
+        "username": "janedoe",
+        "tier": "gold"
+      },
+      "tier": "gold",
+      "amount": 49,
+      "amountPaise": 4900,
+      "currency": "INR",
+      "razorpaySubscriptionId": "sub_M1234567890",
+      "status": "active",
+      "createdAt": "2026-07-21T18:00:00.000Z"
+    }
+  ],
+  "page": 1,
+  "limit": 50,
+  "total": 350
+}
+```
+
+Store this `token` in SPA memory and send it as `Authorization: Bearer <token>` on all subsequent admin API calls.
+
+---
+
+#### POST `/api/admin/auth/logout`
+
+Invalidate the current session (client-side token discard).
+
+**Response (200 OK):**
+```json
+{ "message": "Admin logged out successfully" }
+```
+
+---
+
+### Flags Queue
+
+#### GET `/api/admin/flags`
+
+List account flags, optionally filtered by status.
+
+**Query params:** `?status=open&page=1&limit=50`
+
+- `status`: `open` (default) | `reviewed` | `dismissed` | `actioned`
+
+**Response:**
+```json
+{
+  "flags": [
+    {
+      "_id": "...",
+      "userId": { "name": "Jane", "email": "jane@...", "openFlagCount": 2 },
+      "flagType": "login_brute_force",
+      "severity": "medium",
+      "details": { "attempts": 6 },
+      "status": "open",
+      "createdAt": "2026-07-19T10:00:00.000Z"
+    }
+  ],
+  "page": 1,
+  "limit": 50,
+  "total": 12
+}
+```
+
+---
+
+#### GET `/api/admin/flags/user/:userId`
+
+All flags for a specific user account (history view).
+
+**Query params:** `?page=1&limit=50`
+
+---
+
+#### POST `/api/admin/flags/:id/dismiss`
+
+Dismiss a flag as a false positive. Decrements `openFlagCount` on the user.
+
+#### POST `/api/admin/flags/:id/review`
+
+Mark flag as reviewed/acknowledged with no action.
+
+#### POST `/api/admin/flags/:id/action`
+
+Action flag — bans the user and sets `banned: true` with an automatic reason.
+
+**Response (all three):**
+```json
+{ "message": "Flag resolved with status: dismissed", "flag": { ... } }
+```
+
+---
+
+### User Management
+
+#### GET `/api/admin/users`
+
+List all users sorted by highest open flag count first.
+
+**Query params:** `?page=1&limit=50`
+
+**Response:**
+```json
+{
+  "users": [
+    {
+      "_id": "...",
+      "name": "John",
+      "email": "john@...",
+      "username": "johndoe",
+      "gender": "male",
+      "age": 20,
+      "openFlagCount": 3,
+      "banned": false,
+      "identityStatus": "verified",
+      "isPremium": false
+    }
+  ],
+  "page": 1,
+  "limit": 50,
+  "total": 1000
+}
+```
+
+---
+
+#### GET `/api/admin/users/:id`
+
+Full profile of a specific user (without `passwordHash`).
+
+---
+
+#### POST `/api/admin/users/:id/ban`
+
+Ban a user with a required reason.
+
+**Body:**
+```json
+{ "reason": "Harassment and inappropriate content" }
+```
+
+**Response:**
+```json
+{ "message": "User banned successfully", "user": { ... } }
+```
+
+---
+
+#### POST `/api/admin/users/:id/unban`
+
+Unban a user.
+
+**Response:**
+```json
+{ "message": "User unbanned successfully", "user": { ... } }
+```
+
+---
+
+#### POST `/api/admin/users/:id/premium`
+
+Grant or revoke premium status.
+
+**Body:**
+```json
+{ "isPremium": true }
+```
+
+---
+
+#### POST `/api/admin/users/:id/badge`
+
+Set profile badges (replaces all existing badges).
+
+**Body:**
+```json
+{ "badges": ["Verified", "Early Adopter"] }
+```
+
+---
+
+### Reports
+
+#### GET `/api/admin/reports`
+
+List all reports.
+
+**Query params:** `?page=1&limit=50`
+
+**Response:**
+```json
+{
+  "reports": [
+    {
+      "_id": "...",
+      "reporterId": { "username": "johndoe", "email": "john@..." },
+      "targetUserId": { "username": "janedoe", "openFlagCount": 2 },
+      "reason": "Harassment",
+      "status": "open",
+      "createdAt": "2026-07-19T11:00:00.000Z"
+    }
+  ],
+  "page": 1,
+  "limit": 50,
+  "total": 34
+}
+```
+
+---
+
+### Identity Verification Queue
+
+#### GET `/api/admin/verification-requests`
+
+Pending identity verification queue. Includes short-lived (10-min) signed Cloudinary preview URLs.
+
+**Query params:** `?page=1&limit=50`
+
+**Response:**
+```json
+{
+  "requests": [
+    {
+      "_id": "...",
+      "userId": { "name": "John", "email": "john@...", "username": "johndoe" },
+      "idCardUrl": "https://res.cloudinary.com/...?signature=...",
+      "faceUrl": "https://res.cloudinary.com/...?signature=...",
+      "submittedAt": "2026-07-19T11:00:00.000Z",
+      "isDuplicate": false
+    }
+  ],
+  "page": 1,
+  "limit": 50,
+  "total": 5
+}
+```
+
+`isDuplicate: true` means an open `duplicate_identity_document` flag exists for this user.
+
+---
+
+#### POST `/api/admin/verification-requests/:id/approve`
+
+Approve a pending verification request. Sets the user's `identityStatus` to `"verified"`.
+
+**Response:**
+```json
+{ "message": "Verification request approved successfully" }
+```
+
+---
+
+#### POST `/api/admin/verification-requests/:id/reject`
+
+Reject with a reason. Sets the user's `identityStatus` to `"unverified"`.
+
+**Body:**
+```json
+{ "reason": "ID card image is too blurry to verify" }
+```
+
+**Response:**
+```json
+{ "message": "Verification request rejected successfully" }
+```
+
+---
+
+### Content & Communication
+
+#### GET `/api/admin/feedback`
+
+List all user feedback submissions.
+
+**Query params:** `?page=1&limit=50`
+
+---
+
+#### POST `/api/admin/announce`
+
+Publish a system announcement.
+
+**Body:**
+```json
+{
+  "title": "New Feature Launch",
+  "content": "We've launched anonymous posts! Check it out."
+}
+```
+
+| Field | Rules |
+|---|---|
+| `title` | Required, max 200 chars |
+| `content` | Required, max 5000 chars |
+
+**Response (201 Created):**
+```json
+{ "message": "Announcement posted successfully", "announcement": { ... } }
+```
+
+---
+
+#### GET `/api/admin/waitlist`
+
+List all entries on the public waitlist. Requires admin Bearer token.
+
+**Query params:** `?page=1&limit=50`
+
+**Response (200 OK):**
+```json
+{
+  "entries": [
+    {
+      "_id": "651a2b3c4d5e6f7a8b9c0d6a",
+      "email": "prospective@gmail.com",
+      "name": "Jane Doe",
+      "joinedAt": "2026-07-19T12:00:00.000Z"
+    }
+  ],
+  "page": 1,
+  "limit": 50,
+  "total": 1
+}
+```
+
+---
+
+#### GET `/api/admin/actions`
+
+Audit log of all actions taken by administrators. Requires admin Bearer token.
+
+**Query params:** `?page=1&limit=50`
+
+**Response (200 OK):**
+```json
+{
+  "actions": [
+    {
+      "_id": "651a2b3c4d5e6f7a8b9c0d6b",
+      "actionType": "ban_user",
+      "adminId": {
+        "_id": "651a2b3c4d5e6f7a8b9c0d6c",
+        "email": "admin@stu.adamasuniversity.ac.in"
+      },
+      "targetUserId": {
+        "_id": "651a2b3c4d5e6f7a8b9c0d6d",
+        "username": "karan_m",
+        "email": "karan@gmail.com"
+      },
+      "details": {
+        "reason": "Harassment and inappropriate content"
+      },
+      "createdAt": "2026-07-19T12:05:00.000Z"
+    }
+  ],
+  "page": 1,
+  "limit": 50,
+  "total": 42
+}
+```
+
+---
+
+## 6. Unusual Activity Flags Reference
+
+| Flag type | Trigger | Severity | Where raised |
+|---|---|---|---|
+| `login_brute_force` | ≥ 5 failed logins for one account in 15 min | medium | `/api/auth/login` |
+| `signup_cluster` | > 5 signups from same IP in 1 hour | medium | `/api/auth/signup` |
+| `like_velocity_spike` | > 5 like/superlike actions in 10 seconds | low | `/api/like`, `/api/superlike` |
+| `mass_report_target` | > 5 reports against one user in 1 hour | high | `/api/report` |
+| `mass_block_target` | > 10 blocks against one user in 1 hour | medium | `/api/block/:targetId` |
+| `message_spam_pattern` | > 5 distinct new conversations messaged in 1 hour | medium | Chat service |
+| `duplicate_identity_document` | Perceptual hash matches another user's submission | high | `/api/verification/identity/submit` |
+| `repeated_verification_rejection` | ≥ 2 prior `unverified` outcomes on resubmit | medium | `/api/verification/identity/resubmit` |
+| `post_spam` | > 5 posts in 1 hour | low | `/api/posts` |
+
+---
+
+## 7. Common Error Responses
+
+| HTTP Status | When |
+|---|---|
+| 400 | Validation failure, missing required field, or invalid input |
+| 401 | Missing, invalid, or expired authentication token |
+| 403 | CORS origin not allowed; admin token used on user route; banned account |
+| 404 | Resource not found |
+| 429 | Quota exceeded (daily likes/superlikes, OTP resend rate limit) |
+| 500 | Unexpected server error |
+
+All error responses follow the format:
+```json
+{ "error": "Human-readable error message" }
+```
