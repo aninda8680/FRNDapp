@@ -6,6 +6,7 @@ import '../../widgets/profile_photo_picker.dart';
 import '../../widgets/sketchy_progress_bar.dart';
 import '../../theme/app_colors.dart';
 import '../../services/auth_service.dart';
+import 'profile_created_screen.dart';
 
 class ProfileSetupScreen extends StatefulWidget {
   const ProfileSetupScreen({super.key});
@@ -478,6 +479,45 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     );
   }
 
+  Future<bool> _createProfile() async {
+    // Upload images first
+    List<Map<String, dynamic>> uploadedPictures = [];
+    for (int i = 0; i < 4; i++) {
+      if (_photoBytes[i] != null) {
+        final picData = await AuthService.uploadPicture(
+            _photoBytes[i]!, 'profile_pic_$i.jpg');
+        if (picData != null) {
+          uploadedPictures.add(picData);
+        }
+      }
+    }
+
+    // Construct schema payload
+    final data = {
+      "username": _usernameController.text.trim(),
+      "name": _nameController.text.trim(),
+      "age": int.tryParse(_ageController.text.trim()) ?? 18,
+      "bio": _bioController.text.trim(),
+      "school": _schoolController.text.trim(),
+      "course": _courseController.text.trim(),
+      "height": int.tryParse(_heightController.text.trim()) ?? 170,
+      "hobbies": _selectedHobbies.toList(),
+      "skills": _selectedSkills.toList(),
+      "lookingFor": _selectedLookingFor ?? 'dating',
+      "sexualOrientation": _selectedSexualOrientation ?? 'straight',
+      "tags": {
+        "smoke": _smoke,
+        "drink": _drink,
+        "pets": _pets,
+      },
+      "pictures": uploadedPictures.isNotEmpty 
+          ? uploadedPictures 
+          : [ { "url": "https://dummyimage.com/600x800", "fileId": "dummy" } ]
+    };
+    
+    return await AuthService.updateProfile(data);
+  }
+
   Widget _buildProfilePreviewStep() {
     final name = _nameController.text.trim().isNotEmpty ? _nameController.text.trim() : 'Your Name';
     final age = _ageController.text.trim().isNotEmpty ? _ageController.text.trim() : '21';
@@ -645,69 +685,17 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
           ),
           
           const SizedBox(height: 24),
-          if (_isSaving)
-            const Center(
-              child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(AppColors.textColor2),
-              ),
-            )
-          else
-            SketchyButton(
-              text: 'ENTER WORLD',
-              onPressed: () async {
-                setState(() {
-                  _isSaving = true;
-                });
-
-                // Upload images first
-                List<Map<String, dynamic>> uploadedPictures = [];
-                for (int i = 0; i < 4; i++) {
-                  if (_photoBytes[i] != null) {
-                    final picData = await AuthService.uploadPicture(
-                        _photoBytes[i]!, 'profile_pic_$i.jpg');
-                    if (picData != null) {
-                      uploadedPictures.add(picData);
-                    }
-                  }
-                }
-
-                // Construct schema payload
-                final data = {
-                  "username": _usernameController.text.trim(),
-                  "name": _nameController.text.trim(),
-                  "age": int.tryParse(_ageController.text.trim()) ?? 18,
-                  "bio": _bioController.text.trim(),
-                  "school": _schoolController.text.trim(),
-                  "course": _courseController.text.trim(),
-                  "height": int.tryParse(_heightController.text.trim()) ?? 170,
-                  "hobbies": _selectedHobbies.toList(),
-                  "skills": _selectedSkills.toList(),
-                  "lookingFor": _selectedLookingFor ?? 'dating',
-                  "sexualOrientation": _selectedSexualOrientation ?? 'straight',
-                  "tags": {
-                    "smoke": _smoke,
-                    "drink": _drink,
-                    "pets": _pets,
-                  },
-                  "pictures": uploadedPictures.isNotEmpty 
-                      ? uploadedPictures 
-                      : [ { "url": "https://dummyimage.com/600x800", "fileId": "dummy" } ]
-                };
-                
-                bool success = await AuthService.updateProfile(data);
-                
-                if (mounted) {
-                  setState(() {
-                    _isSaving = false;
-                  });
-                  if (success) {
-                    Navigator.pushNamedAndRemoveUntil(context, '/main', (route) => false);
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to update profile')));
-                  }
-                }
-              },
-            ),
+          SketchyButton(
+            text: 'ENTER WORLD',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ProfileCreatedScreen(saveFuture: _createProfile()),
+                ),
+              );
+            },
+          ),
           const SizedBox(height: 24),
         ],
       ),

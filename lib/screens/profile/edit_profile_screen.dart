@@ -5,6 +5,7 @@ import '../../widgets/sketchy_container.dart';
 import '../../widgets/profile_photo_picker.dart';
 import '../../theme/app_colors.dart';
 import '../../services/auth_service.dart';
+import 'profile_updated_screen.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -84,10 +85,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
   }
 
-  Future<void> _saveChanges() async {
-    setState(() {
-      _isSaving = true;
-    });
+  Future<bool> _performSave() async {
 
     final data = {
       "username": _usernameController.text.trim(),
@@ -135,24 +133,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     // Clean up nulls
     data.removeWhere((key, value) => value == null);
 
-    bool success = await AuthService.updateProfile(data);
-    
-    if (mounted) {
-      setState(() {
-        _isSaving = false;
-      });
-      
-      if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Profile updated successfully!')),
-        );
-        Navigator.pop(context); // Go back to profile screen
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to update profile.')),
-        );
-      }
-    }
+    return await AuthService.updateProfile(data);
+  }
+
+  void _saveChanges() {
+    final saveFuture = _performSave();
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ProfileUpdatedScreen(saveFuture: saveFuture),
+      ),
+    );
   }
 
   Widget _buildTextField(String label, TextEditingController controller, {int maxLines = 1, TextInputType? keyboardType}) {
@@ -274,17 +265,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   ),
                   const SizedBox(height: 32),
                   
-                  if (_isSaving)
-                    const Center(
-                      child: CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(AppColors.textColor2),
-                      ),
-                    )
-                  else
-                    SketchyButton(
-                      text: 'SAVE CHANGES',
-                      onPressed: _saveChanges,
-                    ),
+                  SketchyButton(
+                    text: 'SAVE CHANGES',
+                    onPressed: _saveChanges,
+                  ),
                   const SizedBox(height: 32),
                 ],
               ),

@@ -46,9 +46,11 @@ class AuthService {
     }
   }
 
-  /// Logout the user by clearing the session.
+  /// Logout the user by clearing the session and all local cache.
   static Future<void> logout() async {
-    await _saveCookie(null);
+    _cookie = null;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.clear(); // Ensure all cached data/preferences are completely wiped
   }
 
   /// Main entry point for the "Sign Up / Login" button.
