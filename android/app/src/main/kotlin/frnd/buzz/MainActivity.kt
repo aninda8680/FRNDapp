@@ -1,4 +1,4 @@
-package com.example.frnds
+package frnd.buzz
 
 import io.flutter.embedding.android.FlutterActivity
 
