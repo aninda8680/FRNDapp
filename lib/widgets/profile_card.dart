@@ -166,30 +166,49 @@ class ProfileCard extends StatelessWidget {
                   ),
                   
                   // Tags
-                  if (hobbies.isNotEmpty) ...[
-                    const SizedBox(height: 16),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: hobbies.take(3).map((e) => Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(999),
-                          border: Border.all(color: Colors.white.withOpacity(0.2), width: 1.5),
+                  Builder(
+                    builder: (context) {
+                      final interestsList = fullProfile?['interests'] as List<dynamic>?;
+                      final List<String> tagsToShow = [];
+                      if (interestsList != null && interestsList.isNotEmpty) {
+                        tagsToShow.addAll(interestsList.map((i) {
+                          if (i is Map) {
+                            return '${i['emoji'] ?? ''} ${i['label'] ?? ''}'.trim();
+                          }
+                          return i.toString();
+                        }));
+                      } else if (hobbies.isNotEmpty) {
+                        tagsToShow.addAll(hobbies);
+                      }
+
+                      if (tagsToShow.isEmpty) return const SizedBox.shrink();
+
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 16.0),
+                        child: Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: tagsToShow.take(3).map((e) => Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(999),
+                              border: Border.all(color: Colors.white.withOpacity(0.2), width: 1.5),
+                            ),
+                            child: Text(
+                              e, 
+                              style: const TextStyle(
+                                fontSize: 13, 
+                                fontWeight: FontWeight.w600, 
+                                color: Colors.white,
+                                letterSpacing: 0.2,
+                              )
+                            ),
+                          )).toList(),
                         ),
-                        child: Text(
-                          e, 
-                          style: const TextStyle(
-                            fontSize: 13, 
-                            fontWeight: FontWeight.w600, 
-                            color: Colors.white,
-                            letterSpacing: 0.2,
-                          )
-                        ),
-                      )).toList(),
-                    ),
-                  ],
+                      );
+                    },
+                  ),
                   
                   // Bio
                   const SizedBox(height: 16),

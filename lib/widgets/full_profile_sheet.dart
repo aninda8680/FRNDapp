@@ -247,8 +247,40 @@ class FullProfileSheet extends StatelessWidget {
                         ),
                       ],
 
-                      // Hobbies & Skills
-                      if ((profile['hobbies'] as List?)?.isNotEmpty == true ||
+                      // Prompts
+                      if ((profile['prompts'] as List?)?.isNotEmpty == true) ...[
+                        const SizedBox(height: 16),
+                        ...((profile['prompts'] as List).map((prompt) {
+                          if (prompt is! Map) return const SizedBox.shrink();
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 16),
+                            child: _detailCard(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    (prompt['question']?.toString() ?? 'PROMPT').toUpperCase(),
+                                    style: const TextStyle(color: _burgundy, fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 1.5),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    prompt['answer']?.toString() ?? '',
+                                    style: const TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF040404),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        })),
+                      ],
+
+                      // Interests, Hobbies & Skills
+                      if ((profile['interests'] as List?)?.isNotEmpty == true ||
+                          (profile['hobbies'] as List?)?.isNotEmpty == true ||
                           (profile['skills'] as List?)?.isNotEmpty == true) ...[
                         const SizedBox(height: 16),
                         _detailCard(
@@ -264,6 +296,14 @@ class FullProfileSheet extends StatelessWidget {
                                 spacing: 8,
                                 runSpacing: 8,
                                 children: [
+                                  ...?(profile['interests'] as List?)?.map((i) {
+                                    if (i is Map) {
+                                      final emoji = i['emoji'] ?? '';
+                                      final label = i['label'] ?? '';
+                                      return _hobbyChip('$emoji $label'.trim());
+                                    }
+                                    return const SizedBox.shrink();
+                                  }),
                                   ...?(profile['hobbies'] as List?)?.map((h) => _hobbyChip(h.toString())),
                                   ...?(profile['skills'] as List?)?.map((s) => _hobbyChip(s.toString())),
                                 ],

@@ -218,12 +218,25 @@ class AuthService {
   static Future<Map<String, dynamic>?> getProfile() async {
     if (DevConfig.bypassAuth) {
       return {
+        "profileCompletionPercentage": 75,
         "name": "Alex",
         "age": 20,
         "school": "Adamas University",
         "course": "CSE",
         "bio": "Leveling up in the game of life. Looking for a player 2.",
         "hobbies": ["Gaming", "Coding"],
+        "interests": [
+          { "segmentId": "gaming_tech", "interestId": "coding", "label": "Coding", "emoji": "💻" },
+          { "segmentId": "sports_fitness", "interestId": "football", "label": "Football", "emoji": "⚽" }
+        ],
+        "prompts": [
+          {
+            "promptId": "q01",
+            "sectionId": "questions",
+            "question": "What's a random skill you're weirdly proud of?",
+            "answer": "Solving a Rubik's cube in 30 seconds"
+          }
+        ],
         "lookingFor": "dating",
         "pictures": [{"url": "https://dummyimage.com/600x800"}],
       };
@@ -251,11 +264,16 @@ class AuthService {
     }
   }
 
-  /// Checks if the profile has been fully set up (has a name).
+  /// Checks if the profile has been fully set up (>= 75%).
   static bool isProfileComplete(Map<String, dynamic>? profile) {
     if (profile == null) return false;
-    final name = profile['name'] as String?;
-    return name != null && name.trim().isNotEmpty;
+    
+    // Use the profileCompletionPercentage returned from the backend.
+    // Fallback to profileCompletion just in case, default to 0 if missing.
+    final completion = profile['profileCompletionPercentage'] ?? profile['profileCompletion'];
+    final num percentage = (completion is num) ? completion : 0;
+    
+    return percentage >= 75;
   }
 
   /// Uploads a picture to the backend and returns the picture object { url, fileId }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../services/matches_service.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'individual_chat_screen.dart';
@@ -14,9 +15,10 @@ class ChatListScreen extends StatefulWidget {
   _ChatListRefreshState createState() => _ChatListRefreshState();
 }
 
-// Public state class so MainScaffold can call refresh() via GlobalKey
 class _ChatListRefreshState extends State<ChatListScreen> {
-  static const Color _burgundy = Color(0xFFA41534);
+  static const Color _cream = Color(0xFFFAF4E1);
+  static const Color _inkBlack = Color(0xFF0A0A0A);
+  static const Color _crimson = Color(0xFFA31534);
 
   List<Map<String, dynamic>> _matches = [];
   List<Map<String, dynamic>> _filteredMatches = [];
@@ -26,7 +28,6 @@ class _ChatListRefreshState extends State<ChatListScreen> {
   @override
   void initState() {
     super.initState();
-    // Register the static refresh trigger
     ChatListScreen.triggerRefresh = () => _fetchMatches();
     _fetchMatches();
     _searchCtrl.addListener(_onSearchChanged);
@@ -53,7 +54,6 @@ class _ChatListRefreshState extends State<ChatListScreen> {
     }
   }
 
-  /// Called by MainScaffold when user taps the Chats tab
   void refresh() => _fetchMatches();
 
   void _onSearchChanged() {
@@ -84,86 +84,89 @@ class _ChatListRefreshState extends State<ChatListScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      backgroundColor: _cream,
       body: RefreshIndicator(
-        color: _burgundy,
+        color: _crimson,
         backgroundColor: Colors.white,
         onRefresh: _fetchMatches,
         child: SafeArea(
           bottom: false,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            padding: const EdgeInsets.symmetric(horizontal: 24.0),
             child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const SizedBox(height: 16),
-              // Header
-              const Text(
-                'REAL-TIME MESSAGING',
-                style: TextStyle(
-                  fontFamily: 'monospace',
-                  fontSize: 10,
-                  fontWeight: FontWeight.w900,
-                  color: _burgundy,
-                  letterSpacing: 2.0,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const SizedBox(height: 24),
+                // Header
+                Text(
+                  'REAL-TIME MESSAGING',
+                  style: GoogleFonts.inter(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    color: _crimson,
+                    letterSpacing: 2.5,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 4),
-              const Text(
-                'Campus Chats',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w900,
-                  color: Color(0xFF040404),
-                  letterSpacing: -0.5,
+                const SizedBox(height: 8),
+                Text(
+                  'Campus Chats',
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 32,
+                    fontWeight: FontWeight.w800,
+                    color: _inkBlack,
+                    letterSpacing: -1.0,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              
-              // Search Bar
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(30),
-                  border: Border.all(color: Colors.black.withOpacity(0.1)),
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-                child: Row(
-                  children: [
-                    Icon(Icons.search, color: Colors.black.withOpacity(0.4), size: 20),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: TextField(
-                        controller: _searchCtrl,
-                        decoration: InputDecoration(
-                          hintText: 'Search matches...',
-                          hintStyle: TextStyle(
-                            fontSize: 14,
-                            color: Colors.black.withOpacity(0.4),
+                const SizedBox(height: 24),
+                
+                // Search Bar
+                Container(
+                  decoration: BoxDecoration(
+                    color: _cream,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: _inkBlack, width: 1),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  child: Row(
+                    children: [
+                      Icon(Icons.search, color: _inkBlack.withOpacity(0.5), size: 20),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextField(
+                          controller: _searchCtrl,
+                          decoration: InputDecoration(
+                            hintText: 'Search matches...',
+                            hintStyle: GoogleFonts.inter(
+                              fontSize: 15,
+                              color: _inkBlack.withOpacity(0.5),
+                            ),
+                            border: InputBorder.none,
                           ),
-                          border: InputBorder.none,
+                          style: GoogleFonts.inter(
+                            fontSize: 15,
+                            color: _inkBlack,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
-                        style: const TextStyle(fontSize: 14, color: Colors.black),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(height: 16),
+                const SizedBox(height: 24),
 
-              // Content Area
-              Expanded(
-                child: _isLoading
-                    ? const Center(child: CircularProgressIndicator(color: _burgundy))
-                    : _filteredMatches.isEmpty
-                        ? _buildEmptyState()
-                        : _buildChatList(),
-              ),
-            ],
+                // Content Area
+                Expanded(
+                  child: _isLoading
+                      ? const Center(child: CircularProgressIndicator(color: _crimson))
+                      : _filteredMatches.isEmpty
+                          ? _buildEmptyState()
+                          : _buildChatList(),
+                ),
+              ],
+            ),
           ),
         ),
       ),
-    ),
     );
   }
 
@@ -178,32 +181,14 @@ class _ChatListRefreshState extends State<ChatListScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
-                  Icons.chat_bubble_outline_rounded,
-                  size: 64,
-                  color: _burgundy.withOpacity(0.3),
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  'No Active Chats',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.black,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 32.0),
-                  child: Text(
-                    _searchCtrl.text.isNotEmpty
-                        ? 'No matches found matching "${_searchCtrl.text}".'
-                        : 'Match with students to unlock direct messaging!\n\n(Pull down to refresh)',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.black.withOpacity(0.5),
-                    ),
+                Text(
+                  _searchCtrl.text.isNotEmpty
+                      ? 'No matches found matching "${_searchCtrl.text}".'
+                      : 'Your matches will appear here',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.inter(
+                    fontSize: 15,
+                    color: _inkBlack.withOpacity(0.4),
                   ),
                 ),
                 const SizedBox(height: 120),
@@ -218,117 +203,148 @@ class _ChatListRefreshState extends State<ChatListScreen> {
   Widget _buildChatList() {
     return Container(
       margin: const EdgeInsets.only(bottom: 120), // nav bar spacing
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.black.withOpacity(0.08)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
-        child: ListView.separated(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: EdgeInsets.zero,
-          itemCount: _filteredMatches.length,
-          separatorBuilder: (context, index) => Divider(
-            height: 1,
-            color: Colors.black.withOpacity(0.05),
-          ),
-          itemBuilder: (context, index) {
-            final match = _filteredMatches[index];
-            final partner = match['partner'] ?? {};
-            final name = partner['name'] ?? 'Campus Match';
-            final photoUrl = _getPartnerPhoto(partner);
+      child: ListView.separated(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: EdgeInsets.zero,
+        itemCount: _filteredMatches.length,
+        separatorBuilder: (context, index) => Divider(
+          height: 1,
+          thickness: 1,
+          color: _inkBlack.withOpacity(0.08),
+        ),
+        itemBuilder: (context, index) {
+          final match = _filteredMatches[index];
+          final partner = match['partner'] ?? {};
+          final name = partner['name'] ?? 'Campus Match';
+          final photoUrl = _getPartnerPhoto(partner);
+          
+          final lastMessage = match['lastMessage'] as String?;
+          final timeStr = match['lastMessageTime'] as String? ?? match['matchedAt'] as String?;
+          final isUnread = match['unreadCount'] != null && match['unreadCount'] > 0;
+          
+          String timeText = '';
+          if (timeStr != null) {
+            final dt = DateTime.tryParse(timeStr)?.toLocal();
+            if (dt != null) {
+              final now = DateTime.now();
+              final diff = now.difference(dt);
+              if (diff.inDays >= 1) {
+                timeText = diff.inDays == 1 ? '1d' : '${diff.inDays}d';
+              } else if (diff.inHours >= 1) {
+                timeText = '${diff.inHours}h';
+              } else if (diff.inMinutes >= 1) {
+                timeText = '${diff.inMinutes}m';
+              } else {
+                timeText = 'Now';
+              }
+            }
+          }
+          final previewText = lastMessage ?? 'Matched! Say hi 👋';
 
-            return InkWell(
-              onTap: () {
-                if (match['conversationId'] == null) return;
-                
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => IndividualChatScreen(
-                      conversationId: match['conversationId'],
-                      partner: partner,
-                    ),
+          return InkWell(
+            onTap: () {
+              if (match['conversationId'] == null) return;
+              
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => IndividualChatScreen(
+                    conversationId: match['conversationId'],
+                    partner: partner,
                   ),
-                );
-              },
-              highlightColor: Colors.black.withOpacity(0.03),
-              splashColor: Colors.black.withOpacity(0.05),
-              child: Padding(
-                padding: const EdgeInsets.all(12.0),
-                child: Row(
-                  children: [
-                    // Avatar
-                    Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: _burgundy, width: 1.5),
-                      ),
-                      child: ClipOval(
-                        child: CachedNetworkImage(
-                          imageUrl: photoUrl,
-                          fit: BoxFit.cover,
-                          placeholder: (context, url) => Container(color: Colors.grey[200]),
-                          errorWidget: (context, url, error) => Container(
-                            color: Colors.grey[200],
-                            child: const Icon(Icons.person, color: Colors.grey, size: 20),
-                          ),
+                ),
+              );
+            },
+            highlightColor: _inkBlack.withOpacity(0.03),
+            splashColor: _inkBlack.withOpacity(0.05),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16.0),
+              child: Row(
+                children: [
+                  // Avatar
+                  Container(
+                    width: 52,
+                    height: 52,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: isUnread ? Border.all(color: _crimson, width: 1.5) : null,
+                    ),
+                    padding: isUnread ? const EdgeInsets.all(3.0) : EdgeInsets.zero,
+                    child: ClipOval(
+                      child: CachedNetworkImage(
+                        imageUrl: photoUrl,
+                        fit: BoxFit.cover,
+                        placeholder: (context, url) => Container(color: Colors.grey[200]),
+                        errorWidget: (context, url, error) => Container(
+                          color: Colors.grey[200],
+                          child: const Icon(Icons.person, color: Colors.grey, size: 20),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    
-                    // Texts
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            name,
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.black,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(width: 16),
+                  
+                  // Texts
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          name,
+                          style: GoogleFonts.spaceGrotesk(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: _inkBlack,
                           ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'Matched! Say hi 👋',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.black.withOpacity(0.5),
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          previewText,
+                          style: GoogleFonts.inter(
+                            fontSize: 14,
+                            color: _inkBlack.withOpacity(isUnread ? 0.8 : 0.5),
+                            fontWeight: isUnread ? FontWeight.w500 : FontWeight.w400,
                           ),
-                        ],
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                  
+                  // Unread indicator / Timestamp
+                  const SizedBox(width: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        timeText,
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          color: isUnread ? _crimson : _inkBlack.withOpacity(0.4),
+                          fontWeight: isUnread ? FontWeight.w600 : FontWeight.w400,
+                        ),
                       ),
-                    ),
-                    
-                    // Send Arrow
-                    const SizedBox(width: 12),
-                    const Icon(
-                      Icons.send_rounded,
-                      color: _burgundy,
-                      size: 18,
-                    ),
-                  ],
-                ),
+                      if (isUnread) ...[
+                        const SizedBox(height: 6),
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: const BoxDecoration(
+                            color: _crimson,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      ]
+                    ],
+                  ),
+                ],
               ),
-            );
-          },
-        ),
+            ),
+          );
+        },
       ),
     );
   }

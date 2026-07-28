@@ -3,6 +3,8 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../../theme/app_colors.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../services/auth_service.dart';
+import '../../widgets/sketchy_button.dart';
 
 class ProfileCreatedScreen extends StatefulWidget {
   final Future<bool> saveFuture;
@@ -17,6 +19,7 @@ class _ProfileCreatedScreenState extends State<ProfileCreatedScreen> {
   String _subtitle = 'New people are waiting. Some will become friends. One might become more.';
   bool _isDone = false;
   bool _isSuccess = false;
+  bool _showEnterWorld = false;
 
   @override
   void initState() {
@@ -48,11 +51,14 @@ class _ProfileCreatedScreenState extends State<ProfileCreatedScreen> {
       });
 
       if (success) {
-        Timer(const Duration(seconds: 3), () {
+        final profile = await AuthService.getProfile();
+        if (AuthService.isProfileComplete(profile)) {
           if (mounted) {
-            Navigator.pushNamedAndRemoveUntil(context, '/main', (route) => false);
+            setState(() {
+              _showEnterWorld = true;
+            });
           }
-        });
+        }
       }
     }
   }
@@ -112,6 +118,17 @@ class _ProfileCreatedScreenState extends State<ProfileCreatedScreen> {
               ),
 
               const Spacer(),
+
+              if (_showEnterWorld)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 24.0),
+                  child: SketchyButton(
+                    text: 'ENTER WORLD',
+                    onPressed: () {
+                      Navigator.pushNamedAndRemoveUntil(context, '/main', (route) => false);
+                    },
+                  ),
+                ),
             ],
           ),
         ),

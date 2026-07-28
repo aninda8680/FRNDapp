@@ -5,6 +5,7 @@ import '../../widgets/sketchy_container.dart';
 import '../../widgets/profile_photo_picker.dart';
 import '../../theme/app_colors.dart';
 import '../../services/auth_service.dart';
+import '../../services/onboarding_service.dart';
 import 'profile_updated_screen.dart';
 
 class EditProfileScreen extends StatefulWidget {
@@ -32,7 +33,24 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final List<Map<String, dynamic>> _existingPictures = [];
   
   bool _isLoading = true;
+  bool _isLoadingConfig = true;
   bool _isSaving = false;
+
+  List<dynamic> _segments = [];
+  List<dynamic> _sections = [];
+  
+  final Set<String> _selectedInterests = {};
+  final Map<String, String> _promptAnswers = {};
+  final Set<String> _activePromptIds = {};
+
+  final List<String> _availableHobbies = [
+    'Gaming', 'Anime', 'Coding', 'Hiking', 'Music', 'Art', 'Coffee', 'Movies',
+    'Reading', 'Photography', 'Sports', 'Travel'
+  ];
+  final Set<String> _selectedHobbies = {};
+
+  final List<String> _availableSkills = ['JavaScript', 'Python', 'Dart', 'Figma', 'UI/UX', 'Writing', 'Music', 'Public Speaking'];
+  final Set<String> _selectedSkills = {};
 
   @override
   void initState() {
@@ -53,37 +71,69 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   Future<void> _loadProfileData() async {
+    final config = await OnboardingService.fetchConfig();
     final data = await AuthService.getProfile();
-    if (data != null && mounted) {
+    
+    if (mounted) {
       setState(() {
-        _usernameController.text = data['username'] ?? '';
-        _nameController.text = data['name'] ?? '';
-        _ageController.text = data['age']?.toString() ?? '';
-        _bioController.text = data['bio'] ?? '';
-        _schoolController.text = data['school'] ?? '';
-        _courseController.text = data['course'] ?? '';
-        _heightController.text = data['height']?.toString() ?? '';
-        _selectedLookingFor = data['lookingFor'];
-        _selectedSexualOrientation = data['sexualOrientation'];
-        _selectedGender = data['gender'];
-        
-        final pictures = data['pictures'] as List<dynamic>?;
-        if (pictures != null) {
-          for (int i = 0; i < pictures.length && i < 4; i++) {
-            _existingPictures.add(pictures[i] as Map<String, dynamic>);
-            _photoPaths[i] = pictures[i]['url'] as String?;
+        if (config != null) {
+          _segments = config['segments'] ?? [];
+          _sections = config['sections'] ?? [];
+        }
+
+        if (data != null) {
+          _usernameController.text = data['username'] ?? '';
+          _nameController.text = data['name'] ?? '';
+          _ageController.text = data['age']?.toString() ?? '';
+          _bioController.text = data['bio'] ?? '';
+          _schoolController.text = data['school'] ?? '';
+          _courseController.text = data['course'] ?? '';
+          _heightController.text = data['height']?.toString() ?? '';
+          _selectedLookingFor = data['lookingFor'];
+          _selectedSexualOrientation = data['sexualOrientation'];
+          _selectedGender = data['gender'];
+          
+          final hobbies = data['hobbies'] as List<dynamic>?;
+          if (hobbies != null) _selectedHobbies.addAll(hobbies.map((e) => e.toString()));
+          
+          final skills = data['skills'] as List<dynamic>?;
+          if (skills != null) _selectedSkills.addAll(skills.map((e) => e.toString()));
+          
+          final interests = data['interests'] as List<dynamic>?;
+          if (interests != null) {
+            _selectedInterests.addAll(interests.map((i) {
+               if (i is Map) return i['interestId']?.toString() ?? i['id']?.toString() ?? '';
+               return i.toString();
+            }).where((s) => s.isNotEmpty));
+          }
+
+          final prompts = data['prompts'] as List<dynamic>?;
+          if (prompts != null) {
+             for (var p in prompts) {
+               if (p is Map && p['promptId'] != null) {
+                 _promptAnswers[p['promptId']] = p['answer']?.toString() ?? '';
+               }
+             }
+          }
+          
+          final pictures = data['pictures'] as List<dynamic>?;
+          if (pictures != null) {
+            for (int i = 0; i < pictures.length && i < 4; i++) {
+              _existingPictures.add(pictures[i] as Map<String, dynamic>);
+              _photoPaths[i] = pictures[i]['url'] as String?;
+            }
           }
         }
         
         _isLoading = false;
+        _isLoadingConfig = false;
       });
-    } else if (mounted) {
-      setState(() {
-        _isLoading = false;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to load profile data.')),
-      );
+      
+      if (data == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to load profile data.')),
+        );
+      }
     }
   }
 
@@ -108,6 +158,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     if (_selectedGender != null) {
       data["gender"] = _selectedGender!;
     }
+
+    final promptsList = _promptAnswers.entries
+        .where((e) => e.value.trim().isNotEmpty)
+        .map((e) => {"promptId": e.key, "answer": e.value.trim()})
+        .toList();
+
+    data["hobbies"] = _selectedHobbies.toList();
+    data["skills"] = _selectedSkills.toList();
+    data["interests"] = _selectedInterests.toList();
+    data["prompts"] = promptsList;
 
     // Process pictures
     List<Map<String, dynamic>> finalPictures = [];
@@ -180,6 +240,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('EDIT PROFILE')),
+      bottomNavigationBar: !_isLoading
+          ? Padding(
+              padding: const EdgeInsets.only(left: 24.0, right: 24.0, bottom: 24.0, top: 16.0),
+              child: SketchyButton(
+                text: 'SAVE CHANGES',
+                onPressed: _saveChanges,
+              ),
+            )
+          : null,
       body: SafeArea(
         child: _isLoading
           ? const Center(
@@ -264,6 +333,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   _buildTextField('COURSE', _courseController),
                   _buildTextField('HEIGHT (cm)', _heightController, keyboardType: TextInputType.number),
                   
+                  const SizedBox(height: 16),
+                  _buildInterestsSection(),
+                  const SizedBox(height: 24),
+                  _buildPromptsSection(),
+                  const SizedBox(height: 16),
+
                   Text('WHAT ARE YOU LOOKING FOR?', style: Theme.of(context).textTheme.labelLarge?.copyWith(color: AppColors.textColor2)),
                   const SizedBox(height: 12),
                   Row(
@@ -292,16 +367,214 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     ],
                   ),
                   const SizedBox(height: 32),
-                  
-                  SketchyButton(
-                    text: 'SAVE CHANGES',
-                    onPressed: _saveChanges,
-                  ),
-                  const SizedBox(height: 32),
                 ],
               ),
             ),
       ),
+    );
+  }
+
+  Widget _buildInterestsSection() {
+    if (_isLoadingConfig) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (_segments.isNotEmpty)
+          ..._segments.map((segment) {
+            final segmentName = segment['name'] ?? 'INTERESTS';
+            final interestsList = segment['interests'] as List<dynamic>? ?? [];
+            
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(segmentName.toString().toUpperCase(), style: Theme.of(context).textTheme.labelLarge?.copyWith(color: AppColors.textColor2)),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: interestsList.map((interest) {
+                    final interestId = interest['id'] as String;
+                    final label = interest['label'] as String;
+                    final emoji = interest['emoji'] as String? ?? '';
+                    final isSelected = _selectedInterests.contains(interestId);
+                    
+                    return GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          if (isSelected) {
+                            _selectedInterests.remove(interestId);
+                          } else {
+                            _selectedInterests.add(interestId);
+                          }
+                        });
+                      },
+                      child: SketchyContainer(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        borderRadius: 999,
+                        backgroundColor: isSelected ? AppColors.textColor2 : AppColors.cream,
+                        child: Text('$emoji $label'.trim(), style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          color: isSelected ? AppColors.cream : AppColors.textColor2,
+                        )),
+                      ),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 24),
+              ],
+            );
+          }).toList()
+        else ...[
+          Text('HOBBIES', style: Theme.of(context).textTheme.labelLarge?.copyWith(color: AppColors.textColor2)),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: _availableHobbies.map((e) {
+              final isSelected = _selectedHobbies.contains(e);
+              return GestureDetector(
+                onTap: () {
+                  setState(() {
+                    if (isSelected) {
+                      _selectedHobbies.remove(e);
+                    } else {
+                      _selectedHobbies.add(e);
+                    }
+                  });
+                },
+                child: SketchyContainer(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  borderRadius: 999,
+                  backgroundColor: isSelected ? AppColors.textColor2 : AppColors.cream,
+                  child: Text(e, style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    color: isSelected ? AppColors.cream : AppColors.textColor2,
+                  )),
+                ),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 24),
+          Text('SKILLS', style: Theme.of(context).textTheme.labelLarge?.copyWith(color: AppColors.textColor2)),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: _availableSkills.map((e) {
+              final isSelected = _selectedSkills.contains(e);
+              return GestureDetector(
+                onTap: () {
+                  setState(() {
+                    if (isSelected) {
+                      _selectedSkills.remove(e);
+                    } else {
+                      _selectedSkills.add(e);
+                    }
+                  });
+                },
+                child: SketchyContainer(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  borderRadius: 999,
+                  backgroundColor: isSelected ? AppColors.textColor2 : AppColors.cream,
+                  child: Text(e, style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    color: isSelected ? AppColors.cream : AppColors.textColor2,
+                  )),
+                ),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 24),
+        ]
+      ],
+    );
+  }
+
+  Widget _buildPromptsSection() {
+    if (_isLoadingConfig) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (_sections.isNotEmpty)
+          ..._sections.map((section) {
+            final sectionName = section['name'] ?? 'PROMPTS';
+            final sectionDesc = section['description'] ?? '';
+            final promptsList = section['prompts'] as List<dynamic>? ?? [];
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(sectionName.toString().toUpperCase(), style: Theme.of(context).textTheme.labelLarge?.copyWith(color: AppColors.textColor2)),
+                if (sectionDesc.toString().isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(sectionDesc.toString(), style: Theme.of(context).textTheme.bodyMedium),
+                ],
+                const SizedBox(height: 16),
+                ...promptsList.map((prompt) {
+                  final promptId = prompt['id'] as String;
+                  final text = prompt['text'] as String;
+                  final isActive = _activePromptIds.contains(promptId) || (_promptAnswers[promptId]?.isNotEmpty ?? false);
+
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 24.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Text(text, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                            ),
+                            if (!isActive)
+                              IconButton(
+                                icon: const Icon(Icons.add_circle_outline, color: AppColors.textColor2),
+                                onPressed: () {
+                                  setState(() {
+                                    _activePromptIds.add(promptId);
+                                  });
+                                },
+                              ),
+                            if (isActive)
+                              IconButton(
+                                icon: Icon(Icons.close, color: AppColors.textColor1.withOpacity(0.5), size: 20),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                                onPressed: () {
+                                  setState(() {
+                                    _activePromptIds.remove(promptId);
+                                    _promptAnswers.remove(promptId);
+                                  });
+                                },
+                              ),
+                          ],
+                        ),
+                        if (isActive) ...[
+                          const SizedBox(height: 8),
+                          SketchyContainer(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                            child: TextField(
+                              maxLines: 3,
+                              decoration: InputDecoration(
+                                isDense: true,
+                                border: InputBorder.none,
+                                hintText: 'Your answer...',
+                                hintStyle: TextStyle(color: AppColors.textColor1.withOpacity(0.5)),
+                              ),
+                              onChanged: (val) {
+                                _promptAnswers[promptId] = val;
+                              },
+                              controller: TextEditingController(text: _promptAnswers[promptId] ?? '')..selection = TextSelection.collapsed(offset: (_promptAnswers[promptId] ?? '').length),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  );
+                }).toList(),
+              ],
+            );
+          }).toList(),
+      ],
     );
   }
 }

@@ -250,7 +250,39 @@ Confirm token and reset password directly. No login required.
 
 ---
 
-### Own Profile & Media (`/api/users` & `/api/upload`)
+### Onboarding Options & User Profile (`/api/config` & `/api/users`)
+
+#### GET `/api/config/onboarding`
+
+Fetch dynamic onboarding options configuration including interest segments and prompt sections for rendering the onboarding UI on the frontend. Public endpoint.
+
+**Response (200 OK):**
+```json
+{
+  "segments": [
+    {
+      "id": "sports_fitness",
+      "name": "Sports & Fitness",
+      "interests": [
+        { "id": "football", "label": "Football", "emoji": "⚽" },
+        { "id": "cricket", "label": "Cricket", "emoji": "🏏" }
+      ]
+    }
+  ],
+  "sections": [
+    {
+      "id": "questions",
+      "name": "Questions",
+      "description": "A direct question the user answers in their own words.",
+      "prompts": [
+        { "id": "q01", "text": "What's a random skill you're weirdly proud of?" }
+      ]
+    }
+  ]
+}
+```
+
+---
 
 #### POST `/api/upload/picture`
 
@@ -275,7 +307,7 @@ Upload a normal profile picture. Uploads the image file and returns the generate
 
 #### GET `/api/users/me`
 
-Fetch the authenticated user's own full profile. Requires authentication cookie.
+Fetch the authenticated user's own full profile including selected interests, prompts, and `profileCompletionPercentage`. Requires authentication cookie or Bearer token.
 
 **Response (200 OK):**
 ```json
@@ -294,6 +326,18 @@ Fetch the authenticated user's own full profile. Requires authentication cookie.
     "bio": "My bio",
     "hobbies": ["Coding", "Chess"],
     "skills": ["JavaScript"],
+    "interests": [
+      { "segmentId": "sports_fitness", "interestId": "football", "label": "Football", "emoji": "⚽" },
+      { "segmentId": "gaming_tech", "interestId": "coding", "label": "Coding / Programming", "emoji": "💻" }
+    ],
+    "prompts": [
+      {
+        "promptId": "q01",
+        "sectionId": "questions",
+        "question": "What's a random skill you're weirdly proud of?",
+        "answer": "Solving a Rubik's cube in 30 seconds"
+      }
+    ],
     "pictures": [{ "url": "https://...", "fileId": "file_123" }],
     "lookingFor": "dating",
     "emailVerified": true,
@@ -304,6 +348,42 @@ Fetch the authenticated user's own full profile. Requires authentication cookie.
     "openFlagCount": 0,
     "profileCompletionPercentage": 95
   }
+}
+```
+
+---
+
+#### PUT `/api/users/me`
+
+Update authenticated user's profile information, interests, and prompt answers during onboarding or settings.
+
+**Body Payload Example:**
+```json
+{
+  "name": "John Doe",
+  "age": 21,
+  "height": 180,
+  "bio": "Updated bio here",
+  "interests": ["football", "coding", "coffee"],
+  "prompts": [
+    {
+      "promptId": "q01",
+      "answer": "Solving a Rubik's cube under 30 seconds"
+    },
+    {
+      "promptId": "s01",
+      "answer": "A roller coaster ride with free snacks!"
+    }
+  ]
+}
+```
+*(Backend automatically looks up `label`, `emoji`, `segmentId` for interests and `question` text for prompts from the `OnboardingConfig`).*
+
+**Response (200 OK):**
+```json
+{
+  "message": "Profile updated successfully",
+  "user": { ... }
 }
 ```
 
@@ -931,9 +1011,37 @@ List system announcements for regular users. Requires authentication cookie or B
       "_id": "651a2b3c4d5e6f7a8b9c0d5b",
       "title": "🎉 Welcome to Frnd Beta!",
       "content": "Explore, connect, and enjoy dating and friends discovery!",
-      "createdAt": "2026-07-19T11:00:00.000Z"
+      "createdAt": "2026-07-19T12:05:00.000Z"
     }
   ]
+}
+```
+
+---
+
+#### GET `/api/admin/config/onboarding`
+#### PUT `/api/admin/config/onboarding`
+
+Fetch or dynamically update the onboarding options configuration (interests segments and prompt sections) from the Admin Panel. Requires admin Bearer token.
+
+**PUT Payload:**
+```json
+{
+  "segments": [ ... ],
+  "sections": [ ... ]
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "message": "Onboarding configuration updated successfully",
+  "config": {
+    "key": "default_onboarding_config",
+    "segments": [ ... ],
+    "sections": [ ... ],
+    "updatedAt": "2026-07-28T10:30:00.000Z"
+  }
 }
 ```
 
@@ -1004,6 +1112,15 @@ Access is verified server-side — the user must be one of the two matched parti
 
 ---
 
+#### `fetch_received_likes`
+
+Fetch incoming likes and count in real-time over the WebSocket connection.
+
+> **Trigger:** `socket.emit('fetch_received_likes')`  
+> **Server Response:** Emits `received_likes_update` event back to the socket.
+
+---
+
 #### `send_message`
 
 Send an AES-GCM encrypted message.
@@ -1027,6 +1144,67 @@ Renew presence (keeps the user marked online for 2 minutes).
 ---
 
 ### Server → Client Events
+
+#### `new_like` (Real-Time Push Notification)
+
+Emitted instantly to the recipient's personal socket room (`user_<toUserId>`) when another user right-swipes or superlikes them.
+
+```json
+{
+  "event": "new_like",
+  "toUserId": "651a2b3c4d5e6f7a8b9c0d1e",
+  "fromUserId": "651a2b3c4d5e6f7a8b9c0d2f",
+  "type": "like",
+  "message": "Someone liked your profile! 💖",
+  "timestamp": "2026-07-28T10:35:00.000Z"
+}
+```
+
+---
+
+#### `new_match` (Real-Time Push Notification)
+
+Emitted instantly to **both** users' socket rooms (`user_<userA>` & `user_<userB>`) when a mutual match forms.
+
+```json
+{
+  "event": "new_match",
+  "conversationId": "conv_651a...1e_651a...2f",
+  "partnerId": "651a2b3c4d5e6f7a8b9c0d2f",
+  "message": "It's a Match! 🎉",
+  "timestamp": "2026-07-28T10:35:00.000Z"
+}
+```
+
+---
+
+#### `received_likes_update`
+
+Emitted in response to `fetch_received_likes`. Returns incoming likes count and liker profiles (tier-gated).
+
+```json
+{
+  "totalLikesCount": 14,
+  "hasAccess": true,
+  "isLocked": false,
+  "tier": "gold",
+  "likers": [
+    {
+      "likeId": "651a2b3c4d5e6f7a8b9c0d88",
+      "type": "like",
+      "likedAt": "2026-07-28T10:35:00.000Z",
+      "profile": {
+        "_id": "651a2b3c4d5e6f7a8b9c0d2f",
+        "name": "Priya Sharma",
+        "age": 21,
+        "pictures": [{ "url": "https://...", "fileId": "file_456" }]
+      }
+    }
+  ]
+}
+```
+
+---
 
 #### `message_received`
 

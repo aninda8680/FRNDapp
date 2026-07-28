@@ -5,21 +5,23 @@ import 'sparkle_accent.dart';
 
 class SketchyButton extends StatelessWidget {
   final String text;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
   final bool showSparkles;
 
   const SketchyButton({
     super.key,
     required this.text,
-    required this.onPressed,
+    this.onPressed,
     this.showSparkles = true,
   });
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onPressed,
-      child: Row(
+    return Opacity(
+      opacity: onPressed == null ? 0.5 : 1.0,
+      child: GestureDetector(
+        onTap: onPressed,
+        child: Row(
         mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -51,6 +53,6 @@ class SketchyButton extends StatelessWidget {
           if (showSparkles) const SparkleAccent(size: 20),
         ],
       ),
-    );
+    ));
   }
 }

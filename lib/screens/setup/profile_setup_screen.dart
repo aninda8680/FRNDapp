@@ -6,6 +6,7 @@ import '../../widgets/profile_photo_picker.dart';
 import '../../widgets/sketchy_progress_bar.dart';
 import '../../theme/app_colors.dart';
 import '../../services/auth_service.dart';
+import '../../services/onboarding_service.dart';
 import 'profile_created_screen.dart';
 
 class ProfileSetupScreen extends StatefulWidget {
@@ -18,6 +19,41 @@ class ProfileSetupScreen extends StatefulWidget {
 class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   final PageController _pageController = PageController();
   int _currentIndex = 0;
+
+  bool _isLoadingConfig = true;
+  List<dynamic> _segments = [];
+  List<dynamic> _sections = [];
+  
+  @override
+  void initState() {
+    super.initState();
+    _loadOnboardingConfig();
+    
+    // Add listeners to rebuild UI when text changes for validation
+    void updateState() => setState(() {});
+    _usernameController.addListener(updateState);
+    _nameController.addListener(updateState);
+    _ageController.addListener(updateState);
+    _bioController.addListener(updateState);
+    _schoolController.addListener(updateState);
+    _courseController.addListener(updateState);
+    _heightController.addListener(updateState);
+  }
+
+  Future<void> _loadOnboardingConfig() async {
+    final config = await OnboardingService.fetchConfig();
+    if (config != null && mounted) {
+      setState(() {
+        _segments = config['segments'] ?? [];
+        _sections = config['sections'] ?? [];
+        _isLoadingConfig = false;
+      });
+    } else if (mounted) {
+      setState(() {
+        _isLoadingConfig = false;
+      });
+    }
+  }
 
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _nameController = TextEditingController();
@@ -36,6 +72,12 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   final List<String> _availableSkills = ['JavaScript', 'Python', 'Dart', 'Figma', 'UI/UX', 'Writing', 'Music', 'Public Speaking'];
   final Set<String> _selectedSkills = {};
 
+  final Set<String> _selectedInterests = {};
+  
+  // Mapping of promptId to answer string
+  final Map<String, String> _promptAnswers = {};
+  final Set<String> _activePromptIds = {};
+
   final List<String?> _photoPaths = List.filled(4, null);
   final List<Uint8List?> _photoBytes = List.filled(4, null);
 
@@ -47,6 +89,35 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   String? _selectedLookingFor;
   String? _selectedSexualOrientation;
   bool _isSaving = false;
+
+  bool get _isStep1Valid {
+    return _usernameController.text.trim().isNotEmpty &&
+           _nameController.text.trim().isNotEmpty &&
+           _ageController.text.trim().isNotEmpty &&
+           _bioController.text.trim().isNotEmpty &&
+           _schoolController.text.trim().isNotEmpty &&
+           _courseController.text.trim().isNotEmpty &&
+           _heightController.text.trim().isNotEmpty;
+  }
+
+  bool get _isStep2Valid {
+    return _photoPaths.where((p) => p != null).length == 4;
+  }
+
+  bool get _isStep3Valid {
+    return _selectedInterests.length >= 5 && _selectedInterests.length <= 10;
+  }
+
+  bool get _isStep4Valid {
+    final validAnswersCount = _promptAnswers.values.where((ans) => ans.trim().isNotEmpty).length;
+    return validAnswersCount == 3;
+  }
+
+  bool get _isStep5Valid {
+    return _selectedGender != null && 
+           _selectedLookingFor != null && 
+           _selectedSexualOrientation != null;
+  }
 
   @override
   void dispose() {
@@ -62,7 +133,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   }
 
   void _nextStep() {
-    if (_currentIndex < 4) {
+    if (_currentIndex < 5) {
       _pageController.nextPage(
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
@@ -83,14 +154,15 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
 
   @override
   Widget build(BuildContext context) {
-    double progress = (_currentIndex + 1) * 0.2;
+    double progress = (_currentIndex + 1) / 6.0;
     String leftLabel = 'STEP ${_currentIndex + 1}';
     
     final titles = [
       'CREATE PROFILE',
       'PROFILE PHOTOS',
-      'SKILLS',
-      'HOBBIES',
+      'INTERESTS',
+      'PROMPTS',
+      'PREFERENCES',
       'PROFILE CARD'
     ];
     
@@ -98,6 +170,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       'BASIC INFO',
       'VISUALS',
       'INTERESTS',
+      'QUESTIONS',
       'GOALS',
       'READY!'
     ];
@@ -111,7 +184,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: Text(titles[_currentIndex]),
+          title: _isLoadingConfig ? const Text('LOADING...') : Text(titles[_currentIndex]),
           leading: _currentIndex > 0
               ? IconButton(
                   icon: const Icon(Icons.arrow_back),
@@ -120,10 +193,12 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
               : null,
         ),
         body: SafeArea(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Padding(
+          child: _isLoadingConfig 
+            ? const Center(child: CircularProgressIndicator())
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Padding(
                 padding: const EdgeInsets.only(left: 24.0, right: 24.0, top: 24.0),
                 child: SketchyProgressBar(
                   progress: progress,
@@ -144,6 +219,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                     _buildBasicInfoStep(),
                     _buildUploadPhotosStep(),
                     _buildInterestsStep(),
+                    _buildPromptsStep(),
                     _buildPreferencesStep(),
                     _buildProfilePreviewStep(),
                   ],
@@ -258,7 +334,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
           const SizedBox(height: 24),
           SketchyButton(
             text: 'NEXT STEP',
-            onPressed: _nextStep,
+            onPressed: _isStep1Valid ? _nextStep : null,
           ),
           const SizedBox(height: 24),
         ],
@@ -314,7 +390,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
           const SizedBox(height: 32),
           SketchyButton(
             text: 'NEXT STEP',
-            onPressed: _nextStep,
+            onPressed: _isStep2Valid ? _nextStep : null,
           ),
           const SizedBox(height: 24),
         ],
@@ -328,64 +404,115 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('HOBBIES', style: Theme.of(context).textTheme.labelLarge?.copyWith(color: AppColors.textColor2)),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: _availableHobbies.map((e) {
-              final isSelected = _selectedHobbies.contains(e);
-              return GestureDetector(
-                onTap: () {
-                  setState(() {
-                    if (isSelected) {
-                      _selectedHobbies.remove(e);
-                    } else {
-                      _selectedHobbies.add(e);
-                    }
-                  });
-                },
-                child: SketchyContainer(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  borderRadius: 999,
-                  backgroundColor: isSelected ? AppColors.textColor2 : AppColors.cream,
-                  child: Text(e, style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    color: isSelected ? AppColors.cream : AppColors.textColor2,
-                  )),
-                ),
+          if (_segments.isNotEmpty)
+            ..._segments.map((segment) {
+              final segmentName = segment['name'] ?? 'INTERESTS';
+              final interestsList = segment['interests'] as List<dynamic>? ?? [];
+              
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(segmentName.toString().toUpperCase(), style: Theme.of(context).textTheme.labelLarge?.copyWith(color: AppColors.textColor2)),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 12,
+                    children: interestsList.map((interest) {
+                      final interestId = interest['id'] as String;
+                      final label = interest['label'] as String;
+                      final emoji = interest['emoji'] as String? ?? '';
+                      final isSelected = _selectedInterests.contains(interestId);
+                      
+                      return GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            if (isSelected) {
+                              _selectedInterests.remove(interestId);
+                            } else {
+                              if (_selectedInterests.length < 10) {
+                                _selectedInterests.add(interestId);
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('You can only select up to 10 interests')));
+                              }
+                            }
+                          });
+                        },
+                        child: SketchyContainer(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          borderRadius: 999,
+                          backgroundColor: isSelected ? AppColors.textColor2 : AppColors.cream,
+                          child: Text('$emoji $label'.trim(), style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                            color: isSelected ? AppColors.cream : AppColors.textColor2,
+                          )),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 32),
+                ],
               );
-            }).toList(),
-          ),
-          const SizedBox(height: 32),
-          Text('SKILLS', style: Theme.of(context).textTheme.labelLarge?.copyWith(color: AppColors.textColor2)),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: _availableSkills.map((e) {
-              final isSelected = _selectedSkills.contains(e);
-              return GestureDetector(
-                onTap: () {
-                  setState(() {
-                    if (isSelected) {
-                      _selectedSkills.remove(e);
-                    } else {
-                      _selectedSkills.add(e);
-                    }
-                  });
-                },
-                child: SketchyContainer(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  borderRadius: 999,
-                  backgroundColor: isSelected ? AppColors.textColor2 : AppColors.cream,
-                  child: Text(e, style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    color: isSelected ? AppColors.cream : AppColors.textColor2,
-                  )),
-                ),
-              );
-            }).toList(),
-          ),
-          const SizedBox(height: 32),
+            }).toList()
+          else ...[
+            Text('HOBBIES', style: Theme.of(context).textTheme.labelLarge?.copyWith(color: AppColors.textColor2)),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: _availableHobbies.map((e) {
+                final isSelected = _selectedHobbies.contains(e);
+                return GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      if (isSelected) {
+                        _selectedHobbies.remove(e);
+                      } else {
+                        _selectedHobbies.add(e);
+                      }
+                    });
+                  },
+                  child: SketchyContainer(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    borderRadius: 999,
+                    backgroundColor: isSelected ? AppColors.textColor2 : AppColors.cream,
+                    child: Text(e, style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      color: isSelected ? AppColors.cream : AppColors.textColor2,
+                    )),
+                  ),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 32),
+            Text('SKILLS', style: Theme.of(context).textTheme.labelLarge?.copyWith(color: AppColors.textColor2)),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: _availableSkills.map((e) {
+                final isSelected = _selectedSkills.contains(e);
+                return GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      if (isSelected) {
+                        _selectedSkills.remove(e);
+                      } else {
+                        _selectedSkills.add(e);
+                      }
+                    });
+                  },
+                  child: SketchyContainer(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    borderRadius: 999,
+                    backgroundColor: isSelected ? AppColors.textColor2 : AppColors.cream,
+                    child: Text(e, style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      color: isSelected ? AppColors.cream : AppColors.textColor2,
+                    )),
+                  ),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 32),
+          ],
+          
           Text('TAGS', style: Theme.of(context).textTheme.labelLarge?.copyWith(color: AppColors.textColor2)),
           const SizedBox(height: 8),
           Row(
@@ -397,9 +524,10 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
             ],
           ),
           const SizedBox(height: 48),
+
           SketchyButton(
             text: 'NEXT STEP',
-            onPressed: _nextStep,
+            onPressed: _isStep3Valid ? _nextStep : null,
           ),
           const SizedBox(height: 24),
         ],
@@ -423,6 +551,110 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
           ),
           const SizedBox(height: 8),
           Text(label, style: Theme.of(context).textTheme.labelMedium),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPromptsStep() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (_sections.isNotEmpty)
+            ..._sections.map((section) {
+              final sectionName = section['name'] ?? 'PROMPTS';
+              final sectionDesc = section['description'] ?? '';
+              final promptsList = section['prompts'] as List<dynamic>? ?? [];
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(sectionName.toString().toUpperCase(), style: Theme.of(context).textTheme.labelLarge?.copyWith(color: AppColors.textColor2)),
+                  if (sectionDesc.toString().isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(sectionDesc.toString(), style: Theme.of(context).textTheme.bodyMedium),
+                  ],
+                  const SizedBox(height: 16),
+                  ...promptsList.map((prompt) {
+                    final promptId = prompt['id'] as String;
+                    final text = prompt['text'] as String;
+                    final isActive = _activePromptIds.contains(promptId) || (_promptAnswers[promptId]?.isNotEmpty ?? false);
+
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 24.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: Text(text, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                              ),
+                              if (!isActive)
+                                IconButton(
+                                  icon: const Icon(Icons.add_circle_outline, color: AppColors.textColor2),
+                                  onPressed: () {
+                                    setState(() {
+                                      if (_activePromptIds.length < 3) {
+                                        _activePromptIds.add(promptId);
+                                      } else {
+                                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('You can only select up to 3 prompts')));
+                                      }
+                                    });
+                                  },
+                                ),
+                              if (isActive)
+                                IconButton(
+                                  icon: Icon(Icons.close, color: AppColors.textColor1.withOpacity(0.5), size: 20),
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(),
+                                  onPressed: () {
+                                    setState(() {
+                                      _activePromptIds.remove(promptId);
+                                      _promptAnswers.remove(promptId);
+                                    });
+                                  },
+                                ),
+                            ],
+                          ),
+                          if (isActive) ...[
+                            const SizedBox(height: 8),
+                            SketchyContainer(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                              child: TextField(
+                                maxLines: 3,
+                                decoration: InputDecoration(
+                                  isDense: true,
+                                  border: InputBorder.none,
+                                  hintText: 'Your answer...',
+                                  hintStyle: TextStyle(color: AppColors.textColor1.withOpacity(0.5)),
+                                ),
+                                onChanged: (val) {
+                                  _promptAnswers[promptId] = val;
+                                },
+                                controller: TextEditingController(text: _promptAnswers[promptId] ?? '')..selection = TextSelection.collapsed(offset: (_promptAnswers[promptId] ?? '').length),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ],
+              );
+            }).toList()
+          else
+            const Center(child: Text('No prompts available.')),
+          
+          const SizedBox(height: 32),
+          SketchyButton(
+            text: 'NEXT STEP',
+            onPressed: _isStep4Valid ? _nextStep : null,
+          ),
+          const SizedBox(height: 24),
         ],
       ),
     );
@@ -493,7 +725,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
           const SizedBox(height: 48),
           SketchyButton(
             text: 'NEXT STEP',
-            onPressed: _nextStep,
+            onPressed: _isStep5Valid ? _nextStep : null,
           ),
           const SizedBox(height: 24),
         ],
@@ -514,6 +746,11 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       }
     }
 
+    final promptsList = _promptAnswers.entries
+        .where((e) => e.value.trim().isNotEmpty)
+        .map((e) => {"promptId": e.key, "answer": e.value.trim()})
+        .toList();
+
     // Construct schema payload
     final data = {
       "username": _usernameController.text.trim(),
@@ -526,6 +763,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       "gender": _selectedGender ?? 'other',
       "hobbies": _selectedHobbies.toList(),
       "skills": _selectedSkills.toList(),
+      "interests": _selectedInterests.toList(),
+      "prompts": promptsList,
       "lookingFor": _selectedLookingFor ?? 'dating',
       "sexualOrientation": _selectedSexualOrientation ?? 'straight',
       "tags": {
