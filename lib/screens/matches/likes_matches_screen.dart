@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../services/matches_service.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:http/http.dart' as http;
@@ -121,7 +122,25 @@ class _LikesMatchesScreenState extends State<LikesMatchesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.transparent, // Let main scaffold background show
+      backgroundColor: Colors.transparent,
+      appBar: AppBar(
+        toolbarHeight: 65,
+        backgroundColor: _bgCream, elevation: 0, surfaceTintColor: Colors.transparent,
+        title: Row(mainAxisSize: MainAxisSize.min, children: [
+          const Icon(Icons.chat_bubble_rounded, color: _burgundy, size: 20),
+          const SizedBox(width: 6),
+          Text('MATCHES', style: GoogleFonts.caveat(color: _burgundy, fontWeight: FontWeight.w900, letterSpacing: 2, fontSize: 26)),
+        ]),
+        centerTitle: true,
+        actions: [
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: Image.asset('assets/images/wer-removebg-preview.png', height: 42, fit: BoxFit.contain),
+          ),
+          const SizedBox(width: 16),
+        ],
+        bottom: PreferredSize(preferredSize: const Size.fromHeight(2), child: Container(height: 2, color: Colors.black)),
+      ),
       body: RefreshIndicator(
         color: _burgundy,
         backgroundColor: Colors.white,
@@ -134,37 +153,6 @@ class _LikesMatchesScreenState extends State<LikesMatchesScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const SizedBox(height: 16),
-              
-              // Header Section
-              const Text(
-                'MUTUAL CONNECTIONS',
-                style: TextStyle(
-                  fontFamily: 'monospace',
-                  fontSize: 10,
-                  fontWeight: FontWeight.w900,
-                  color: _burgundy,
-                  letterSpacing: 2.0,
-                ),
-              ),
-              const SizedBox(height: 4),
-              const Text(
-                'Your Matches',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w900,
-                  color: Color(0xFF040404),
-                  letterSpacing: -0.5,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Students who liked you back on campus.',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.black.withOpacity(0.6),
-                ),
-              ),
-              const SizedBox(height: 24),
 
               // Incoming Likes Banner (Free Tier)
               if (_likesCount > 0 && !_hasAccess && !_isLoading) _buildLikesBanner(),

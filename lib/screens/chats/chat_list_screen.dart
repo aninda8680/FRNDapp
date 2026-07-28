@@ -85,6 +85,24 @@ class _ChatListRefreshState extends State<ChatListScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: _cream,
+      appBar: AppBar(
+        toolbarHeight: 65,
+        backgroundColor: _cream, elevation: 0, surfaceTintColor: Colors.transparent,
+        title: Row(mainAxisSize: MainAxisSize.min, children: [
+          const Icon(Icons.forum_rounded, color: _crimson, size: 20),
+          const SizedBox(width: 6),
+          Text('CAMPUS CHATS', style: GoogleFonts.caveat(color: _crimson, fontWeight: FontWeight.w900, letterSpacing: 2, fontSize: 26)),
+        ]),
+        centerTitle: true,
+        actions: [
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: Image.asset('assets/images/wer-removebg-preview.png', height: 42, fit: BoxFit.contain),
+          ),
+          const SizedBox(width: 16),
+        ],
+        bottom: PreferredSize(preferredSize: const Size.fromHeight(2), child: Container(height: 2, color: Colors.black)),
+      ),
       body: RefreshIndicator(
         color: _crimson,
         backgroundColor: Colors.white,
@@ -96,27 +114,6 @@ class _ChatListRefreshState extends State<ChatListScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const SizedBox(height: 24),
-                // Header
-                Text(
-                  'REAL-TIME MESSAGING',
-                  style: GoogleFonts.inter(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                    color: _crimson,
-                    letterSpacing: 2.5,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Campus Chats',
-                  style: GoogleFonts.spaceGrotesk(
-                    fontSize: 32,
-                    fontWeight: FontWeight.w800,
-                    color: _inkBlack,
-                    letterSpacing: -1.0,
-                  ),
-                ),
                 const SizedBox(height: 24),
                 
                 // Search Bar
@@ -141,11 +138,11 @@ class _ChatListRefreshState extends State<ChatListScreen> {
                               color: _inkBlack.withOpacity(0.5),
                             ),
                             border: InputBorder.none,
+                            isDense: true,
                           ),
                           style: GoogleFonts.inter(
                             fontSize: 15,
                             color: _inkBlack,
-                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       ),
