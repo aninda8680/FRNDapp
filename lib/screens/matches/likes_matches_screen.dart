@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import '../chats/individual_chat_screen.dart';
 import '../../widgets/profile_card.dart';
 import '../../services/auth_service.dart';
+import '../chats/chat_list_screen.dart';
 
 class LikesMatchesScreen extends StatefulWidget {
   const LikesMatchesScreen({super.key});
@@ -18,7 +19,6 @@ class _LikesMatchesScreenState extends State<LikesMatchesScreen> {
   static const Color _burgundy = Color(0xFFA41534);
   static const Color _bgCream = Color(0xFFFDF4E5);
 
-  List<Map<String, dynamic>> _matches = [];
   int _likesCount = 0;
   bool _hasAccess = false;
   List<Map<String, dynamic>> _likers = [];
@@ -31,20 +31,12 @@ class _LikesMatchesScreenState extends State<LikesMatchesScreen> {
   }
 
   Future<void> _fetchMatches() async {
-    if (_matches.isEmpty) {
-      setState(() => _isLoading = true);
-    }
+    setState(() => _isLoading = true);
     
-    final results = await Future.wait([
-      MatchesService.getMatches(),
-      MatchesService.getIncomingLikes(),
-    ]);
+    final likesData = await MatchesService.getIncomingLikes();
 
     if (mounted) {
       setState(() {
-        _matches = results[0] as List<Map<String, dynamic>>;
-        
-        final likesData = results[1] as Map<String, dynamic>;
         _likesCount = likesData['totalLikesCount'] ?? 0;
         _hasAccess = likesData['hasAccess'] ?? false;
         
@@ -77,6 +69,10 @@ class _LikesMatchesScreenState extends State<LikesMatchesScreen> {
       if (response.statusCode == 200) {
         // Refresh data to move this person to the matches grid
         await _fetchMatches();
+        
+        // Also refresh chat list in background
+        ChatListScreen.triggerRefresh?.call();
+        
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -184,15 +180,18 @@ class _LikesMatchesScreenState extends State<LikesMatchesScreen> {
                 const SizedBox(height: 24),
               ],
 
-              // Content Area (Mutual Matches)
+              // Content Area (Scrollable space for RefreshIndicator when there are likes)
               Expanded(
                 child: _isLoading
                     ? const Center(
                         child: CircularProgressIndicator(color: _burgundy),
                       )
-                    : _matches.isEmpty
+                    : _likesCount == 0
                         ? _buildEmptyState()
-                        : _buildMatchesGrid(),
+                        : ListView(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            children: const [],
+                          ),
               ),
             ],
           ),
@@ -220,7 +219,7 @@ class _LikesMatchesScreenState extends State<LikesMatchesScreen> {
                 ),
                 const SizedBox(height: 16),
                 const Text(
-                  'No Matches Yet',
+                  'No New Likes',
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w800,
@@ -231,7 +230,7 @@ class _LikesMatchesScreenState extends State<LikesMatchesScreen> {
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 32.0),
                   child: Text(
-                    'Keep swiping in Home tab to find your campus match!\n\n(Pull down to refresh)',
+                    'When someone likes your profile, they will appear here.\n\nKeep swiping in Home tab!',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 12,
@@ -306,127 +305,6 @@ class _LikesMatchesScreenState extends State<LikesMatchesScreen> {
     );
   }
 
-  Widget _buildMatchesGrid() {
-    return GridView.builder(
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.only(bottom: 120), // Space for nav bar
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-        childAspectRatio: 0.85,
-      ),
-      itemCount: _matches.length,
-      itemBuilder: (context, index) {
-        final match = _matches[index];
-        final partner = match['partner'] ?? {};
-        final name = partner['name'] ?? 'Student';
-        final photoUrl = _getPartnerPhoto(partner);
-
-        return Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Colors.black.withOpacity(0.08)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.03),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              // Avatar
-              Container(
-                width: 72,
-                height: 72,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: _burgundy, width: 2),
-                ),
-                child: ClipOval(
-                  child: CachedNetworkImage(
-                    imageUrl: photoUrl,
-                    fit: BoxFit.cover,
-                    placeholder: (context, url) => Container(
-                      color: Colors.grey[200],
-                      child: const Center(
-                        child: Icon(Icons.person, color: Colors.grey),
-                      ),
-                    ),
-                    errorWidget: (context, url, error) => Container(
-                      color: Colors.grey[200],
-                      child: const Center(
-                        child: Icon(Icons.person, color: Colors.grey),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              
-              // Name
-              Text(
-                name,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.black,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-
-              // Action Button
-              SizedBox(
-                width: double.infinity,
-                height: 32,
-                child: ElevatedButton(
-                  onPressed: () {
-                    if (match['conversationId'] != null) {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => IndividualChatScreen(
-                            conversationId: match['conversationId'],
-                            partner: partner,
-                          ),
-                        ),
-                      );
-                    } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Cannot start chat: Missing conversation ID')),
-                      );
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _burgundy,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    padding: EdgeInsets.zero,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ),
-                  child: const Text(
-                    'SEND MESSAGE',
-                    style: TextStyle(
-                      fontFamily: 'monospace',
-                      fontSize: 9,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
 
   Widget _buildLikerCard(Map<String, dynamic> liker) {
     final profile = liker['profile'] ?? {};

@@ -1,9 +1,11 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'dart:typed_data';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'chat_db.dart';
 import '../config/dev_config.dart';
 
 enum AuthResult {
@@ -22,12 +24,21 @@ enum AuthResult {
 
 class AuthService {
   static const String baseUrl = 'https://frnd-api-n3hv.onrender.com/api/auth';
+  
+  static const _secureStorage = FlutterSecureStorage();
 
   // Store the session cookie (JWT token from the HTTP-only cookie header)
   static String? _cookie;
   
   /// The logged-in user's MongoDB _id, populated after getProfile() succeeds
   static String? userId;
+  
+  /// Cached basic profile info
+  static String? userName;
+  static String? userGender;
+
+  /// Cached full user profile schema
+  static Map<String, dynamic>? userProfile;
 
   /// JWT token or auth cookie getter
   static String? get token => _cookie;
@@ -35,25 +46,44 @@ class AuthService {
   /// Initialize the auth service by loading the stored cookie.
   static Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
-    _cookie = prefs.getString('auth_cookie');
+    
+    // Securely read the token
+    _cookie = await _secureStorage.read(key: 'auth_cookie');
+    
+    // Read cached user schema
+    final userStr = prefs.getString('user_session_v1');
+    if (userStr != null) {
+      try {
+        userProfile = jsonDecode(userStr) as Map<String, dynamic>;
+        userName = userProfile?['name'] as String?;
+        userGender = userProfile?['gender'] as String?;
+      } catch (e) {
+        print('[Auth] Error decoding cached profile: $e');
+      }
+    }
   }
 
-  /// Save the cookie to SharedPreferences.
+  /// Save the cookie to secure storage.
   static Future<void> _saveCookie(String? cookie) async {
     _cookie = cookie;
-    final prefs = await SharedPreferences.getInstance();
     if (cookie != null) {
-      await prefs.setString('auth_cookie', cookie);
+      await _secureStorage.write(key: 'auth_cookie', value: cookie);
     } else {
-      await prefs.remove('auth_cookie');
+      await _secureStorage.delete(key: 'auth_cookie');
     }
   }
 
   /// Logout the user by clearing the session and all local cache.
   static Future<void> logout() async {
     _cookie = null;
+    userId = null;
+    userName = null;
+    userGender = null;
+    userProfile = null;
+    await _secureStorage.deleteAll();
     final prefs = await SharedPreferences.getInstance();
-    await prefs.clear(); // Ensure all cached data/preferences are completely wiped
+    await prefs.clear();
+    await ChatDB.clearAll(); // Wipe all locally cached messages on logout
   }
 
   /// Main entry point for the "Sign Up / Login" button.
@@ -196,6 +226,18 @@ class AuthService {
       );
 
       if (response.statusCode == 200) {
+        final prefs = await SharedPreferences.getInstance();
+        
+        // Update the full cached profile with the new fields
+        if (userProfile != null) {
+          userProfile!.addAll(data);
+          userName = userProfile?['name'] as String?;
+          userGender = userProfile?['gender'] as String?;
+          
+          await prefs.setString('user_session_v1', jsonEncode(userProfile));
+          await prefs.setString('last_synced_at', DateTime.now().toIso8601String());
+        }
+
         return true;
       }
       print('Profile update failed: ${response.body}');
@@ -220,6 +262,7 @@ class AuthService {
       return {
         "profileCompletionPercentage": 75,
         "name": "Alex",
+        "gender": "male",
         "age": 20,
         "school": "Adamas University",
         "course": "CSE",
@@ -253,6 +296,13 @@ class AuthService {
         final user = data['user'] as Map<String, dynamic>?;
         if (user != null) {
           userId = user['_id'] as String?;
+          userProfile = user;
+          userName = user['name'] as String?;
+          userGender = user['gender'] as String?;
+          
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('user_session_v1', jsonEncode(user));
+          await prefs.setString('last_synced_at', DateTime.now().toIso8601String());
         }
         return user;
       }

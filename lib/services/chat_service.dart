@@ -14,6 +14,10 @@ class ChatMessage {
   final String text;
   final DateTime timestamp;
   final bool isMe;
+  /// Message delivery status: 'pending' | 'sent' | 'delivered' | 'read' | 'failed'
+  final String status;
+  /// True while the message hasn't been confirmed by the server yet.
+  final bool localOnly;
 
   ChatMessage({
     required this.id,
@@ -22,7 +26,25 @@ class ChatMessage {
     required this.text,
     required this.timestamp,
     required this.isMe,
+    this.status = 'sent',
+    this.localOnly = false,
   });
+
+  ChatMessage copyWith({
+    String? id,
+    String? status,
+    bool? localOnly,
+  }) =>
+      ChatMessage(
+        id: id ?? this.id,
+        conversationId: conversationId,
+        senderId: senderId,
+        text: text,
+        timestamp: timestamp,
+        isMe: isMe,
+        status: status ?? this.status,
+        localOnly: localOnly ?? this.localOnly,
+      );
 }
 
 class ChatService {
@@ -68,11 +90,16 @@ class ChatService {
 
   // ── REST: Fetch message history ──────────────────────────────────────────────
 
+  /// Fetches message history from the server.
+  /// 
+  /// The backend only supports page-based pagination (?page=&limit=).
+  /// We use this for both the initial full fetch and "load older" pages.
+  /// [page] is 1-indexed.
   static Future<List<ChatMessage>> fetchHistory(
     String conversationId, {
     required String myUserId,
     int page = 1,
-    int limit = 50,
+    int limit = 30,
   }) async {
     try {
       final token = AuthService.token;
@@ -86,7 +113,7 @@ class ChatService {
       );
 
       final response = await http.get(url, headers: headers);
-      print('ChatService: History status=${response.statusCode}');
+      print('ChatService: History status=${response.statusCode} page=$page');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -115,6 +142,8 @@ class ChatService {
                 ? DateTime.parse(timestampStr).toLocal()
                 : DateTime.now(),
             isMe: senderId == myUserId,
+            status: 'sent',
+            localOnly: false,
           ));
         }
         return messages;
@@ -124,6 +153,46 @@ class ChatService {
     } catch (e) {
       print('ChatService: fetchHistory exception: $e');
       return [];
+    }
+  }
+
+  /// HTTP POST fallback for sending a message via REST (used by the offline outbox).
+  /// Returns the server-assigned message ID on success, null on failure.
+  static Future<String?> sendMessageHttp(
+    String conversationId,
+    String plaintext,
+  ) async {
+    try {
+      final encrypter = _getEncrypter(conversationId);
+      final iv = enc.IV.fromSecureRandom(12);
+      final encrypted = encrypter.encrypt(plaintext, iv: iv);
+
+      final token = AuthService.token;
+      final headers = <String, String>{
+        'Content-Type': 'application/json',
+        if (token != null) 'cookie': token,
+      };
+
+      final response = await http
+          .post(
+            Uri.parse('$apiBase/conversations/$conversationId/messages'),
+            headers: headers,
+            body: jsonEncode({
+              'ciphertext': encrypted.base64,
+              'iv': iv.base64,
+            }),
+          )
+          .timeout(const Duration(seconds: 25));
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return (data['message']?['_id'] ?? data['_id']) as String?;
+      }
+      print('ChatService: sendMessageHttp failed ${response.statusCode}');
+      return null;
+    } catch (e) {
+      print('ChatService: sendMessageHttp exception: $e');
+      return null;
     }
   }
 
@@ -260,6 +329,8 @@ class ChatService {
   }
 
   // ── Public API ────────────────────────────────────────────────────────────────
+
+  static bool get isConnected => _socket?.connected == true;
 
   static void joinConversation(String conversationId) {
     _currentConversationId = conversationId;

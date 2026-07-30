@@ -3,8 +3,9 @@ import 'package:flutter/physics.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'dart:math' as math;
+import 'package:shimmer/shimmer.dart';
 import 'dart:ui' as ui;
+import 'dart:math' as math;
 import '../../services/discover_service.dart';
 import '../../widgets/full_profile_sheet.dart';
 import '../chats/individual_chat_screen.dart';
@@ -126,16 +127,18 @@ class _NetMeshPainter extends CustomPainter {
 
   void _paintSparkles(Canvas canvas, Size size, double t) {
     final center = Offset(size.width / 2, 42);
-    const count = 20;
+    const count = 36;
     for (int i = 0; i < count; i++) {
-      final angle = (i / count) * math.pi * 2 + (i.isEven ? 0.2 : -0.2);
-      final dist = 30.0 + 60.0 * t;
+      final angle = (i / count) * math.pi * 2 + (i.isEven ? 0.3 : -0.3);
+      final expansion = 150.0 + (i % 4) * 100.0;
+      final dist = 30.0 + expansion * math.pow(t, 0.6);
       final pos = Offset(center.dx + math.cos(angle) * dist, center.dy + math.sin(angle) * dist);
-      final r = 4.5 * (1.0 - t);
+      final r = (5.0 + (i % 3) * 2.5) * (1.0 - t);
       final opacity = (1.0 - t * 1.2).clamp(0.0, 1.0);
+      
       canvas.drawCircle(pos, r, Paint()..color = _gold.withOpacity(opacity));
-      canvas.drawLine(pos - Offset(r*1.5, 0), pos + Offset(r*1.5, 0), Paint()..color = Colors.white.withOpacity(opacity)..strokeWidth=1);
-      canvas.drawLine(pos - Offset(0, r*1.5), pos + Offset(0, r*1.5), Paint()..color = Colors.white.withOpacity(opacity)..strokeWidth=1);
+      canvas.drawLine(pos - Offset(r*1.8, 0), pos + Offset(r*1.8, 0), Paint()..color = Colors.white.withOpacity(opacity)..strokeWidth=2);
+      canvas.drawLine(pos - Offset(0, r*1.8), pos + Offset(0, r*1.8), Paint()..color = Colors.white.withOpacity(opacity)..strokeWidth=2);
     }
   }
 
@@ -260,7 +263,7 @@ class _DiscoverFeedScreenState extends State<DiscoverFeedScreen> with TickerProv
     if (!_hasMore && !reset) return;
     setState(() => _isLoading = true);
     if (reset) { _page = 1; _hasMore = true; }
-    final profiles = await DiscoverService.getFeed(page: _page, limit: 15);
+    final profiles = await DiscoverService.getFeed(page: _page, limit: 8);
     setState(() {
       if (reset) { _profiles = profiles; _currentIndex = 0; }
       else { _profiles.addAll(profiles); }
@@ -403,10 +406,20 @@ class _DiscoverFeedScreenState extends State<DiscoverFeedScreen> with TickerProv
         bottom: PreferredSize(preferredSize: const Size.fromHeight(2), child: Container(height: 2, color: Colors.black)),
       ),
       body: _isLoading && _profiles.isEmpty
-          ? const Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-              CircularProgressIndicator(color: _burgundy), SizedBox(height: 16),
-              Text('LOADING PROFILES...', style: TextStyle(color: _burgundy, fontWeight: FontWeight.w900, letterSpacing: 2, fontSize: 10)),
-            ]))
+          ? Padding(
+              padding: EdgeInsets.fromLTRB(16, 16, 16, MediaQuery.of(context).padding.bottom + 16),
+              child: Shimmer.fromColors(
+                baseColor: Colors.grey[300]!,
+                highlightColor: Colors.grey[100]!,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    border: Border.all(color: Colors.black, width: 4),
+                    borderRadius: BorderRadius.circular(32),
+                  ),
+                ),
+              ),
+            )
           : _currentProfile == null ? _buildEmptyState() : AnimatedBuilder(
                   animation: _detailsCtrl,
                   builder: (context, _) {
@@ -513,7 +526,7 @@ class _PhysicsSwipeCardState extends State<_PhysicsSwipeCard> with TickerProvide
   @override
   void initState() {
     super.initState();
-    _ctrl = AnimationController(vsync: this)..addListener(_onTick)..addStatusListener(_onStatus);
+    _ctrl = AnimationController(vsync: this)..addStatusListener(_onStatus);
   }
 
   @override
@@ -522,10 +535,7 @@ class _PhysicsSwipeCardState extends State<_PhysicsSwipeCard> with TickerProvide
     super.dispose();
   }
 
-  void _onTick() {
-    if (!mounted) return;
-    setState(() {}); 
-  }
+  // _onTick removed to optimize animation performance
 
   void _onStatus(AnimationStatus status) {
     if (status != AnimationStatus.completed) return;
@@ -580,7 +590,7 @@ class _PhysicsSwipeCardState extends State<_PhysicsSwipeCard> with TickerProvide
     final targetDy = -(_cardSize.height * 0.5) + 26.0;
     _arcP2 = Offset(0, targetDy);
     _arcP1 = Offset(_arcP0.dx + velocityX * 0.04, _arcP0.dy - (_cardSize.height * 0.40));
-    _ctrl.duration = const Duration(milliseconds: 350);
+    _ctrl.duration = action == 'superlike' ? const Duration(milliseconds: 650) : const Duration(milliseconds: 350);
     _ctrl.forward(from: 0.0);
   }
 
@@ -610,125 +620,197 @@ class _PhysicsSwipeCardState extends State<_PhysicsSwipeCard> with TickerProvide
 
   @override
   Widget build(BuildContext context) {
-    double tiltX = 0.0;
-    double tiltY = 0.0;
-    double tiltZ = 0.0;
-    double elevation = 0.0;
-    double scale = 1.0;
-    double opacity = 1.0;
-    Offset currentDrag = _drag;
-    
-    final v = _ctrl.value;
-
-    if (_mode == _AnimMode.idle) {
-      tiltX = (currentDrag.dy * -0.0006).clamp(-0.3, 0.3);
-      tiltY = (currentDrag.dx * 0.0006).clamp(-0.3, 0.3);
-      tiltZ = currentDrag.dx * 0.0002;
-      elevation = (currentDrag.distance / 200).clamp(0.0, 1.0);
-    } else if (_mode == _AnimMode.snapBack) {
-      final t = Curves.easeOutCubic.transform(v);
-      currentDrag = Offset.lerp(_snapStart, Offset.zero, t)!;
-      tiltX = (currentDrag.dy * -0.0006).clamp(-0.3, 0.3);
-      tiltY = (currentDrag.dx * 0.0006).clamp(-0.3, 0.3);
-      tiltZ = currentDrag.dx * 0.0002;
-      elevation = (currentDrag.distance / 200).clamp(0.0, 1.0);
-    } else if (_mode == _AnimMode.toss) {
-      final t = Curves.easeOutQuart.transform(v);
-      currentDrag = _quadBezier(_arcP0, _arcP1, _arcP2, t);
-      
-      if (v < 0.2) {
-        scale = 1.0 + (v / 0.2) * 0.05; 
-      } else {
-        final shrink = Curves.easeIn.transform((v - 0.2) / 0.8);
-        scale = 1.05 - (shrink * 1.05); 
-      }
-      
-      opacity = (1.0 - (v > 0.95 ? (v - 0.95) / 0.05 : 0.0)).clamp(0.0, 1.0);
-      
-      tiltX = (_releaseVx != 0 ? _drag.dy * -0.0006 : 0.0) + (v * 1.5); 
-      tiltY = (currentDrag.dx * 0.0006) + (v * _releaseVx * 0.0005);
-      tiltZ = (currentDrag.dx * 0.0002) + (v * _releaseVx * 0.0002);
-      elevation = (v < 0.5) ? (v * 2.0) : (1.0 - (v - 0.5) * 2.0);
-    } else if (_mode == _AnimMode.drop) {
-      final eased = math.pow(v, 2.8).toDouble();
-      currentDrag = Offset(_dropOrigin.dx + _releaseVx * v * 0.15, _dropOrigin.dy + eased * 1800.0);
-      opacity = (1.0 - (v > 0.60 ? (v - 0.60) / 0.40 : 0.0)).clamp(0.0, 1.0);
-      
-      tiltX = (_drag.dy * -0.0006) - (v * 1.5); 
-      tiltY = (currentDrag.dx * 0.0006);
-      tiltZ = (currentDrag.dx * 0.0002) + (v * _releaseVx * 0.001);
-      elevation = (1.0 - v).clamp(0.0, 1.0);
-    }
-
-    final Matrix4 transform = Matrix4.identity()
-      ..setEntry(3, 2, 0.0012)
-      ..rotateX(tiltX)
-      ..rotateY(tiltY)
-      ..rotateZ(tiltZ)
-      ..scale(scale, scale, 1.0);
-
-    final shadowColor = Colors.black.withOpacity((0.15 + (elevation * 0.15)).clamp(0.0, 1.0));
-    final blur = 15.0 + (elevation * 45.0);
-    final spread = 2.0 + (elevation * 12.0);
-    final offsetY = 10.0 + (elevation * 35.0);
-
-    final isVertical = currentDrag.dy.abs() > currentDrag.dx.abs();
-    final likeOpacity = (isVertical && currentDrag.dy < 0) ? ((-currentDrag.dy - 20) / 80).clamp(0.0, 1.0) : 0.0;
-    final passOpacity = (isVertical && currentDrag.dy > 0) ? ((currentDrag.dy - 20) / 80).clamp(0.0, 1.0) : 0.0;
-
     final profile = widget.profile;
     final photoUrl = widget.getPhoto(widget.currentPhotoIndex);
 
-    return Opacity(
-      opacity: opacity,
-      child: Transform.translate(
-        offset: currentDrag,
-        child: Transform(
-          alignment: Alignment.center,
-          transform: transform,
-          child: LayoutBuilder(builder: (ctx, constraints) {
-            _cardSize = constraints.biggest;
-            return GestureDetector(
-              onPanUpdate: _onPanUpdate,
-              onPanEnd: _onPanEnd,
-              child: _buildCardContent(profile, photoUrl, likeOpacity, passOpacity, blur, spread, offsetY, shadowColor),
-            );
-          }),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCardContent(Map<String, dynamic> profile, String photoUrl, double likeOpacity, double passOpacity, double blur, double spread, double offsetY, Color shadowColor) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(32),
-        color: Colors.black,
-        boxShadow: [BoxShadow(color: shadowColor, blurRadius: blur, spreadRadius: spread, offset: Offset(0, offsetY))],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(32),
+    return LayoutBuilder(builder: (ctx, constraints) {
+      _cardSize = constraints.biggest;
+      
+      final Widget cachedCardContent = ClipRRect(
+        borderRadius: BorderRadius.circular(28),
         child: Stack(fit: StackFit.expand, children: [
           photoUrl.isNotEmpty ? CachedNetworkImage(imageUrl: photoUrl, fit: BoxFit.cover, placeholder: (_, __) => const ColoredBox(color: Colors.black12), errorWidget: (_, __, ___) => const ColoredBox(color: Color(0xFF1A1A1A), child: Icon(Icons.person, size: 80, color: Colors.white30))) : const ColoredBox(color: Color(0xFF1A1A1A)),
-          const DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.bottomCenter, end: Alignment.topCenter, colors: [Color(0xFF000000), Color(0x88000000), Colors.transparent, Colors.transparent], stops: [0.0, 0.35, 0.65, 1.0]))),
-          if (widget.photoCount > 1) Positioned(top: 12, left: 16, right: 16, child: Row(children: List.generate(widget.photoCount, (i) { return Expanded(child: Container(margin: const EdgeInsets.symmetric(horizontal: 2), height: 3, decoration: BoxDecoration(borderRadius: BorderRadius.circular(2), color: i == widget.currentPhotoIndex ? Colors.white : Colors.white.withOpacity(0.35)))); }))),
-          Positioned(top: 0, left: 0, right: 0, bottom: 180, child: Row(children: [Expanded(child: GestureDetector(behavior: HitTestBehavior.translucent, onTap: () { if (widget.currentPhotoIndex > 0) widget.onPhotoChange(widget.currentPhotoIndex - 1); })), Expanded(child: GestureDetector(behavior: HitTestBehavior.translucent, onTap: () { if (widget.currentPhotoIndex < widget.photoCount - 1) widget.onPhotoChange(widget.currentPhotoIndex + 1); }))])),
-          Positioned(bottom: 125, left: 20, right: 20, child: GestureDetector(onTap: widget.onShowDetails, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Row(children: [Flexible(child: Text('${profile['name'] ?? ''}, ${profile['age'] ?? ''}', style: const TextStyle(color: Colors.white, fontSize: 30, fontWeight: FontWeight.w900, height: 1.1, shadows: [Shadow(color: Colors.black45, blurRadius: 8)]))), if (profile['identityStatus'] == 'verified') ...[const SizedBox(width: 8), const Icon(Icons.verified_rounded, color: _burgundy, size: 22, shadows: [Shadow(color: Colors.white, blurRadius: 4)])]]), if (profile['school'] != null || profile['course'] != null) ...[const SizedBox(height: 4), Row(children: [const Icon(Icons.school_rounded, color: _burgundy, size: 15), const SizedBox(width: 5), Expanded(child: Text('${profile['school'] ?? ''} ${profile['course'] != null ? '(${profile['course']})' : ''}', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.white.withOpacity(0.88), fontSize: 12, fontWeight: FontWeight.w600)))])], if (profile['bio'] != null && (profile['bio'] as String).isNotEmpty) ...[const SizedBox(height: 5), Text('"${profile['bio']}"', maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.white.withOpacity(0.75), fontSize: 12, fontStyle: FontStyle.italic))], const SizedBox(height: 8), Wrap(spacing: 6, runSpacing: 6, children: [if (profile['height'] != null) _infoChip(text: widget.formatHeight(profile['height']), icon: Icons.straighten_rounded), if (profile['lookingFor'] != null) Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4), decoration: BoxDecoration(color: _burgundy, borderRadius: BorderRadius.circular(20)), child: Text((profile['lookingFor'] as String).toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 0.8)))]),]))),
-          Positioned(bottom: 95, left: 0, right: 0, child: Center(child: Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5), decoration: BoxDecoration(color: Colors.white.withOpacity(0.18), borderRadius: BorderRadius.circular(40), border: Border.all(color: Colors.white.withOpacity(0.3))), child: const Row(mainAxisSize: MainAxisSize.min, children: [Icon(Icons.keyboard_arrow_up_rounded, color: Colors.white70, size: 14), SizedBox(width: 3), Text('swipe up to like', style: TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.w600, letterSpacing: 0.5))])))),
-          Positioned(bottom: 20, left: 0, right: 0, child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [_actionBtn(icon: Icons.close_rounded, bgColor: Colors.white.withOpacity(0.92), fgColor: Colors.black87, size: 58, onTap: () => _triggerAction('pass')), const SizedBox(width: 18), _actionBtn(icon: Icons.star_rounded, bgColor: _gold, fgColor: Colors.black, size: 48, onTap: () => _triggerAction('superlike')), const SizedBox(width: 18), _actionBtn(icon: Icons.favorite_rounded, bgColor: _burgundy, fgColor: Colors.white, size: 58, onTap: () => _triggerAction('like'))])),
+          Positioned.fill(child: DecoratedBox(decoration: BoxDecoration(gradient: RadialGradient(center: const Alignment(0, -0.3), radius: 1.0, colors: [Colors.transparent, Colors.black.withOpacity(0.35)])))),
+          Positioned.fill(child: DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Colors.transparent, Colors.black26, Colors.black87, Colors.black.withOpacity(0.92)], stops: const [0.0, 0.35, 0.65, 1.0])))),
+          Positioned.fill(child: DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Colors.black.withOpacity(0.45), Colors.transparent], stops: const [0.0, 0.2])))),
+          
+          if (widget.photoCount > 1) Positioned(top: 14, left: 14, right: 14, child: Row(children: List.generate(widget.photoCount, (i) { 
+            final isActive = i == widget.currentPhotoIndex;
+            return Expanded(child: Container(margin: const EdgeInsets.symmetric(horizontal: 2.5), height: 4, decoration: BoxDecoration(borderRadius: BorderRadius.circular(2), color: isActive ? Colors.white : Colors.white.withOpacity(0.35), boxShadow: isActive ? [BoxShadow(color: Colors.white.withOpacity(0.6), blurRadius: 6)] : null))); 
+          }))),
+          
+          Positioned(top: 0, left: 0, right: 0, bottom: _cardSize.height * 0.45, child: Row(children: [Expanded(flex: 4, child: GestureDetector(behavior: HitTestBehavior.translucent, onTap: () { if (widget.currentPhotoIndex > 0) widget.onPhotoChange(widget.currentPhotoIndex - 1); })), const Spacer(flex: 2), Expanded(flex: 4, child: GestureDetector(behavior: HitTestBehavior.translucent, onTap: () { if (widget.currentPhotoIndex < widget.photoCount - 1) widget.onPhotoChange(widget.currentPhotoIndex + 1); }))])),
+          
+          Positioned(bottom: 118, left: 20, right: 20, child: GestureDetector(onTap: widget.onShowDetails, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              Flexible(child: Text('${profile['name'] ?? ''}, ${profile['age'] ?? ''}', style: const TextStyle(color: Colors.white, fontSize: 29, fontWeight: FontWeight.w900, height: 1.0, letterSpacing: -0.5, shadows: [Shadow(color: Colors.black54, blurRadius: 8, offset: Offset(0,2))]))), 
+              if (profile['identityStatus'] == 'verified') ...[
+                const SizedBox(width: 8), 
+                Container(width: 20, height: 20, decoration: BoxDecoration(color: const Color(0xFF8B1538), shape: BoxShape.circle, boxShadow: [BoxShadow(color: const Color(0xFF8B1538).withOpacity(0.65), blurRadius: 10, spreadRadius: 2)]), child: const Center(child: Icon(Icons.check_rounded, color: Colors.white, size: 13)))
+              ]
+            ]), 
+            if (profile['school'] != null || profile['course'] != null) ...[
+              const SizedBox(height: 6), 
+              Row(children: [const Icon(Icons.school_outlined, color: Color(0xFFC98AA0), size: 14), const SizedBox(width: 6), Expanded(child: Text('${profile['school'] ?? ''} ${profile['course'] != null ? '(${profile['course']})' : ''}', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.white.withOpacity(0.82), fontSize: 13)))])
+            ], 
+            if (profile['bio'] != null && (profile['bio'] as String).isNotEmpty) ...[
+              const SizedBox(height: 6), 
+              Text('"${profile['bio']}"', maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.white.withOpacity(0.78), fontSize: 13, height: 1.4, fontStyle: FontStyle.italic))
+            ], 
+            const SizedBox(height: 12), 
+            Wrap(spacing: 8, runSpacing: 8, children: [
+              if (profile['height'] != null) Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4), decoration: BoxDecoration(color: Colors.black.withOpacity(0.45), borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.white.withOpacity(0.35), width: 0.5)), child: Row(mainAxisSize: MainAxisSize.min, children: [const Icon(Icons.straighten_rounded, color: Colors.white, size: 11), const SizedBox(width: 4), Text(widget.formatHeight(profile['height']), style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600))])), 
+              if (profile['lookingFor'] != null) Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4), decoration: BoxDecoration(color: const Color(0xFF8B1538), borderRadius: BorderRadius.circular(20), border: Border.all(color: const Color(0xFFC98AA0), width: 0.5)), child: Text((profile['lookingFor'] as String).toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.5)))
+            ]),
+          ]))),
+          
+          Positioned(bottom: 84, left: 0, right: 0, child: Center(child: _AnimatedSwipeHint())),
+          
+          Positioned(bottom: 18, left: 0, right: 0, child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+            _actionBtn(icon: Icons.close_rounded, bgColor: Colors.white, fgColor: const Color(0xFF0A0A0A), size: 58, iconSize: 26, offset: const Offset(4,4), onTap: () => _triggerAction('pass')), 
+            const SizedBox(width: 18), 
+            _actionBtn(icon: Icons.star_rounded, bgColor: const Color(0xFFE8B64A), fgColor: const Color(0xFF0A0A0A), size: 48, iconSize: 20, offset: const Offset(3,3), onTap: () => _triggerAction('superlike')), 
+            const SizedBox(width: 18), 
+            _actionBtn(icon: Icons.favorite_rounded, bgColor: const Color(0xFF8B1538), fgColor: Colors.white, size: 58, iconSize: 24, offset: const Offset(4,4), onTap: () => _triggerAction('like'))
+          ])),
         ]),
-      ),
-    );
+      );
+
+      return AnimatedBuilder(
+        animation: _ctrl,
+        child: cachedCardContent,
+        builder: (context, child) {
+          double tiltX = 0.0;
+          double tiltY = 0.0;
+          double tiltZ = 0.0;
+          double elevation = 0.0;
+          double scale = 1.0;
+          double opacity = 1.0;
+          Offset currentDrag = _drag;
+          
+          final v = _ctrl.value;
+
+          if (_mode == _AnimMode.idle) {
+            tiltX = (currentDrag.dy * -0.0006).clamp(-0.3, 0.3);
+            tiltY = (currentDrag.dx * 0.0006).clamp(-0.3, 0.3);
+            tiltZ = currentDrag.dx * 0.0002;
+            elevation = (currentDrag.distance / 200).clamp(0.0, 1.0);
+          } else if (_mode == _AnimMode.snapBack) {
+            final t = Curves.easeOutCubic.transform(v);
+            currentDrag = Offset.lerp(_snapStart, Offset.zero, t)!;
+            tiltX = (currentDrag.dy * -0.0006).clamp(-0.3, 0.3);
+            tiltY = (currentDrag.dx * 0.0006).clamp(-0.3, 0.3);
+            tiltZ = currentDrag.dx * 0.0002;
+            elevation = (currentDrag.distance / 200).clamp(0.0, 1.0);
+          } else if (_mode == _AnimMode.toss) {
+            final t = Curves.easeOutQuart.transform(v);
+            currentDrag = _quadBezier(_arcP0, _arcP1, _arcP2, t);
+            
+            if (v < 0.2) {
+              scale = 1.0 + (v / 0.2) * 0.05; 
+            } else {
+              final shrink = Curves.easeIn.transform((v - 0.2) / 0.8);
+              scale = 1.05 - (shrink * 1.05); 
+            }
+            
+            opacity = (1.0 - (v > 0.95 ? (v - 0.95) / 0.05 : 0.0)).clamp(0.0, 1.0);
+            
+            tiltX = (_releaseVx != 0 ? _drag.dy * -0.0006 : 0.0) + (v * 1.5); 
+            tiltY = (currentDrag.dx * 0.0006) + (v * _releaseVx * 0.0005);
+            tiltZ = (currentDrag.dx * 0.0002) + (v * _releaseVx * 0.0002);
+            elevation = (v < 0.5) ? (v * 2.0) : (1.0 - (v - 0.5) * 2.0);
+          } else if (_mode == _AnimMode.drop) {
+            final eased = math.pow(v, 2.8).toDouble();
+            currentDrag = Offset(_dropOrigin.dx + _releaseVx * v * 0.15, _dropOrigin.dy + eased * 1800.0);
+            opacity = (1.0 - (v > 0.60 ? (v - 0.60) / 0.40 : 0.0)).clamp(0.0, 1.0);
+            
+            tiltX = (_drag.dy * -0.0006) - (v * 1.5); 
+            tiltY = (currentDrag.dx * 0.0006);
+            tiltZ = (currentDrag.dx * 0.0002) + (v * _releaseVx * 0.001);
+            elevation = (1.0 - v).clamp(0.0, 1.0);
+          }
+
+          final Matrix4 transform = Matrix4.identity()
+            ..setEntry(3, 2, 0.0012)
+            ..rotateX(tiltX)
+            ..rotateY(tiltY)
+            ..rotateZ(tiltZ)
+            ..scale(scale, scale, 1.0);
+
+          final shadowColor = Colors.black.withOpacity((0.15 + (elevation * 0.15)).clamp(0.0, 1.0));
+          final blur = 15.0 + (elevation * 45.0);
+          final spread = 2.0 + (elevation * 12.0);
+          final offsetY = 10.0 + (elevation * 35.0);
+
+          return Opacity(
+            opacity: opacity,
+            child: Transform.translate(
+              offset: currentDrag,
+              child: Transform(
+                alignment: Alignment.center,
+                transform: transform,
+                child: GestureDetector(
+                  onPanUpdate: _onPanUpdate,
+                  onPanEnd: _onPanEnd,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(32),
+                      color: const Color(0xFF0A0A0A),
+                      border: Border.all(color: const Color(0xFF0A0A0A), width: 4),
+                      boxShadow: [
+                        const BoxShadow(color: Color(0xFF0A0A0A), offset: Offset(8, 8), blurRadius: 0, spreadRadius: 0),
+                        BoxShadow(color: shadowColor, offset: Offset(0, offsetY), blurRadius: blur, spreadRadius: spread),
+                      ],
+                    ),
+                    child: child,
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      );
+    });
   }
 
-  Widget _actionBtn({required IconData icon, required Color bgColor, required Color fgColor, required double size, required VoidCallback onTap}) {
-    return GestureDetector(
+  Widget _actionBtn({required IconData icon, required Color bgColor, required Color fgColor, required double size, required double iconSize, required Offset offset, required VoidCallback onTap}) {
+    return _BouncingButton(
       onTap: onTap,
-      child: Container(width: size, height: size, decoration: BoxDecoration(color: bgColor, shape: BoxShape.circle, boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 12, offset: const Offset(0, 6))], border: Border.all(color: Colors.black.withOpacity(0.06))), child: Icon(icon, color: fgColor, size: size * 0.45)),
+      child: Container(width: size, height: size, decoration: BoxDecoration(color: bgColor, shape: BoxShape.circle, boxShadow: [BoxShadow(color: const Color(0xFF0A0A0A), offset: offset, blurRadius: 0)], border: Border.all(color: const Color(0xFF0A0A0A), width: 3)), child: Icon(icon, color: fgColor, size: iconSize)),
     );
   }
 }
 
-Widget _infoChip({required String text, IconData? icon}) {
-  return Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4), decoration: BoxDecoration(color: Colors.white.withOpacity(0.22), borderRadius: BorderRadius.circular(20)), child: Row(mainAxisSize: MainAxisSize.min, children: [if (icon != null) ...[Icon(icon, color: _burgundy, size: 11), const SizedBox(width: 4)], Text(text, style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w800))]));
+class _AnimatedSwipeHint extends StatefulWidget {
+  @override State<_AnimatedSwipeHint> createState() => _AnimatedSwipeHintState();
+}
+class _AnimatedSwipeHintState extends State<_AnimatedSwipeHint> with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+  @override void initState() { super.initState(); _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200))..repeat(reverse: true); }
+  @override void dispose() { _ctrl.dispose(); super.dispose(); }
+  @override Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (ctx, child) => Transform.translate(offset: Offset(0, Curves.easeInOut.transform(_ctrl.value) * -3.0), child: child),
+      child: Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5), decoration: BoxDecoration(color: Colors.black.withOpacity(0.45), borderRadius: BorderRadius.circular(40), border: Border.all(color: Colors.white.withOpacity(0.35), width: 0.5)), child: const Row(mainAxisSize: MainAxisSize.min, children: [Icon(Icons.keyboard_arrow_up_rounded, color: Colors.white, size: 14), SizedBox(width: 3), Text('swipe up to like', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w500))])),
+    );
+  }
+}
+
+class _BouncingButton extends StatefulWidget {
+  final Widget child;
+  final VoidCallback onTap;
+  const _BouncingButton({required this.child, required this.onTap});
+  @override State<_BouncingButton> createState() => _BouncingButtonState();
+}
+class _BouncingButtonState extends State<_BouncingButton> {
+  bool _pressed = false;
+  @override Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) { setState(() => _pressed = false); widget.onTap(); },
+      onTapCancel: () => setState(() => _pressed = false),
+      child: AnimatedScale(scale: _pressed ? 0.92 : 1.0, duration: const Duration(milliseconds: 100), curve: Curves.easeOut, child: widget.child),
+    );
+  }
 }

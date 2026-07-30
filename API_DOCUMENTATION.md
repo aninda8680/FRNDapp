@@ -91,7 +91,9 @@ Create a new user account.
   "age": 20,
   "gender": "male",
   "lookingFor": "dating",
-  "bio": "Optional bio text"
+  "bio": "Optional bio text",
+  "religion": "Hinduism",
+  "beliefs": "Spiritual & open-minded"
 }
 ```
 
@@ -105,6 +107,8 @@ Create a new user account.
 | `gender` | No | `"male"` \| `"female"` \| `"other"` |
 | `lookingFor` | No | `"friends"` \| `"dating"` |
 | `bio` | No | Max 500 chars |
+| `religion` | No | Max 100 chars |
+| `beliefs` | No | Max 200 chars |
 
 **Response (201 Created):**
 ```json
@@ -395,8 +399,8 @@ Update authenticated user's profile information, interests, and prompt answers d
 
 | Feature | Free Tier | Silver Pass (₹39/mo Autopay) | Gold Pass (₹49/mo Autopay) |
 |---|---|---|---|
-| **Price** | ₹0 | **₹39 / 30 Days** | **₹49 / 30 Days** |
-| **Autopay Recurring** | No | **Yes (Auto-renews every 30 days)** | **Yes (Auto-renews every 30 days)** |
+| **Price** | ₹0 | **₹39 / 28 Days** | **₹49 / 28 Days** |
+| **Autopay Recurring** | No | **Yes (Auto-renews every 28 days)** | **Yes (Auto-renews every 28 days)** |
 | **Normal Likes** | 15 / day | 25 / day | 50 / day |
 | **Super Likes** | 3 / day | 6 / day | 12 / day |
 | **Feed Profile Boost** | 1x Standard | 3x Higher Visibility | 6x Maximum Visibility |
@@ -411,11 +415,11 @@ Fetch all available subscription tier configurations and pricing. No authenticat
 ```json
 {
   "currency": "INR",
-  "billingCycle": "30 Days Autopay Recurring",
+  "billingCycle": "28 Days Autopay Recurring",
   "tiers": {
-    "free": { "tier": "free", "name": "Free Tier", "priceINR": 0, "pricePaise": 0, "validityDays": 30, "likesLimit": 15, "superlikesLimit": 3, "profileBoost": 1, "isAutopay": false },
-    "silver": { "tier": "silver", "name": "Silver Pass Autopay", "priceINR": 39, "pricePaise": 3900, "validityDays": 30, "likesLimit": 25, "superlikesLimit": 6, "profileBoost": 3, "isAutopay": true },
-    "gold": { "tier": "gold", "name": "Gold Pass Autopay", "priceINR": 49, "pricePaise": 4900, "validityDays": 30, "likesLimit": 50, "superlikesLimit": 12, "profileBoost": 6, "isAutopay": true }
+    "free": { "tier": "free", "name": "Free Tier", "priceINR": 0, "pricePaise": 0, "validityDays": 28, "likesLimit": 15, "superlikesLimit": 3, "profileBoost": 1, "isAutopay": false },
+    "silver": { "tier": "silver", "name": "Silver Pass Autopay", "priceINR": 39, "pricePaise": 3900, "validityDays": 28, "likesLimit": 25, "superlikesLimit": 6, "profileBoost": 3, "isAutopay": true },
+    "gold": { "tier": "gold", "name": "Gold Pass Autopay", "priceINR": 49, "pricePaise": 4900, "validityDays": 28, "likesLimit": 50, "superlikesLimit": 12, "profileBoost": 6, "isAutopay": true }
   }
 }
 ```
@@ -445,7 +449,7 @@ Initialize a Razorpay Autopay Subscription for Silver or Gold tier. Requires aut
   "keyId": "rzp_test_...",
   "tier": "gold",
   "tierName": "Gold Pass Autopay",
-  "validityDays": 30,
+  "validityDays": 28,
   "isAutopay": true
 }
 ```
@@ -454,7 +458,7 @@ Initialize a Razorpay Autopay Subscription for Silver or Gold tier. Requires aut
 
 #### POST `/api/payments/verify-subscription`
 
-Verify the Razorpay Autopay subscription signature and activate 30-day recurring validity. Requires authentication cookie or Bearer token. *(Alias: `POST /api/payments/verify`)*
+Verify the Razorpay Autopay subscription signature and activate 28-day recurring validity. Requires authentication cookie or Bearer token. *(Alias: `POST /api/payments/verify`)*
 
 **Body:**
 ```json
@@ -468,7 +472,7 @@ Verify the Razorpay Autopay subscription signature and activate 30-day recurring
 **Response (200 OK):**
 ```json
 {
-  "message": "🎉 Gold Pass Autopay activated! Autopay will automatically renew every 30 days.",
+  "message": "🎉 Gold Pass Autopay activated! Autopay will automatically renew every 28 days.",
   "tier": "gold",
   "isPremium": true,
   "autopayStatus": "active",
@@ -485,12 +489,12 @@ Verify the Razorpay Autopay subscription signature and activate 30-day recurring
 
 #### POST `/api/payments/cancel-subscription`
 
-Cancel recurring Autopay subscription. The user keeps Silver/Gold benefits until their current 30-day period expires. Requires authentication cookie or Bearer token.
+Cancel recurring Autopay subscription. The user keeps Silver/Gold benefits until their current 28-day period expires. Requires authentication cookie or Bearer token.
 
 **Response (200 OK):**
 ```json
 {
-  "message": "Autopay recurring subscription cancelled successfully. Your benefits remain active until your current 30-day period expires.",
+  "message": "Autopay recurring subscription cancelled successfully. Your benefits remain active until your current 28-day period expires.",
   "autopayStatus": "cancelled",
   "tier": "gold",
   "subscriptionExpiresAt": "2026-08-20T18:00:00.000Z"
@@ -510,7 +514,7 @@ Fetch current user tier status, autopay state, remaining validity days, and acti
   "isPremium": true,
   "autopayStatus": "active",
   "subscriptionExpiresAt": "2026-08-20T18:00:00.000Z",
-  "validityDaysRemaining": 30,
+  "validityDaysRemaining": 28,
   "limits": {
     "likesLimit": 50,
     "superlikesLimit": 12,
@@ -523,7 +527,7 @@ Fetch current user tier status, autopay state, remaining validity days, and acti
 
 #### POST `/api/payments/webhook`
 
-Razorpay server-to-server webhook callback for automated 30-day Autopay renewals (`subscription.charged`, `payment.captured`). Validates HMAC `x-razorpay-signature` header using `RAZORPAY_WEBHOOK_SECRET`.
+Razorpay server-to-server webhook callback for automated 28-day Autopay renewals (`subscription.charged`, `payment.captured`). Validates HMAC `x-razorpay-signature` header using `RAZORPAY_WEBHOOK_SECRET`.
 
 ---
 
@@ -882,36 +886,58 @@ Report a user or an anonymous post. Requires authentication cookie.
 
 #### POST `/api/posts`
 
-Create an anonymous post. Requires authentication cookie.
+Create a public or anonymous post. Requires authentication cookie or Bearer token. Posts automatically expire and are purged from the database after 24 hours.
+
+**Tier Daily Post Quotas (rolling 24-hour window):**
+- **Free Tier**: **1 post / 24 hours**
+- **Silver Tier**: **3 posts / 24 hours**
+- **Gold Tier**: **6 posts / 24 hours**
+
+**Tier Word Limits (per post):**
+- **Free Tier**: **250 words** max
+- **Silver Tier**: **400 words** max
+- **Gold Tier**: **900 words** max
 
 **Body:**
 ```json
-{ "content": "Post content here" }
+{
+  "content": "A thoughtful confession or question for campus.",
+  "isAnonymous": true
+}
 ```
 
 | Field | Rules |
 |---|---|
-| `content` | Required, max 1000 chars |
+| `content` | Required string. Must adhere to tier word limits (Free 250, Silver 400, Gold 900 words). |
+| `isAnonymous` | Optional boolean, default `true`. If `false`, reveals author profile card on the post feed. |
 
 **Response (201 Created):**
 ```json
 {
-  "message": "Post created successfully",
+  "message": "Post published successfully",
   "post": {
-    "_id": "651a2b3c4d5e6f7a8b9c0d4b",
-    "content": "Post content here",
-    "postedAt": "2026-07-19T12:00:00.000Z"
-  }
+    "id": "651a2b3c4d5e6f7a8b9c0d4b",
+    "content": "A thoughtful confession or question for campus.",
+    "isAnonymous": true,
+    "author": null,
+    "upvotesCount": 0,
+    "downvotesCount": 0,
+    "createdAt": "2026-07-30T18:30:00.000Z"
+  },
+  "tier": "free",
+  "remainingPosts": 0,
+  "wordCount": 8,
+  "wordLimit": 250
 }
 ```
 
-> More than 5 posts in an hour triggers a `post_spam` flag (low severity).
+> **Security & Anonymity Note:** Unauthenticated requests are rejected (`401 Unauthorized`). When `isAnonymous: true`, author details are strictly omitted from the public response to preserve total anonymity. Quota exhaustion returns `429 Too Many Requests`. Exceeding tier word limits returns `400 Bad Request`.
 
 ---
 
 #### GET `/api/posts`
 
-List anonymous posts. Requires authentication cookie.
+List all active posts from the past 24 hours with real-time upvote/downvote counts, caller vote status, and optional author identity. Accessible to all authenticated users.
 
 **Query params:** `?page=1&limit=20` (limit capped at 50)
 
@@ -920,14 +946,62 @@ List anonymous posts. Requires authentication cookie.
 {
   "posts": [
     {
-      "_id": "651a2b3c4d5e6f7a8b9c0d4b",
-      "content": "Post content here",
-      "postedAt": "2026-07-19T12:00:00.000Z"
+      "id": "651a2b3c4d5e6f7a8b9c0d4b",
+      "content": "A thoughtful confession or question for campus.",
+      "isAnonymous": false,
+      "author": {
+        "id": "651a2b3c4d5e6f7a8b9c0d1e",
+        "name": "Alex",
+        "username": "alex_campus",
+        "pictures": [{ "url": "https://...", "fileId": "..." }],
+        "gender": "female",
+        "school": "Computer Science",
+        "course": "B.Tech",
+        "identityStatus": "verified",
+        "badges": ["Student"],
+        "tier": "gold"
+      },
+      "upvotesCount": 12,
+      "downvotesCount": 2,
+      "userVote": "upvote",
+      "createdAt": "2026-07-30T18:30:00.000Z"
     }
   ],
   "page": 1,
   "limit": 20,
-  "total": 142
+  "total": 1
+}
+```
+
+---
+
+#### POST `/api/posts/:postId/upvote`
+
+Toggle or set an upvote on a post. If the post is already upvoted by the caller, the upvote is removed. If downvoted, it switches to an upvote. Atomic and safe against race conditions.
+
+**Response (200 OK):**
+```json
+{
+  "message": "Upvoted post",
+  "userVote": "upvote",
+  "upvotesCount": 13,
+  "downvotesCount": 2
+}
+```
+
+---
+
+#### POST `/api/posts/:postId/downvote`
+
+Toggle or set a downvote on a post. If the post is already downvoted by the caller, the downvote is removed. If upvoted, it switches to a downvote. Atomic and safe against race conditions.
+
+**Response (200 OK):**
+```json
+{
+  "message": "Downvoted post",
+  "userVote": "downvote",
+  "upvotesCount": 12,
+  "downvotesCount": 3
 }
 ```
 
@@ -1074,6 +1148,30 @@ Sign up for the app's waitlist. Captures unique client IP and optional device fi
 ```
 
 > **Note:** A successful sign-up automatically triggers a welcome email confirmation sent via the Resend SDK if `email` is supplied. Limit of **one sign-up per client IP address** is enforced.
+
+---
+
+#### POST `/api/careers/apply`
+
+Public endpoint for role applications from the FRND Career Page. Receives applicant name, email, subject (role title), and application text body. **No authentication required.**
+
+**Body:**
+```json
+{
+  "name": "Jane Doe",
+  "email": "jane.doe@gmail.com",
+  "subject": "Full-Stack Developer Application",
+  "body": "I am a passionate software engineer with 3 years experience building scalable WebSockets & React applications. Here is my portfolio..."
+}
+```
+
+**Response (201 Created):**
+```json
+{
+  "message": "Application submitted successfully! Our team will review your submission soon.",
+  "applicationId": "651a2b3c4d5e6f7a8b9c0d99"
+}
+```
 
 ---
 
@@ -1710,6 +1808,120 @@ Audit log of all actions taken by administrators. Requires admin Bearer token.
   "page": 1,
   "limit": 50,
   "total": 42
+}
+```
+
+---
+
+#### GET `/api/admin/config/email`
+
+Fetch current Resend API accounts pool status, active sending key index, masked keys, daily sent counts (100 mails/day quota), and error logs. Requires admin Bearer token.
+
+**Response (200 OK):**
+```json
+{
+  "activeKeyIndex": 0,
+  "totalAccounts": 3,
+  "activeAccount": {
+    "index": 0,
+    "label": "Resend Account #1",
+    "maskedKey": "re_a1b2...x9y8",
+    "fromEmail": "onboarding@resend.dev",
+    "status": "active",
+    "dailySentCount": 14,
+    "lastUsedAt": "2026-07-28T15:20:00.000Z",
+    "lastError": "",
+    "isActive": true
+  },
+  "accounts": [ ... ]
+}
+```
+
+---
+
+#### PUT `/api/admin/config/email/switch`
+
+Manually switch the active sending Resend account key index or re-enable an account. Requires admin Bearer token.
+
+**Body:**
+```json
+{ "activeKeyIndex": 1 }
+```
+
+**Response (200 OK):**
+```json
+{
+  "message": "Active email account successfully switched to Account #2",
+  "status": { ... }
+}
+```
+
+---
+
+#### PUT `/api/admin/config/email/count`
+
+Manually alter or reset the daily sent email count (0 - 100 quota) for any Resend account. If count is updated under 100, the account is automatically re-enabled if previously marked `quota_exceeded`. Requires admin Bearer token.
+
+**Body:**
+```json
+{
+  "accountIndex": 0,
+  "dailySentCount": 0
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "message": "Daily sent count for Account #1 updated to 0",
+  "status": { ... }
+}
+```
+
+---
+
+#### GET `/api/admin/careers`
+
+List role applications submitted from the career page. Requires admin Bearer token.
+
+**Query params:** `?page=1&limit=50`
+
+**Response (200 OK):**
+```json
+{
+  "applications": [
+    {
+      "_id": "651a2b3c4d5e6f7a8b9c0d99",
+      "name": "Jane Doe",
+      "email": "jane.doe@gmail.com",
+      "subject": "Full-Stack Developer Application",
+      "body": "I am a passionate software engineer with 3 years experience...",
+      "status": "pending",
+      "createdAt": "2026-07-28T16:00:00.000Z"
+    }
+  ],
+  "page": 1,
+  "limit": 50,
+  "total": 1
+}
+```
+
+---
+
+#### PUT `/api/admin/careers/:id/status`
+
+Update application status (`pending`, `reviewed`, `contacted`, `rejected`). Requires admin Bearer token.
+
+**Body:**
+```json
+{ "status": "reviewed" }
+```
+
+**Response (200 OK):**
+```json
+{
+  "message": "Career application status updated successfully",
+  "application": { ... }
 }
 ```
 

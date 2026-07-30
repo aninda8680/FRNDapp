@@ -42,6 +42,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final Set<String> _selectedInterests = {};
   final Map<String, String> _promptAnswers = {};
   final Set<String> _activePromptIds = {};
+  final Set<String> _expandedSegments = {};
 
   final List<String> _availableHobbies = [
     'Gaming', 'Anime', 'Coding', 'Hiking', 'Music', 'Art', 'Coffee', 'Movies',
@@ -70,70 +71,74 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     super.dispose();
   }
 
+  void _populateFields(Map<String, dynamic> data) {
+    _usernameController.text = data['username'] ?? '';
+    _nameController.text = data['name'] ?? '';
+    _ageController.text = data['age']?.toString() ?? '';
+    _bioController.text = data['bio'] ?? '';
+    _schoolController.text = data['school'] ?? '';
+    _courseController.text = data['course'] ?? '';
+    _heightController.text = data['height']?.toString() ?? '';
+    _selectedLookingFor = data['lookingFor'];
+    _selectedSexualOrientation = data['sexualOrientation'];
+    _selectedGender = data['gender'];
+
+    _selectedHobbies.clear();
+    final hobbies = data['hobbies'] as List<dynamic>?;
+    if (hobbies != null) _selectedHobbies.addAll(hobbies.map((e) => e.toString()));
+
+    _selectedSkills.clear();
+    final skills = data['skills'] as List<dynamic>?;
+    if (skills != null) _selectedSkills.addAll(skills.map((e) => e.toString()));
+
+    _selectedInterests.clear();
+    final interests = data['interests'] as List<dynamic>?;
+    if (interests != null) {
+      _selectedInterests.addAll(interests.map((i) {
+        if (i is Map) return i['interestId']?.toString() ?? i['id']?.toString() ?? '';
+        return i.toString();
+      }).where((s) => s.isNotEmpty));
+    }
+
+    _promptAnswers.clear();
+    final prompts = data['prompts'] as List<dynamic>?;
+    if (prompts != null) {
+      for (var p in prompts) {
+        if (p is Map && p['promptId'] != null) {
+          _promptAnswers[p['promptId']] = p['answer']?.toString() ?? '';
+        }
+      }
+    }
+
+    _existingPictures.clear();
+    for (int i = 0; i < 4; i++) _photoPaths[i] = null;
+    final pictures = data['pictures'] as List<dynamic>?;
+    if (pictures != null) {
+      for (int i = 0; i < pictures.length && i < 4; i++) {
+        _existingPictures.add(pictures[i] as Map<String, dynamic>);
+        _photoPaths[i] = pictures[i]['url'] as String?;
+      }
+    }
+  }
+
   Future<void> _loadProfileData() async {
-    final config = await OnboardingService.fetchConfig();
-    final data = await AuthService.getProfile();
-    
-    if (mounted) {
+    // 1. Populate instantly from in-memory cache — zero network wait
+    final cached = AuthService.userProfile;
+    if (cached != null && mounted) {
       setState(() {
-        if (config != null) {
-          _segments = config['segments'] ?? [];
-          _sections = config['sections'] ?? [];
-        }
-
-        if (data != null) {
-          _usernameController.text = data['username'] ?? '';
-          _nameController.text = data['name'] ?? '';
-          _ageController.text = data['age']?.toString() ?? '';
-          _bioController.text = data['bio'] ?? '';
-          _schoolController.text = data['school'] ?? '';
-          _courseController.text = data['course'] ?? '';
-          _heightController.text = data['height']?.toString() ?? '';
-          _selectedLookingFor = data['lookingFor'];
-          _selectedSexualOrientation = data['sexualOrientation'];
-          _selectedGender = data['gender'];
-          
-          final hobbies = data['hobbies'] as List<dynamic>?;
-          if (hobbies != null) _selectedHobbies.addAll(hobbies.map((e) => e.toString()));
-          
-          final skills = data['skills'] as List<dynamic>?;
-          if (skills != null) _selectedSkills.addAll(skills.map((e) => e.toString()));
-          
-          final interests = data['interests'] as List<dynamic>?;
-          if (interests != null) {
-            _selectedInterests.addAll(interests.map((i) {
-               if (i is Map) return i['interestId']?.toString() ?? i['id']?.toString() ?? '';
-               return i.toString();
-            }).where((s) => s.isNotEmpty));
-          }
-
-          final prompts = data['prompts'] as List<dynamic>?;
-          if (prompts != null) {
-             for (var p in prompts) {
-               if (p is Map && p['promptId'] != null) {
-                 _promptAnswers[p['promptId']] = p['answer']?.toString() ?? '';
-               }
-             }
-          }
-          
-          final pictures = data['pictures'] as List<dynamic>?;
-          if (pictures != null) {
-            for (int i = 0; i < pictures.length && i < 4; i++) {
-              _existingPictures.add(pictures[i] as Map<String, dynamic>);
-              _photoPaths[i] = pictures[i]['url'] as String?;
-            }
-          }
-        }
-        
+        _populateFields(cached);
         _isLoading = false;
+      });
+    }
+
+    // 2. Fetch onboarding config in the background (for interests/prompts pickers)
+    final config = await OnboardingService.fetchConfig();
+    if (mounted && config != null) {
+      setState(() {
+        _segments = config['segments'] ?? [];
+        _sections = config['sections'] ?? [];
         _isLoadingConfig = false;
       });
-      
-      if (data == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to load profile data.')),
-        );
-      }
     }
   }
 
@@ -215,7 +220,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: Theme.of(context).textTheme.labelLarge?.copyWith(color: AppColors.textColor2)),
+        _buildSectionHeading(context, label),
         const SizedBox(height: 8),
         SketchyContainer(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -239,10 +244,18 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('EDIT PROFILE')),
+      appBar: AppBar(
+        title: const Text('EDIT PROFILE'),
+        backgroundColor: AppColors.textColor2,
+        foregroundColor: AppColors.white,
+      ),
       bottomNavigationBar: !_isLoading
-          ? Padding(
-              padding: const EdgeInsets.only(left: 24.0, right: 24.0, bottom: 24.0, top: 16.0),
+          ? Container(
+              decoration: BoxDecoration(
+                color: AppColors.cream,
+                border: Border(top: BorderSide(color: AppColors.textColor2.withOpacity(0.2), width: 1)),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
               child: SketchyButton(
                 text: 'SAVE CHANGES',
                 onPressed: _saveChanges,
@@ -261,7 +274,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text('PROFILE PHOTOS', style: Theme.of(context).textTheme.labelLarge?.copyWith(color: AppColors.textColor2)),
+                  _buildMainSectionHeading(context, 'PROFILE PHOTOS'),
                   const SizedBox(height: 16),
                   GridView.builder(
                     shrinkWrap: true,
@@ -302,12 +315,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   ),
                   const SizedBox(height: 32),
                   
+                  _buildMainSectionHeading(context, 'BASIC INFO'),
+                  const SizedBox(height: 8),
                   _buildTextField('USERNAME', _usernameController),
                   _buildTextField('NAME', _nameController),
                   _buildTextField('AGE', _ageController, keyboardType: TextInputType.number),
                   
-                  Text('GENDER', style: Theme.of(context).textTheme.labelLarge?.copyWith(color: AppColors.textColor2)),
-                  const SizedBox(height: 8),
+                  _buildSectionHeading(context, 'GENDER'),
+                  const SizedBox(height: 16),
                   Wrap(
                     spacing: 12,
                     runSpacing: 12,
@@ -321,26 +336,31 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           backgroundColor: isSelected ? AppColors.textColor2 : AppColors.cream,
                           child: Text(e.toUpperCase(), style: Theme.of(context).textTheme.labelLarge?.copyWith(
                             color: isSelected ? AppColors.cream : AppColors.textColor2,
+                            fontWeight: FontWeight.bold,
                           )),
                         ),
                       );
                     }).toList(),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 28),
 
+                  _buildMainSectionHeading(context, 'ABOUT YOU'),
+                  const SizedBox(height: 8),
                   _buildTextField('BIO', _bioController, maxLines: 3),
                   _buildTextField('SCHOOL', _schoolController),
                   _buildTextField('COURSE', _courseController),
                   _buildTextField('HEIGHT (cm)', _heightController, keyboardType: TextInputType.number),
                   
+                  _buildMainSectionHeading(context, 'INTERESTS'),
                   const SizedBox(height: 16),
                   _buildInterestsSection(),
-                  const SizedBox(height: 24),
-                  _buildPromptsSection(),
-                  const SizedBox(height: 16),
 
-                  Text('WHAT ARE YOU LOOKING FOR?', style: Theme.of(context).textTheme.labelLarge?.copyWith(color: AppColors.textColor2)),
-                  const SizedBox(height: 12),
+                  _buildMainSectionHeading(context, 'PROMPTS'),
+                  const SizedBox(height: 16),
+                  _buildPromptsSection(),
+
+                  _buildMainSectionHeading(context, 'LOOKING FOR'),
+                  const SizedBox(height: 16),
                   Row(
                     children: [
                       Expanded(
@@ -348,8 +368,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           onTap: () => setState(() => _selectedLookingFor = 'dating'),
                           child: SketchyContainer(
                             padding: const EdgeInsets.symmetric(vertical: 16),
-                            backgroundColor: _selectedLookingFor == 'dating' ? AppColors.textColor2.withOpacity(0.2) : AppColors.cream,
-                            child: const Center(child: Text('DATING', style: TextStyle(fontWeight: FontWeight.bold))),
+                            backgroundColor: _selectedLookingFor == 'dating' ? AppColors.textColor2 : AppColors.cream,
+                            child: Center(child: Text('DATING', style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: _selectedLookingFor == 'dating' ? AppColors.cream : AppColors.textColor2,
+                            ))),
                           ),
                         ),
                       ),
@@ -359,14 +382,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           onTap: () => setState(() => _selectedLookingFor = 'friends'),
                           child: SketchyContainer(
                             padding: const EdgeInsets.symmetric(vertical: 16),
-                            backgroundColor: _selectedLookingFor == 'friends' ? AppColors.textColor2.withOpacity(0.2) : AppColors.cream,
-                            child: const Center(child: Text('FRIENDS ONLY', style: TextStyle(fontWeight: FontWeight.bold))),
+                            backgroundColor: _selectedLookingFor == 'friends' ? AppColors.textColor2 : AppColors.cream,
+                            child: Center(child: Text('FRIENDS ONLY', style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: _selectedLookingFor == 'friends' ? AppColors.cream : AppColors.textColor2,
+                            ))),
                           ),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 48),
                 ],
               ),
             ),
@@ -385,48 +411,98 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             final segmentName = segment['name'] ?? 'INTERESTS';
             final interestsList = segment['interests'] as List<dynamic>? ?? [];
             
+            final segmentId = segment['id'] as String? ?? segmentName.toString();
+            final isExpanded = _expandedSegments.contains(segmentId);
+            final int initialVisibleCount = 6;
+            
+            final visibleInterests = isExpanded 
+                ? interestsList 
+                : interestsList.take(initialVisibleCount).toList();
+            final hiddenCount = interestsList.length - visibleInterests.length;
+
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(segmentName.toString().toUpperCase(), style: Theme.of(context).textTheme.labelLarge?.copyWith(color: AppColors.textColor2)),
-                const SizedBox(height: 8),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Text(segmentName.toString().toUpperCase(),
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      color: AppColors.textColor2, fontWeight: FontWeight.w900)),
+                ),
                 Wrap(
                   spacing: 12,
                   runSpacing: 12,
-                  children: interestsList.map((interest) {
-                    final interestId = interest['id'] as String;
-                    final label = interest['label'] as String;
-                    final emoji = interest['emoji'] as String? ?? '';
-                    final isSelected = _selectedInterests.contains(interestId);
-                    
-                    return GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          if (isSelected) {
-                            _selectedInterests.remove(interestId);
-                          } else {
-                            _selectedInterests.add(interestId);
-                          }
-                        });
-                      },
-                      child: SketchyContainer(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        borderRadius: 999,
-                        backgroundColor: isSelected ? AppColors.textColor2 : AppColors.cream,
-                        child: Text('$emoji $label'.trim(), style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                          color: isSelected ? AppColors.cream : AppColors.textColor2,
-                        )),
+                  children: [
+                    ...visibleInterests.map((interest) {
+                      final interestId = interest['id'] as String;
+                      final label = interest['label'] as String;
+                      final emoji = interest['emoji'] as String? ?? '';
+                      final isSelected = _selectedInterests.contains(interestId);
+                      
+                      return GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            if (isSelected) {
+                              _selectedInterests.remove(interestId);
+                            } else {
+                              _selectedInterests.add(interestId);
+                            }
+                          });
+                        },
+                        child: SketchyContainer(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          borderRadius: 999,
+                          backgroundColor: isSelected ? AppColors.textColor2 : AppColors.cream,
+                          child: Text('$emoji $label'.trim(), style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                            color: isSelected ? AppColors.cream : AppColors.textColor2,
+                          )),
+                        ),
+                      );
+                    }),
+                    if (hiddenCount > 0)
+                      GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            _expandedSegments.add(segmentId);
+                          });
+                        },
+                        child: SketchyContainer(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          borderRadius: 999,
+                          backgroundColor: AppColors.inkBlack,
+                          child: Text('+ $hiddenCount more', style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                            color: AppColors.white,
+                          )),
+                        ),
                       ),
-                    );
-                  }).toList(),
+                    if (isExpanded && interestsList.length > initialVisibleCount)
+                      GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            _expandedSegments.remove(segmentId);
+                          });
+                        },
+                        child: SketchyContainer(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          borderRadius: 999,
+                          backgroundColor: AppColors.inkBlack,
+                          child: Text('Show less', style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                            color: AppColors.white,
+                          )),
+                        ),
+                      ),
+                  ],
                 ),
                 const SizedBox(height: 24),
               ],
             );
           }).toList()
         else ...[
-          Text('HOBBIES', style: Theme.of(context).textTheme.labelLarge?.copyWith(color: AppColors.textColor2)),
-          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Text('HOBBIES', style: Theme.of(context).textTheme.labelLarge?.copyWith(
+              color: AppColors.textColor2, fontWeight: FontWeight.w900)),
+          ),
           Wrap(
             spacing: 12,
             runSpacing: 12,
@@ -453,9 +529,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               );
             }).toList(),
           ),
-          const SizedBox(height: 24),
-          Text('SKILLS', style: Theme.of(context).textTheme.labelLarge?.copyWith(color: AppColors.textColor2)),
-          const SizedBox(height: 8),
+          const SizedBox(height: 20),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Text('SKILLS', style: Theme.of(context).textTheme.labelLarge?.copyWith(
+              color: AppColors.textColor2, fontWeight: FontWeight.w900)),
+          ),
           Wrap(
             spacing: 12,
             runSpacing: 12,
@@ -500,16 +579,41 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             final sectionDesc = section['description'] ?? '';
             final promptsList = section['prompts'] as List<dynamic>? ?? [];
 
+            final sectionId = section['id'] as String? ?? sectionName.toString();
+            final isExpanded = _expandedSegments.contains(sectionId);
+
+            final activePrompts = promptsList.where((p) {
+              final id = p['id'] as String;
+              return _activePromptIds.contains(id) || (_promptAnswers[id]?.isNotEmpty ?? false);
+            }).toList();
+            final inactivePrompts = promptsList.where((p) {
+              final id = p['id'] as String;
+              return !(_activePromptIds.contains(id) || (_promptAnswers[id]?.isNotEmpty ?? false));
+            }).toList();
+
+            final int initialVisibleInactiveCount = 3;
+            final visibleInactivePrompts = isExpanded 
+                ? inactivePrompts 
+                : inactivePrompts.take(initialVisibleInactiveCount).toList();
+                
+            final hiddenCount = inactivePrompts.length - visibleInactivePrompts.length;
+            final visiblePrompts = [...activePrompts, ...visibleInactivePrompts];
+
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(sectionName.toString().toUpperCase(), style: Theme.of(context).textTheme.labelLarge?.copyWith(color: AppColors.textColor2)),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Text(sectionName.toString().toUpperCase(),
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      color: AppColors.textColor2, fontWeight: FontWeight.w900)),
+                ),
                 if (sectionDesc.toString().isNotEmpty) ...[
                   const SizedBox(height: 4),
                   Text(sectionDesc.toString(), style: Theme.of(context).textTheme.bodyMedium),
                 ],
                 const SizedBox(height: 16),
-                ...promptsList.map((prompt) {
+                ...visiblePrompts.map((prompt) {
                   final promptId = prompt['id'] as String;
                   final text = prompt['text'] as String;
                   final isActive = _activePromptIds.contains(promptId) || (_promptAnswers[promptId]?.isNotEmpty ?? false);
@@ -554,27 +658,109 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                             child: TextField(
                               maxLines: 3,
-                              decoration: InputDecoration(
-                                isDense: true,
-                                border: InputBorder.none,
-                                hintText: 'Your answer...',
-                                hintStyle: TextStyle(color: AppColors.textColor1.withOpacity(0.5)),
-                              ),
+                              minLines: 1,
                               onChanged: (val) {
                                 _promptAnswers[promptId] = val;
                               },
-                              controller: TextEditingController(text: _promptAnswers[promptId] ?? '')..selection = TextSelection.collapsed(offset: (_promptAnswers[promptId] ?? '').length),
+                              controller: TextEditingController(text: _promptAnswers[promptId])..selection = TextSelection.collapsed(offset: _promptAnswers[promptId]?.length ?? 0),
+                              decoration: const InputDecoration(
+                                border: InputBorder.none,
+                                hintText: 'Write your answer...',
+                                isDense: true,
+                              ),
                             ),
                           ),
-                        ],
+                        ]
                       ],
                     ),
                   );
-                }).toList(),
+                }),
+                if (hiddenCount > 0)
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _expandedSegments.add(sectionId);
+                        });
+                      },
+                      child: SketchyContainer(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        borderRadius: 999,
+                        backgroundColor: AppColors.inkBlack,
+                        child: Text('+ $hiddenCount more', style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          color: AppColors.white,
+                        )),
+                      ),
+                    ),
+                  ),
+                if (isExpanded && inactivePrompts.length > initialVisibleInactiveCount)
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _expandedSegments.remove(sectionId);
+                        });
+                      },
+                      child: SketchyContainer(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        borderRadius: 999,
+                        backgroundColor: AppColors.inkBlack,
+                        child: Text('Show less', style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          color: AppColors.white,
+                        )),
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: 16),
               ],
             );
           }).toList(),
       ],
+    );
+  }
+
+  Widget _buildMainSectionHeading(BuildContext context, String title) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 32, bottom: 16),
+      child: Row(
+        children: [
+          Expanded(
+            child: Container(
+              height: 2,
+              color: AppColors.textColor2.withOpacity(0.3),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Text(title,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                color: AppColors.textColor2,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 2.0,
+              )),
+          ),
+          Expanded(
+            child: Container(
+              height: 2,
+              color: AppColors.textColor2.withOpacity(0.3),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionHeading(BuildContext context, String title) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8, bottom: 4),
+      child: Text(title,
+        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+          color: AppColors.textColor2,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 1.2,
+        )),
     );
   }
 }

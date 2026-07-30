@@ -43,6 +43,11 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final rawGender = _profileData?['gender']?.toString() ?? AuthService.userGender;
+    final gender = rawGender?.toLowerCase();
+    final isMale = gender == 'male' || gender == 'm';
+    final isFemale = gender == 'female' || gender == 'f';
+
     return Scaffold(
       backgroundColor: _bgCream,
       body: _isLoading
@@ -53,7 +58,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
             )
           : _profileData == null
               ? _buildErrorState()
-              : _buildProfileContent(),
+              : _buildProfileContent(isMale, isFemale),
     );
   }
 
@@ -92,7 +97,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
     );
   }
 
-  Widget _buildProfileContent() {
+  Widget _buildProfileContent(bool isMale, bool isFemale) {
     final name = _profileData?['name'] ?? _profileData?['username'] ?? 'User';
     final age = _profileData?['age']?.toString() ?? '18';
     final school = _profileData?['school'] ?? 'No School';
@@ -332,6 +337,22 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
                   textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, letterSpacing: 0.5),
                 ),
+              ),
+            ),
+            
+            Expanded(
+              child: Align(
+                alignment: Alignment.bottomCenter,
+                child: (isMale || isFemale)
+                    ? IgnorePointer(
+                        child: Image.asset(
+                          isMale ? 'assets/images/boycat.png' : 'assets/images/girlcat.png',
+                          height: 220,
+                          fit: BoxFit.contain,
+                          alignment: Alignment.bottomCenter,
+                        ),
+                      )
+                    : const SizedBox(),
               ),
             ),
             
