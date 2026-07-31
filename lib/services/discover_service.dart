@@ -14,7 +14,7 @@ class DiscoverService {
   /// Prefetch the discover feed in the background.
   static Future<void> prefetchFeed() async {
     try {
-      final url = Uri.parse('$baseUrl/discover?page=1&limit=8');
+      final url = Uri.parse('$baseUrl/discover?page=1&limit=10');
       final response = await http.get(url, headers: _headers);
       if (response.statusCode == 200) {
         final box = await Hive.openBox('discoverCache');
@@ -26,7 +26,7 @@ class DiscoverService {
   }
 
   /// Fetch the discover feed profiles
-  static Future<List<Map<String, dynamic>>> getFeed({int page = 1, int limit = 8}) async {
+  static Future<List<Map<String, dynamic>>> getFeed({int page = 1, int limit = 10}) async {
     try {
       if (page == 1) {
         final box = await Hive.openBox('discoverCache');

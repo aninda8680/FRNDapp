@@ -218,6 +218,71 @@ class _NetBasketWidgetState extends State<_NetBasketWidget> with TickerProviderS
   }
 }
 
+class _DustbinController {
+  _DustbinWidgetState? _state;
+  void _attach(_DustbinWidgetState s) => _state = s;
+  void _detach() => _state = null;
+  void triggerDrop() => _state?._triggerDrop();
+}
+
+class _DustbinWidget extends StatefulWidget {
+  final _DustbinController controller;
+  const _DustbinWidget({super.key, required this.controller});
+  @override
+  State<_DustbinWidget> createState() => _DustbinWidgetState();
+}
+
+class _DustbinWidgetState extends State<_DustbinWidget> with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+  late Animation<double> _scaleAnim;
+  
+  @override
+  void initState() {
+    super.initState();
+    widget.controller._attach(this);
+    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 500));
+    
+    _scaleAnim = TweenSequence([
+      TweenSequenceItem(tween: Tween<double>(begin: 1.0, end: 1.4).chain(CurveTween(curve: Curves.easeOutCubic)), weight: 30.0),
+      TweenSequenceItem(tween: ConstantTween<double>(1.4), weight: 30.0),
+      TweenSequenceItem(tween: Tween<double>(begin: 1.4, end: 1.0).chain(CurveTween(curve: Curves.easeInCubic)), weight: 40.0),
+    ]).animate(_ctrl);
+  }
+
+  @override
+  void dispose() {
+    widget.controller._detach();
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  void _triggerDrop() {
+    _ctrl.forward(from: 0.0);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (context, child) {
+        final isActive = _ctrl.isAnimating;
+        return Transform.scale(
+          scale: _scaleAnim.value,
+          child: Container(
+            width: 76, height: 76,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: isActive ? Colors.redAccent.withOpacity(0.2) : Colors.black45,
+              border: Border.all(color: isActive ? Colors.redAccent : Colors.white30, width: 2),
+            ),
+            child: Icon(isActive ? Icons.delete_sweep_rounded : Icons.delete_outline_rounded, size: 36, color: isActive ? Colors.redAccent : Colors.white70),
+          ),
+        );
+      }
+    );
+  }
+}
+
 class DiscoverFeedScreen extends StatefulWidget {
   const DiscoverFeedScreen({super.key});
   @override
@@ -230,9 +295,15 @@ class _DiscoverFeedScreenState extends State<DiscoverFeedScreen> with TickerProv
   int _page = 1;
   bool _isLoading = true;
   bool _hasMore = true;
+  bool _isFetchingNextBatch = false;
   int _cardPhotoIndex = 0;
 
+  // Threshold logic: when the user reaches this many cards from the end of the queue,
+  // we proactively fetch the next batch so it's ready by the time they finish the current cards.
+  static const int PREFETCH_THRESHOLD = 3;
+
   final _netController = _NetBasketController();
+  final _dustbinController = _DustbinController();
 
   late AnimationController _detailsCtrl;
   late Animation<Offset> _slideAnim;
@@ -261,16 +332,50 @@ class _DiscoverFeedScreenState extends State<DiscoverFeedScreen> with TickerProv
 
   Future<void> _fetchFeed({bool reset = false}) async {
     if (!_hasMore && !reset) return;
-    setState(() => _isLoading = true);
-    if (reset) { _page = 1; _hasMore = true; }
-    final profiles = await DiscoverService.getFeed(page: _page, limit: 8);
-    setState(() {
-      if (reset) { _profiles = profiles; _currentIndex = 0; }
-      else { _profiles.addAll(profiles); }
-      if (profiles.isEmpty) _hasMore = false;
-      _page++;
-      _isLoading = false;
-    });
+    
+    // Prevent overlapping fetch calls if user swipes fast past the threshold
+    if (!reset && _isFetchingNextBatch) return;
+
+    if (reset) {
+      setState(() => _isLoading = true);
+      _page = 1; 
+      _hasMore = true; 
+    } else {
+      _isFetchingNextBatch = true;
+    }
+    
+    try {
+      // Fetch batch of 10 profiles
+      final profiles = await DiscoverService.getFeed(page: _page, limit: 10);
+      
+      if (mounted) {
+        setState(() {
+          if (reset) { 
+            _profiles = profiles; 
+            _currentIndex = 0; 
+          }
+          else { 
+            _profiles.addAll(profiles); 
+          }
+          
+          if (profiles.isEmpty) {
+            _hasMore = false;
+          }
+          _page++;
+        });
+      }
+    } catch (e) {
+      debugPrint('Fetch feed error: $e');
+      // Subtle failure handling: _hasMore remains true, user can try swiping again
+      // to re-trigger the fetch, and it doesn't block already-loaded cards.
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _isFetchingNextBatch = false;
+        });
+      }
+    }
   }
 
   Map<String, dynamic>? get _currentProfile =>
@@ -288,7 +393,8 @@ class _DiscoverFeedScreenState extends State<DiscoverFeedScreen> with TickerProv
     setState(() { _cardPhotoIndex = 0; _currentIndex++; });
     
     // Fetch more profiles in the background if we're running low
-    if (_currentIndex >= _profiles.length - 3 && _hasMore && !_isLoading) {
+    // Trigger fetch if the number of remaining cards is less than or equal to PREFETCH_THRESHOLD
+    if ((_profiles.length - _currentIndex) <= PREFETCH_THRESHOLD && _hasMore && !_isFetchingNextBatch) {
       _fetchFeed();
     }
 
@@ -462,13 +568,17 @@ class _DiscoverFeedScreenState extends State<DiscoverFeedScreen> with TickerProv
               top: 0, left: 0, right: 0,
               child: _NetBasketWidget(controller: _netController),
             ),
+            Positioned(
+              bottom: MediaQuery.of(context).padding.bottom + 14.0, left: 0, right: 0,
+              child: Center(child: _DustbinWidget(controller: _dustbinController)),
+            ),
             Positioned.fill(
               child: Padding(padding: EdgeInsets.fromLTRB(16, 16, 16, bottomPad),
                 child: _PhysicsSwipeCard(
                   key: ValueKey('${_currentProfile!['_id']}_$_currentIndex'),
                   profile: _currentProfile!, currentPhotoIndex: _cardPhotoIndex, photoCount: _getPhotoCount(_currentProfile),
                   getPhoto: (idx) => _getPhoto(_currentProfile, photoIndex: idx), formatHeight: _formatHeight,
-                  onPhotoChange: (idx) => setState(() => _cardPhotoIndex = idx), onAction: _onAction, onShowDetails: _openDetails, netController: _netController,
+                  onPhotoChange: (idx) => setState(() => _cardPhotoIndex = idx), onAction: _onAction, onShowDetails: _openDetails, netController: _netController, dustbinController: _dustbinController,
                 ),
               ),
             ),
@@ -493,12 +603,13 @@ class _PhysicsSwipeCard extends StatefulWidget {
   final void Function(String) onAction;
   final VoidCallback onShowDetails;
   final _NetBasketController netController;
+  final _DustbinController dustbinController;
 
   const _PhysicsSwipeCard({
     Key? key,
     required this.profile, required this.currentPhotoIndex, required this.photoCount,
     required this.getPhoto, required this.formatHeight, required this.onPhotoChange,
-    required this.onAction, required this.onShowDetails, required this.netController,
+    required this.onAction, required this.onShowDetails, required this.netController, required this.dustbinController,
   }) : super(key: key);
 
   @override
@@ -599,8 +710,12 @@ class _PhysicsSwipeCardState extends State<_PhysicsSwipeCard> with TickerProvide
     _pendingAction = 'pass';
     _mode = _AnimMode.drop;
     _releaseVx = velocityX;
-    _dropOrigin = _drag;
-    _ctrl.duration = const Duration(milliseconds: 300);
+    _arcP0 = _drag;
+    final targetDy = (_cardSize.height * 0.5) + 125.0;
+    _arcP2 = Offset(0, targetDy);
+    _arcP1 = Offset(_arcP0.dx + velocityX * 0.04, _arcP0.dy + (_cardSize.height * 0.40));
+    _ctrl.duration = const Duration(milliseconds: 400);
+    widget.dustbinController.triggerDrop();
     _ctrl.forward(from: 0.0);
   }
 
@@ -719,9 +834,11 @@ class _PhysicsSwipeCardState extends State<_PhysicsSwipeCard> with TickerProvide
             tiltZ = (currentDrag.dx * 0.0002) + (v * _releaseVx * 0.0002);
             elevation = (v < 0.5) ? (v * 2.0) : (1.0 - (v - 0.5) * 2.0);
           } else if (_mode == _AnimMode.drop) {
-            final eased = math.pow(v, 2.8).toDouble();
-            currentDrag = Offset(_dropOrigin.dx + _releaseVx * v * 0.15, _dropOrigin.dy + eased * 1800.0);
-            opacity = (1.0 - (v > 0.60 ? (v - 0.60) / 0.40 : 0.0)).clamp(0.0, 1.0);
+            final eased = Curves.easeOutCubic.transform(v);
+            currentDrag = _quadBezier(_arcP0, _arcP1, _arcP2, eased);
+            final shrink = Curves.easeInCirc.transform(v);
+            scale = 1.0 - shrink;
+            opacity = (1.0 - (v > 0.80 ? (v - 0.80) / 0.20 : 0.0)).clamp(0.0, 1.0);
             
             tiltX = (_drag.dy * -0.0006) - (v * 1.5); 
             tiltY = (currentDrag.dx * 0.0006);

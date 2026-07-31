@@ -27,9 +27,11 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
   }
 
   Future<void> _fetchProfile() async {
-    setState(() {
-      _isLoading = true;
-    });
+    if (_profileData == null) {
+      setState(() {
+        _isLoading = true;
+      });
+    }
 
     final data = await AuthService.getProfile();
 
