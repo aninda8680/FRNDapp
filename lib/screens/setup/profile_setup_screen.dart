@@ -7,6 +7,7 @@ import '../../widgets/sketchy_progress_bar.dart';
 import '../../theme/app_colors.dart';
 import '../../services/auth_service.dart';
 import '../../services/onboarding_service.dart';
+import '../../config/dev_config.dart';
 import 'profile_created_screen.dart';
 
 class ProfileSetupScreen extends StatefulWidget {
@@ -28,6 +29,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   @override
   void initState() {
     super.initState();
+
     _loadOnboardingConfig();
     
     // Add listeners to rebuild UI when text changes for validation
@@ -92,6 +94,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   bool _isSaving = false;
 
   bool get _isStep1Valid {
+    if (DevConfig.bypassProfileValidation) return true;
     return _usernameController.text.trim().isNotEmpty &&
            _nameController.text.trim().isNotEmpty &&
            _ageController.text.trim().isNotEmpty &&
@@ -102,19 +105,22 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   }
 
   bool get _isStep2Valid {
-    return _photoPaths.where((p) => p != null).length == 4;
+    return true; // Photos can be added later
   }
 
   bool get _isStep3Valid {
+    if (DevConfig.bypassProfileValidation) return true;
     return _selectedInterests.length >= 5 && _selectedInterests.length <= 10;
   }
 
   bool get _isStep4Valid {
+    if (DevConfig.bypassProfileValidation) return true;
     final validAnswersCount = _promptAnswers.values.where((ans) => ans.trim().isNotEmpty).length;
     return validAnswersCount == 3;
   }
 
   bool get _isStep5Valid {
+    if (DevConfig.bypassProfileValidation) return true;
     return _selectedGender != null && 
            _selectedLookingFor != null && 
            _selectedSexualOrientation != null;
@@ -255,7 +261,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             child: TextField(
               controller: _nameController,
-              decoration: InputDecoration(isDense: true, border: InputBorder.none, hintText: 'John Updated', hintStyle: TextStyle(color: AppColors.textColor1.withOpacity(0.5))),
+              decoration: InputDecoration(isDense: true, border: InputBorder.none, hintText: 'Enter you name', hintStyle: TextStyle(color: AppColors.textColor1.withOpacity(0.5))),
             ),
           ),
           const SizedBox(height: 24),
@@ -266,7 +272,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
             child: TextField(
               controller: _ageController,
               keyboardType: TextInputType.number, 
-              decoration: InputDecoration(isDense: true, border: InputBorder.none, hintText: '21', hintStyle: TextStyle(color: AppColors.textColor1.withOpacity(0.5))),
+              decoration: InputDecoration(isDense: true, border: InputBorder.none, hintText: 'Enter your age', hintStyle: TextStyle(color: AppColors.textColor1.withOpacity(0.5))),
             ),
           ),
           const SizedBox(height: 24),
@@ -298,7 +304,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
             child: TextField(
               controller: _bioController,
               maxLines: 3,
-              decoration: InputDecoration(isDense: true, border: InputBorder.none, hintText: 'New bio text', hintStyle: TextStyle(color: AppColors.textColor1.withOpacity(0.5))),
+              decoration: InputDecoration(isDense: true, border: InputBorder.none, hintText: 'Some lines about you', hintStyle: TextStyle(color: AppColors.textColor1.withOpacity(0.5))),
             ),
           ),
           const SizedBox(height: 24),
@@ -308,7 +314,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             child: TextField(
               controller: _schoolController,
-              decoration: InputDecoration(isDense: true, border: InputBorder.none, hintText: 'Adamas University', hintStyle: TextStyle(color: AppColors.textColor1.withOpacity(0.5))),
+              decoration: InputDecoration(isDense: true, border: InputBorder.none, hintText: 'SOET, SOMC, SOLJ, etc..', hintStyle: TextStyle(color: AppColors.textColor1.withOpacity(0.5))),
             ),
           ),
           const SizedBox(height: 24),
@@ -318,7 +324,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             child: TextField(
               controller: _courseController,
-              decoration: InputDecoration(isDense: true, border: InputBorder.none, hintText: 'CSE', hintStyle: TextStyle(color: AppColors.textColor1.withOpacity(0.5))),
+              decoration: InputDecoration(isDense: true, border: InputBorder.none, hintText: 'CSE, BCA, LLB, etc..', hintStyle: TextStyle(color: AppColors.textColor1.withOpacity(0.5))),
             ),
           ),
           const SizedBox(height: 24),
@@ -329,7 +335,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
             child: TextField(
               controller: _heightController,
               keyboardType: TextInputType.number,
-              decoration: InputDecoration(isDense: true, border: InputBorder.none, hintText: '175', hintStyle: TextStyle(color: AppColors.textColor1.withOpacity(0.5))),
+              decoration: InputDecoration(isDense: true, border: InputBorder.none, hintText: 'in cm', hintStyle: TextStyle(color: AppColors.textColor1.withOpacity(0.5))),
             ),
           ),
           const SizedBox(height: 24),
@@ -390,7 +396,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
           ),
           const SizedBox(height: 32),
           SketchyButton(
-            text: 'NEXT STEP',
+            text: _photoPaths.any((p) => p != null) ? 'NEXT STEP' : 'SKIP',
             onPressed: _isStep2Valid ? _nextStep : null,
           ),
           const SizedBox(height: 24),

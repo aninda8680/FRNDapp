@@ -102,13 +102,30 @@ class _LoginScreenState extends State<LoginScreen> {
     final bool isKeyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Get Verified')),
-      body: SafeArea(
-        child: Stack(
-          children: [
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        title: const Text('Get Verified'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
+      body: Stack(
+        children: [
+            // Top branch illustration
+            Positioned(
+              top: 60,
+              left: 0,
+              child: Opacity(
+                opacity: 0.8,
+                child: Image.asset(
+                  'assets/images/redTreebranch.png',
+                  width: 200,
+                  fit: BoxFit.contain,
+                ),
+              ),
+            ),
             // Background illustration — blurs when keyboard is up
             Positioned(
-              top: 50,
+              top: 150,
               left: 0,
               right: 0,
               child: TweenAnimationBuilder<double>(
@@ -132,8 +149,9 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
 
             // Form content
-            CustomScrollView(
-              slivers: [
+            SafeArea(
+              child: CustomScrollView(
+                slivers: [
                 SliverFillRemaining(
                   hasScrollBody: false,
                   child: Padding(
@@ -147,7 +165,10 @@ class _LoginScreenState extends State<LoginScreen> {
                         // Email field
                         Text(
                           'ENTER COLLEGE ID',
-                          style: Theme.of(context).textTheme.labelLarge,
+                          style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                                color: const Color(0xFF800000),
+                                fontWeight: FontWeight.bold,
+                              ),
                         ),
                         const SizedBox(height: 12),
                         SketchyContainer(
@@ -155,9 +176,12 @@ class _LoginScreenState extends State<LoginScreen> {
                           child: TextField(
                             controller: _emailController,
                             keyboardType: TextInputType.emailAddress,
-                            decoration: const InputDecoration(
+                            decoration: InputDecoration(
                               border: InputBorder.none,
-                              hintText: 'student@college.edu',
+                              hintText: 'enter your college mail',
+                              hintStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                    color: Colors.grey.withOpacity(0.5),
+                                  ),
                             ),
                             style: Theme.of(context).textTheme.bodyLarge,
                           ),
@@ -167,7 +191,10 @@ class _LoginScreenState extends State<LoginScreen> {
                         // Password field
                         Text(
                           'PASSWORD',
-                          style: Theme.of(context).textTheme.labelLarge,
+                          style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                                color: const Color(0xFF800000),
+                                fontWeight: FontWeight.bold,
+                              ),
                         ),
                         const SizedBox(height: 12),
                         SketchyContainer(
@@ -175,9 +202,12 @@ class _LoginScreenState extends State<LoginScreen> {
                           child: TextField(
                             controller: _passwordController,
                             obscureText: true,
-                            decoration: const InputDecoration(
+                            decoration: InputDecoration(
                               border: InputBorder.none,
-                              hintText: 'Enter password',
+                              hintText: 'enter password',
+                              hintStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                    color: Colors.grey.withOpacity(0.5),
+                                  ),
                             ),
                             style: Theme.of(context).textTheme.bodyLarge,
                           ),
@@ -230,8 +260,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

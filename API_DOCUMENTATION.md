@@ -567,12 +567,34 @@ Update the authenticated user's own profile. Requires authentication cookie.
 | `height` | Number (cm) |
 | `hobbies` | Array, max 20 items |
 | `skills` | Array, max 20 items |
-| `lookingFor` | `"friends"` \| `"dating"` |
-| `pictures` | Array, max 4 items; each must have `url` and `fileId` |
+| `customDesignId` | Optional string (max 100 chars). **Gold Pass Exclusive** theme/card design ID. |
 
 **Response (200 OK):**
 ```json
 { "message": "Profile updated successfully", "user": { ... } }
+```
+
+---
+
+#### PUT `/api/users/me/design`
+
+Claim or update a custom profile card design theme ID. **Exclusive to active Gold Pass subscribers.** Non-gold users calling this endpoint will receive `403 Forbidden`.
+
+**Body:**
+```json
+{
+  "customDesignId": "theme_neon_cyberpunk"
+}
+```
+
+> Send `null` or `""` to reset back to default standard profile card design.
+
+**Response (200 OK):**
+```json
+{
+  "message": "Custom profile design set successfully",
+  "customDesignId": "theme_neon_cyberpunk"
+}
 ```
 
 ---

@@ -414,8 +414,7 @@ class _DiscoverFeedScreenState extends State<DiscoverFeedScreen> with TickerProv
                 child: Container(
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    border: Border.all(color: Colors.black, width: 4),
-                    borderRadius: BorderRadius.circular(32),
+                    borderRadius: BorderRadius.circular(28),
                   ),
                 ),
               ),
@@ -754,11 +753,8 @@ class _PhysicsSwipeCardState extends State<_PhysicsSwipeCard> with TickerProvide
                   onPanEnd: _onPanEnd,
                   child: Container(
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(32),
-                      color: const Color(0xFF0A0A0A),
-                      border: Border.all(color: const Color(0xFF0A0A0A), width: 4),
+                      borderRadius: BorderRadius.circular(28),
                       boxShadow: [
-                        const BoxShadow(color: Color(0xFF0A0A0A), offset: Offset(8, 8), blurRadius: 0, spreadRadius: 0),
                         BoxShadow(color: shadowColor, offset: Offset(0, offsetY), blurRadius: blur, spreadRadius: spread),
                       ],
                     ),

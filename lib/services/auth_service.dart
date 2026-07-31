@@ -213,11 +213,6 @@ class AuthService {
 
   /// Updates the user's profile.
   static Future<bool> updateProfile(Map<String, dynamic> data) async {
-    if (DevConfig.bypassAuth) {
-      print('Bypassing API Update. Payload: ${jsonEncode(data)}');
-      return true;
-    }
-
     try {
       final response = await http.put(
         Uri.parse('https://frnd-api-n3hv.onrender.com/api/users/me'),
@@ -258,33 +253,6 @@ class AuthService {
 
   /// Fetches the authenticated user's own full profile.
   static Future<Map<String, dynamic>?> getProfile() async {
-    if (DevConfig.bypassAuth) {
-      return {
-        "profileCompletionPercentage": 75,
-        "name": "Alex",
-        "gender": "male",
-        "age": 20,
-        "school": "Adamas University",
-        "course": "CSE",
-        "bio": "Leveling up in the game of life. Looking for a player 2.",
-        "hobbies": ["Gaming", "Coding"],
-        "interests": [
-          { "segmentId": "gaming_tech", "interestId": "coding", "label": "Coding", "emoji": "💻" },
-          { "segmentId": "sports_fitness", "interestId": "football", "label": "Football", "emoji": "⚽" }
-        ],
-        "prompts": [
-          {
-            "promptId": "q01",
-            "sectionId": "questions",
-            "question": "What's a random skill you're weirdly proud of?",
-            "answer": "Solving a Rubik's cube in 30 seconds"
-          }
-        ],
-        "lookingFor": "dating",
-        "pictures": [{"url": "https://dummyimage.com/600x800"}],
-      };
-    }
-
     try {
       final response = await http.get(
         Uri.parse('https://frnd-api-n3hv.onrender.com/api/users/me'),
@@ -328,13 +296,6 @@ class AuthService {
 
   /// Uploads a picture to the backend and returns the picture object { url, fileId }
   static Future<Map<String, dynamic>?> uploadPicture(List<int> imageBytes, String filename) async {
-    if (DevConfig.bypassAuth) {
-      return {
-        "url": "https://dummyimage.com/600x800",
-        "fileId": "dummy_${DateTime.now().millisecondsSinceEpoch}"
-      };
-    }
-
     try {
       final request = http.MultipartRequest(
         'POST',
