@@ -120,22 +120,18 @@ class _LikesMatchesScreenState extends State<LikesMatchesScreen> {
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
-        toolbarHeight: 65,
         backgroundColor: _bgCream, elevation: 0, surfaceTintColor: Colors.transparent,
-        title: Row(mainAxisSize: MainAxisSize.min, children: [
-          const Icon(Icons.chat_bubble_rounded, color: _burgundy, size: 20),
-          const SizedBox(width: 6),
-          Text('MATCHES', style: GoogleFonts.caveat(color: _burgundy, fontWeight: FontWeight.w900, letterSpacing: 2, fontSize: 26)),
-        ]),
-        centerTitle: true,
-        actions: [
-          Align(
-            alignment: Alignment.bottomCenter,
-            child: Image.asset('assets/images/wer-removebg-preview.png', height: 42, fit: BoxFit.contain),
+        title: const Text(
+          'MATCHES',
+          style: TextStyle(
+            color: Color(0xFF1A1A1A),
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 2.0,
           ),
-          const SizedBox(width: 16),
-        ],
-        bottom: PreferredSize(preferredSize: const Size.fromHeight(2), child: Container(height: 2, color: Colors.black)),
+        ),
+        centerTitle: true,
+        bottom: PreferredSize(preferredSize: const Size.fromHeight(1.0), child: Container(height: 1.0, color: const Color(0x121A1A1A))),
       ),
       body: RefreshIndicator(
         color: _burgundy,

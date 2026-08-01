@@ -150,6 +150,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.cream,
+        actionsAlignment: MainAxisAlignment.center,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
           side: const BorderSide(color: AppColors.textColor1, width: 2),
@@ -198,6 +199,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.cream,
+        actionsAlignment: MainAxisAlignment.center,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
           side: const BorderSide(color: AppColors.textColor1, width: 2.5),
@@ -216,6 +218,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         actions: [
           SketchyButton(
             text: 'START SWIPING',
+            showSparkles: false,
             onPressed: () => Navigator.pop(context),
           ),
         ],
@@ -228,6 +231,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.cream,
+        actionsAlignment: MainAxisAlignment.center,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
           side: const BorderSide(color: AppColors.textColor1, width: 2.5),
@@ -246,6 +250,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         actions: [
           SketchyButton(
             text: 'RETRY PAYMENT',
+            showSparkles: false,
             onPressed: () {
               Navigator.pop(context);
               final tier = _tiers[_selectedTierKey];

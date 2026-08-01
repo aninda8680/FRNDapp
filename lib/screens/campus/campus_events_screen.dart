@@ -175,22 +175,21 @@ class _CampusEventsScreenState extends State<CampusEventsScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Header
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 16.0),
                   child: Center(
                     child: Text(
-                      'Anonymous\nWhispers',
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.outfit(
-                        fontSize: 28,
-                        fontWeight: FontWeight.w900,
-                        color: const Color(0xFF1A1A1A),
-                        height: 1.1,
-                        letterSpacing: -0.5,
+                      'CAMPUS',
+                      style: TextStyle(
+                        color: Color(0xFF1A1A1A),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 2.0,
                       ),
                     ),
                   ),
                 ),
+                Container(color: const Color(0x121A1A1A), height: 1.0),
                 // Post list
                 Expanded(
                   child: _isLoading
