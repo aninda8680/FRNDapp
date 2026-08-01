@@ -107,6 +107,7 @@ class _ChatListRefreshState extends State<ChatListScreen> {
     return Scaffold(
       backgroundColor: _cream,
       appBar: AppBar(
+        toolbarHeight: 48,
         backgroundColor: _cream, elevation: 0, surfaceTintColor: Colors.transparent,
         title: const Text(
           'CAMPUS CHATS',

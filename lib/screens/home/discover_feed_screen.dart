@@ -494,6 +494,7 @@ class _DiscoverFeedScreenState extends State<DiscoverFeedScreen> with TickerProv
     return Scaffold(
       backgroundColor: _burgundy,
       appBar: AppBar(
+        toolbarHeight: 48,
         backgroundColor: _bgCream, elevation: 0, surfaceTintColor: Colors.transparent,
         title: const Text(
           'DISCOVER',

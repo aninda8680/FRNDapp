@@ -120,6 +120,7 @@ class _LikesMatchesScreenState extends State<LikesMatchesScreen> {
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
+        toolbarHeight: 48,
         backgroundColor: _bgCream, elevation: 0, surfaceTintColor: Colors.transparent,
         title: const Text(
           'MATCHES',
