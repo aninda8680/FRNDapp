@@ -6,6 +6,8 @@ import 'matches/likes_matches_screen.dart';
 import 'chats/chat_list_screen.dart';
 import 'campus/campus_events_screen.dart';
 import 'profile/my_profile_screen.dart';
+import '../services/auth_service.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class MainScaffold extends StatefulWidget {
   const MainScaffold({super.key});
@@ -75,12 +77,24 @@ class _MainScaffoldState extends State<MainScaffold> {
     );
   }
 
+  String? get _userPhotoUrl {
+    final profile = AuthService.userProfile;
+    if (profile != null && profile['pictures'] != null) {
+      final pics = profile['pictures'] as List;
+      if (pics.isNotEmpty && pics[0] is Map) {
+        return pics[0]['url'] as String?;
+      }
+    }
+    return null;
+  }
+
   Widget _buildNavItem(IconData outlineIcon, IconData filledIcon, int index) {
     final isSelected = _currentIndex == index;
     
     // Burgundy when selected, slightly lighter dark grey when unselected
     final bgColor = isSelected ? const Color(0xFFA41534) : const Color(0xFF2A2A2A);
     final iconColor = Colors.white;
+    final hasPhoto = index == 4 && _userPhotoUrl != null;
     
     return GestureDetector(
       onTap: () => _onTabSelected(index),
@@ -88,16 +102,40 @@ class _MainScaffoldState extends State<MainScaffold> {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 250),
         curve: Curves.easeOutCubic,
-        padding: const EdgeInsets.all(12),
+        padding: hasPhoto ? EdgeInsets.zero : const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: bgColor,
           shape: BoxShape.circle,
         ),
-        child: Icon(
-          isSelected ? filledIcon : outlineIcon,
-          color: iconColor,
-          size: 24,
-        ),
+        child: hasPhoto
+            ? Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: isSelected ? Border.all(color: Colors.white, width: 2.0) : null,
+                ),
+                child: ClipOval(
+                  child: CachedNetworkImage(
+                    imageUrl: _userPhotoUrl!,
+                    fit: BoxFit.cover,
+                    placeholder: (context, url) => Container(color: Colors.grey[800]),
+                    errorWidget: (context, url, error) => Padding(
+                      padding: const EdgeInsets.all(12.0),
+                      child: Icon(
+                        isSelected ? filledIcon : outlineIcon,
+                        color: iconColor,
+                        size: 24,
+                      ),
+                    ),
+                  ),
+                ),
+              )
+            : Icon(
+                isSelected ? filledIcon : outlineIcon,
+                color: iconColor,
+                size: 24,
+              ),
       ),
     );
   }

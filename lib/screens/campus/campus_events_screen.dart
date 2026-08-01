@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:timeago/timeago.dart' as timeago;
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../services/post_service.dart';
 import '../../widgets/top_notification.dart';
 import 'campus_compose_screen.dart';
@@ -157,7 +158,7 @@ class _CampusEventsScreenState extends State<CampusEventsScreen> {
         children: [
           // Background layer
           Positioned(
-            top: -40,
+            top: -30,
             left: 0,
             right: 0,
             child: Opacity(
@@ -166,6 +167,27 @@ class _CampusEventsScreenState extends State<CampusEventsScreen> {
                 'assets/images/redTreebg.png',
                 fit: BoxFit.fitWidth,
                 alignment: Alignment.topCenter,
+              ),
+            ),
+          ),
+          // Status bar gradient for better icon visibility
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            height: MediaQuery.of(context).padding.top + 40,
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    const Color(0xFFFAF4E1),
+                    const Color(0xFFFAF4E1).withValues(alpha: 0.9),
+                    const Color(0xFFFAF4E1).withValues(alpha: 0.0),
+                  ],
+                  stops: const [0.0, 0.5, 1.0],
+                ),
               ),
             ),
           ),
@@ -295,6 +317,14 @@ class _PostCard extends StatelessWidget {
             author?['username'] as String? ??
             'Campus');
 
+    String? authorPhotoUrl;
+    if (!isAnonymous && author != null && author['pictures'] != null && (author['pictures'] as List).isNotEmpty) {
+      final pic = author['pictures'][0];
+      if (pic is Map && pic['url'] != null) {
+        authorPhotoUrl = pic['url'] as String;
+      }
+    }
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       padding: const EdgeInsets.all(16),
@@ -302,8 +332,8 @@ class _PostCard extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isAnonymous ? burgundy.withValues(alpha: 0.4) : Colors.black.withValues(alpha: 0.06), 
-          width: isAnonymous ? 1.2 : 1,
+          color: burgundy.withValues(alpha: 0.4), 
+          width: 1.2,
         ),
         boxShadow: [
           BoxShadow(
@@ -322,12 +352,30 @@ class _PostCard extends StatelessWidget {
               if (!isAnonymous)
                 Row(
                   children: [
-                    const Icon(
-                      Icons.person_outline,
-                      size: 16,
-                      color: Colors.black54,
-                    ),
-                    const SizedBox(width: 6),
+                    if (authorPhotoUrl != null)
+                      Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: burgundy.withValues(alpha: 0.3), width: 1),
+                        ),
+                        child: ClipOval(
+                          child: CachedNetworkImage(
+                            imageUrl: authorPhotoUrl,
+                            fit: BoxFit.cover,
+                            placeholder: (context, url) => Container(color: Colors.grey[200]),
+                            errorWidget: (context, url, error) => const Icon(Icons.person_outline, size: 20, color: Colors.black54),
+                          ),
+                        ),
+                      )
+                    else
+                      const Icon(
+                        Icons.person_outline,
+                        size: 24,
+                        color: Colors.black54,
+                      ),
+                    const SizedBox(width: 8),
                     Text(
                       displayName,
                       style: GoogleFonts.outfit(

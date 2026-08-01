@@ -103,7 +103,7 @@ class _CampusComposeScreenState extends State<CampusComposeScreen> {
         children: [
           // Background layer
           Positioned(
-            top: -40,
+            top: -30,
             left: 0,
             right: 0,
             child: Opacity(

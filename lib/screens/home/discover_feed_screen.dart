@@ -218,67 +218,140 @@ class _NetBasketWidgetState extends State<_NetBasketWidget> with TickerProviderS
   }
 }
 
-class _DustbinController {
-  _DustbinWidgetState? _state;
-  void _attach(_DustbinWidgetState s) => _state = s;
-  void _detach() => _state = null;
-  void triggerDrop() => _state?._triggerDrop();
-}
+class _DustbinController extends ChangeNotifier {
+  late AnimationController animCtrl;
+  double wobble = 0.0;
+  double poof = 0.0;
 
-class _DustbinWidget extends StatefulWidget {
-  final _DustbinController controller;
-  const _DustbinWidget({super.key, required this.controller});
-  @override
-  State<_DustbinWidget> createState() => _DustbinWidgetState();
-}
+  void init(TickerProvider vsync) {
+    animCtrl = AnimationController(vsync: vsync, duration: const Duration(milliseconds: 650));
+    animCtrl.addListener(() {
+      final v = animCtrl.value;
+      // Wobble: damped sine wave
+      wobble = math.sin(v * math.pi * 5) * math.exp(-v * 4.5) * 0.12;
+      // Poof: 0 -> 1
+      poof = v;
+      notifyListeners();
+    });
+  }
 
-class _DustbinWidgetState extends State<_DustbinWidget> with SingleTickerProviderStateMixin {
-  late AnimationController _ctrl;
-  late Animation<double> _scaleAnim;
-  
-  @override
-  void initState() {
-    super.initState();
-    widget.controller._attach(this);
-    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 500));
-    
-    _scaleAnim = TweenSequence([
-      TweenSequenceItem(tween: Tween<double>(begin: 1.0, end: 1.4).chain(CurveTween(curve: Curves.easeOutCubic)), weight: 30.0),
-      TweenSequenceItem(tween: ConstantTween<double>(1.4), weight: 30.0),
-      TweenSequenceItem(tween: Tween<double>(begin: 1.4, end: 1.0).chain(CurveTween(curve: Curves.easeInCubic)), weight: 40.0),
-    ]).animate(_ctrl);
+  void triggerDrop() {
+    animCtrl.forward(from: 0.0);
   }
 
   @override
   void dispose() {
-    widget.controller._detach();
-    _ctrl.dispose();
+    animCtrl.dispose();
     super.dispose();
   }
+}
 
-  void _triggerDrop() {
-    _ctrl.forward(from: 0.0);
+class _DustbinPainter extends CustomPainter {
+  final double wobble;
+  final double poof;
+  _DustbinPainter({required this.wobble, required this.poof});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.save();
+    canvas.translate(size.width / 2, size.height);
+    canvas.rotate(wobble);
+    canvas.translate(-size.width / 2, -size.height);
+
+    final w = size.width;
+    final h = size.height;
+    final topY = h * 0.15;
+    final bottomY = h * 0.95;
+    final topW = w * 0.85;
+    final bottomW = w * 0.6;
+    final rimRect = Rect.fromCenter(center: Offset(w / 2, topY), width: topW, height: 16);
+
+    // 1. Draw Bin Exterior Body
+    final bodyPath = Path()
+      ..moveTo((w - topW) / 2, topY)
+      ..lineTo((w + topW) / 2, topY)
+      ..lineTo((w + bottomW) / 2, bottomY)
+      ..lineTo((w - bottomW) / 2, bottomY)
+      ..close();
+      
+    canvas.drawPath(bodyPath, Paint()..color = const Color(0xFFFDF4E5));
+
+    // 2. Stroke outline for body
+    final strokePaint = Paint()
+      ..color = Colors.black
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3.5
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+      
+    canvas.drawLine(Offset((w - topW) / 2, topY), Offset((w - bottomW) / 2, bottomY), strokePaint);
+    canvas.drawLine(Offset((w + topW) / 2, topY), Offset((w + bottomW) / 2, bottomY), strokePaint);
+    canvas.drawLine(Offset((w - bottomW) / 2, bottomY), Offset((w + bottomW) / 2, bottomY), strokePaint);
+
+    // 3. Draw Dark Interior Hole (the top ellipse)
+    final gradient = RadialGradient(
+      center: const Alignment(0, 0),
+      radius: 1.0,
+      colors: [Colors.black87, Colors.black],
+    ).createShader(rimRect);
+    canvas.drawOval(rimRect, Paint()..shader = gradient);
+
+    // 4. Draw rim outline
+    canvas.drawOval(rimRect, strokePaint);
+
+    // 5. Small vertical hand-drawn details
+    final detailPaint = Paint()..color = Colors.black..style = PaintingStyle.stroke..strokeWidth = 2.0..strokeCap = StrokeCap.round;
+    canvas.drawLine(Offset(w / 2 - 12, topY + 16), Offset(w / 2 - 10, topY + 45), detailPaint);
+    canvas.drawLine(Offset(w / 2 + 12, topY + 16), Offset(w / 2 + 10, topY + 45), detailPaint);
+    canvas.drawLine(Offset(w / 2, topY + 18), Offset(w / 2, topY + 50), detailPaint);
+
+    if (poof > 0 && poof < 1.0) {
+      _drawPoof(canvas, Offset(w / 2, topY));
+    }
+
+    canvas.restore();
+  }
+
+  void _drawPoof(Canvas canvas, Offset center) {
+    final t = poof;
+    final paint = Paint()..color = Colors.black87..style = PaintingStyle.fill;
+    for (int i = 0; i < 24; i++) {
+      final angle = (i / 24) * math.pi + math.pi + 0.1; 
+      final dist = 5.0 + math.sin(t * math.pi) * 45.0 * (0.6 + 0.6 * (i % 3));
+      final dx = math.cos(angle) * dist;
+      final dy = math.sin(angle) * dist + (t * t * 60.0);
+      final pos = center + Offset(dx, dy);
+      final size = 4.0 + (i % 3);
+      
+      canvas.save();
+      canvas.translate(pos.dx, pos.dy);
+      canvas.rotate(t * 10.0 + i);
+      
+      if (i.isEven) {
+        canvas.drawRect(Rect.fromCenter(center: Offset.zero, width: size, height: size * 1.2), paint);
+      } else {
+        final path = Path()..moveTo(0, -size)..lineTo(size, size)..lineTo(-size, size)..close();
+        canvas.drawPath(path, paint);
+      }
+      canvas.restore();
+    }
   }
 
   @override
+  bool shouldRepaint(covariant _DustbinPainter old) => old.wobble != wobble || old.poof != poof;
+}
+
+class _DustbinWidget extends StatelessWidget {
+  final _DustbinController controller;
+  const _DustbinWidget({super.key, required this.controller});
+  @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: _ctrl,
-      builder: (context, child) {
-        final isActive = _ctrl.isAnimating;
-        return Transform.scale(
-          scale: _scaleAnim.value,
-          child: Container(
-            width: 76, height: 76,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: isActive ? Colors.redAccent.withOpacity(0.2) : Colors.black45,
-              border: Border.all(color: isActive ? Colors.redAccent : Colors.white30, width: 2),
-            ),
-            child: Icon(isActive ? Icons.delete_sweep_rounded : Icons.delete_outline_rounded, size: 36, color: isActive ? Colors.redAccent : Colors.white70),
-          ),
-        );
-      }
+      animation: controller,
+      builder: (context, _) => CustomPaint(
+        size: const Size(80, 100),
+        painter: _DustbinPainter(wobble: controller.wobble, poof: controller.poof),
+      ),
     );
   }
 }
@@ -303,7 +376,8 @@ class _DiscoverFeedScreenState extends State<DiscoverFeedScreen> with TickerProv
   static const int PREFETCH_THRESHOLD = 3;
 
   final _netController = _NetBasketController();
-  final _dustbinController = _DustbinController();
+  late final _DustbinController _dustbinController;
+  final GlobalKey _dustbinKey = GlobalKey();
 
   late AnimationController _detailsCtrl;
   late Animation<Offset> _slideAnim;
@@ -317,6 +391,7 @@ class _DiscoverFeedScreenState extends State<DiscoverFeedScreen> with TickerProv
   @override
   void initState() {
     super.initState();
+    _dustbinController = _DustbinController()..init(this);
     _detailsCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 480));
     _slideAnim = Tween<Offset>(begin: const Offset(0, 1), end: Offset.zero).animate(CurvedAnimation(parent: _detailsCtrl, curve: Curves.easeOutCubic));
     _fadeAnim = Tween<double>(begin: 0, end: 0.5).animate(CurvedAnimation(parent: _detailsCtrl, curve: Curves.easeOut));
@@ -326,8 +401,24 @@ class _DiscoverFeedScreenState extends State<DiscoverFeedScreen> with TickerProv
 
   @override
   void dispose() {
+    _dustbinController.dispose();
     _detailsCtrl.dispose();
     super.dispose();
+  }
+
+  void _precacheImages(List<Map<String, dynamic>> batch) {
+    if (!mounted) return;
+    for (final profile in batch) {
+      final pictures = profile['pictures'] as List?;
+      if (pictures != null && pictures.isNotEmpty) {
+        for (final pic in pictures) {
+          final url = pic['url'] as String?;
+          if (url != null && url.isNotEmpty) {
+            precacheImage(CachedNetworkImageProvider(url), context).catchError((_) {});
+          }
+        }
+      }
+    }
   }
 
   Future<void> _fetchFeed({bool reset = false}) async {
@@ -349,6 +440,7 @@ class _DiscoverFeedScreenState extends State<DiscoverFeedScreen> with TickerProv
       final profiles = await DiscoverService.getFeed(page: _page, limit: 10);
       
       if (mounted) {
+        _precacheImages(profiles);
         setState(() {
           if (reset) { 
             _profiles = profiles; 
@@ -567,7 +659,7 @@ class _DiscoverFeedScreenState extends State<DiscoverFeedScreen> with TickerProv
             ),
             Positioned(
               bottom: MediaQuery.of(context).padding.bottom + 14.0, left: 0, right: 0,
-              child: Center(child: _DustbinWidget(controller: _dustbinController)),
+              child: Center(child: _DustbinWidget(key: _dustbinKey, controller: _dustbinController)),
             ),
             Positioned.fill(
               child: Padding(padding: EdgeInsets.fromLTRB(16, 16, 16, bottomPad),
@@ -575,7 +667,8 @@ class _DiscoverFeedScreenState extends State<DiscoverFeedScreen> with TickerProv
                   key: ValueKey('${_currentProfile!['_id']}_$_currentIndex'),
                   profile: _currentProfile!, currentPhotoIndex: _cardPhotoIndex, photoCount: _getPhotoCount(_currentProfile),
                   getPhoto: (idx) => _getPhoto(_currentProfile, photoIndex: idx), formatHeight: _formatHeight,
-                  onPhotoChange: (idx) => setState(() => _cardPhotoIndex = idx), onAction: _onAction, onShowDetails: _openDetails, netController: _netController, dustbinController: _dustbinController,
+                  onPhotoChange: (idx) => setState(() => _cardPhotoIndex = idx), onAction: _onAction, onShowDetails: _openDetails, 
+                  netController: _netController, dustbinController: _dustbinController, dustbinKey: _dustbinKey,
                 ),
               ),
             ),
@@ -601,12 +694,14 @@ class _PhysicsSwipeCard extends StatefulWidget {
   final VoidCallback onShowDetails;
   final _NetBasketController netController;
   final _DustbinController dustbinController;
+  final GlobalKey dustbinKey;
 
   const _PhysicsSwipeCard({
     Key? key,
     required this.profile, required this.currentPhotoIndex, required this.photoCount,
     required this.getPhoto, required this.formatHeight, required this.onPhotoChange,
-    required this.onAction, required this.onShowDetails, required this.netController, required this.dustbinController,
+    required this.onAction, required this.onShowDetails, required this.netController, 
+    required this.dustbinController, required this.dustbinKey,
   }) : super(key: key);
 
   @override
@@ -708,11 +803,34 @@ class _PhysicsSwipeCardState extends State<_PhysicsSwipeCard> with TickerProvide
     _mode = _AnimMode.drop;
     _releaseVx = velocityX;
     _arcP0 = _drag;
-    final targetDy = (_cardSize.height * 0.5) + 125.0;
-    _arcP2 = Offset(0, targetDy);
-    _arcP1 = Offset(_arcP0.dx + velocityX * 0.04, _arcP0.dy + (_cardSize.height * 0.40));
-    _ctrl.duration = const Duration(milliseconds: 400);
-    widget.dustbinController.triggerDrop();
+
+    double targetDy = (_cardSize.height * 0.5) + 125.0;
+    double targetDx = 0.0;
+
+    // Dynamic coordinate calculation to target the bin mouth
+    final RenderBox? dustbinBox = widget.dustbinKey.currentContext?.findRenderObject() as RenderBox?;
+    if (dustbinBox != null) {
+      final RenderBox cardBox = context.findRenderObject() as RenderBox;
+      final dustbinGlobal = dustbinBox.localToGlobal(dustbinBox.size.center(Offset.zero));
+      final cardCenterGlobal = cardBox.localToGlobal(cardBox.size.center(Offset.zero));
+      final offsetToDustbin = dustbinGlobal - cardCenterGlobal;
+      targetDx = offsetToDustbin.dx;
+      // Drop deeply enough so the top edge vanishes behind the rim
+      targetDy = offsetToDustbin.dy + 45.0; 
+    }
+
+    _arcP2 = Offset(targetDx, targetDy);
+    _arcP1 = Offset(_arcP0.dx + velocityX * 0.04, _arcP0.dy + (_cardSize.height * 0.30));
+    _ctrl.duration = const Duration(milliseconds: 480);
+    
+    // Delay wobble and poof to sync with visual entry
+    Future.delayed(const Duration(milliseconds: 280), () {
+      if (mounted) {
+        widget.dustbinController.triggerDrop();
+        HapticFeedback.mediumImpact();
+      }
+    });
+
     _ctrl.forward(from: 0.0);
   }
 
@@ -740,10 +858,15 @@ class _PhysicsSwipeCardState extends State<_PhysicsSwipeCard> with TickerProvide
       final Widget cachedCardContent = ClipRRect(
         borderRadius: BorderRadius.circular(28),
         child: Stack(fit: StackFit.expand, children: [
-          photoUrl.isNotEmpty ? CachedNetworkImage(imageUrl: photoUrl, fit: BoxFit.cover, placeholder: (_, __) => const ColoredBox(color: Colors.black12), errorWidget: (_, __, ___) => const ColoredBox(color: Color(0xFF1A1A1A), child: Icon(Icons.person, size: 80, color: Colors.white30))) : const ColoredBox(color: Color(0xFF1A1A1A)),
-          Positioned.fill(child: DecoratedBox(decoration: BoxDecoration(gradient: RadialGradient(center: const Alignment(0, -0.3), radius: 1.0, colors: [Colors.transparent, Colors.black.withOpacity(0.35)])))),
-          Positioned.fill(child: DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Colors.transparent, Colors.black26, Colors.black87, Colors.black.withOpacity(0.92)], stops: const [0.0, 0.35, 0.65, 1.0])))),
-          Positioned.fill(child: DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Colors.black.withOpacity(0.45), Colors.transparent], stops: const [0.0, 0.2])))),
+          const Positioned.fill(child: ColoredBox(color: Colors.black)),
+          Positioned(
+            top: 0, left: 0, right: 0, bottom: 120,
+            child: photoUrl.isNotEmpty ? CachedNetworkImage(imageUrl: photoUrl, fit: BoxFit.cover, placeholder: (_, __) => const ColoredBox(color: Colors.black12), errorWidget: (_, __, ___) => const ColoredBox(color: Color(0xFF1A1A1A), child: Icon(Icons.person, size: 80, color: Colors.white30))) : const ColoredBox(color: Color(0xFF1A1A1A)),
+          ),
+          Positioned(
+            bottom: 120, left: 0, right: 0, height: 180,
+            child: const DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Colors.transparent, Colors.black]))),
+          ),
           
           if (widget.photoCount > 1) Positioned(top: 14, left: 14, right: 14, child: Row(children: List.generate(widget.photoCount, (i) { 
             final isActive = i == widget.currentPhotoIndex;
@@ -777,13 +900,26 @@ class _PhysicsSwipeCardState extends State<_PhysicsSwipeCard> with TickerProvide
           
           Positioned(bottom: 84, left: 0, right: 0, child: Center(child: _AnimatedSwipeHint())),
           
-          Positioned(bottom: 18, left: 0, right: 0, child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-            _actionBtn(icon: Icons.close_rounded, bgColor: Colors.white, fgColor: const Color(0xFF0A0A0A), size: 58, iconSize: 26, offset: const Offset(4,4), onTap: () => _triggerAction('pass')), 
-            const SizedBox(width: 18), 
-            _actionBtn(icon: Icons.star_rounded, bgColor: const Color(0xFFE8B64A), fgColor: const Color(0xFF0A0A0A), size: 48, iconSize: 20, offset: const Offset(3,3), onTap: () => _triggerAction('superlike')), 
-            const SizedBox(width: 18), 
-            _actionBtn(icon: Icons.favorite_rounded, bgColor: const Color(0xFF8B1538), fgColor: Colors.white, size: 58, iconSize: 24, offset: const Offset(4,4), onTap: () => _triggerAction('like'))
-          ])),
+          Positioned(bottom: 18, left: 0, right: 0, child: Center(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFF151515),
+                borderRadius: BorderRadius.circular(100),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center, 
+                children: [
+                  _actionBtn(icon: Icons.close_rounded, bgColor: const Color(0xFF333333), fgColor: Colors.white, size: 44, iconSize: 22, onTap: () => _triggerAction('pass')), 
+                  const SizedBox(width: 12), 
+                  _actionBtn(icon: Icons.star_rounded, bgColor: const Color(0xFFFFC107), fgColor: Colors.black, size: 36, iconSize: 18, onTap: () => _triggerAction('superlike')), 
+                  const SizedBox(width: 12), 
+                  _actionBtn(icon: Icons.favorite_rounded, bgColor: const Color(0xFFD32F2F), fgColor: Colors.white, size: 44, iconSize: 20, onTap: () => _triggerAction('like'))
+                ]
+              ),
+            ),
+          )),
         ]),
       );
 
@@ -795,7 +931,8 @@ class _PhysicsSwipeCardState extends State<_PhysicsSwipeCard> with TickerProvide
           double tiltY = 0.0;
           double tiltZ = 0.0;
           double elevation = 0.0;
-          double scale = 1.0;
+          double scaleX = 1.0;
+          double scaleY = 1.0;
           double opacity = 1.0;
           Offset currentDrag = _drag;
           
@@ -817,12 +954,14 @@ class _PhysicsSwipeCardState extends State<_PhysicsSwipeCard> with TickerProvide
             final t = Curves.easeOutQuart.transform(v);
             currentDrag = _quadBezier(_arcP0, _arcP1, _arcP2, t);
             
+            double scale = 1.0;
             if (v < 0.2) {
               scale = 1.0 + (v / 0.2) * 0.05; 
             } else {
               final shrink = Curves.easeIn.transform((v - 0.2) / 0.8);
               scale = 1.05 - (shrink * 1.05); 
             }
+            scaleX = scaleY = scale;
             
             opacity = (1.0 - (v > 0.95 ? (v - 0.95) / 0.05 : 0.0)).clamp(0.0, 1.0);
             
@@ -831,15 +970,22 @@ class _PhysicsSwipeCardState extends State<_PhysicsSwipeCard> with TickerProvide
             tiltZ = (currentDrag.dx * 0.0002) + (v * _releaseVx * 0.0002);
             elevation = (v < 0.5) ? (v * 2.0) : (1.0 - (v - 0.5) * 2.0);
           } else if (_mode == _AnimMode.drop) {
-            final eased = Curves.easeOutCubic.transform(v);
+            final eased = Curves.easeIn.transform(v); // accelerating descent
             currentDrag = _quadBezier(_arcP0, _arcP1, _arcP2, eased);
-            final shrink = Curves.easeInCirc.transform(v);
-            scale = 1.0 - shrink;
-            opacity = (1.0 - (v > 0.80 ? (v - 0.80) / 0.20 : 0.0)).clamp(0.0, 1.0);
             
-            tiltX = (_drag.dy * -0.0006) - (v * 1.5); 
+            // Anisotropic scale: shrinks horizontally faster as it enters slot
+            if (v > 0.4) {
+              final shrinkV = (v - 0.4) / 0.6;
+              final shrink = Curves.easeIn.transform(shrinkV);
+              scaleX = 1.0 - (shrink * 0.85);
+              scaleY = 1.0 - (shrink * 0.65);
+            }
+            
+            opacity = (1.0 - (v > 0.85 ? (v - 0.85) / 0.15 : 0.0)).clamp(0.0, 1.0);
+            
+            tiltX = (_drag.dy * -0.0006) - (v * 2.2); // Aggressive tumbling forward
             tiltY = (currentDrag.dx * 0.0006);
-            tiltZ = (currentDrag.dx * 0.0002) + (v * _releaseVx * 0.001);
+            tiltZ = (currentDrag.dx * 0.0002) + (v * (_releaseVx > 0 ? 1.0 : -1.0) * 0.8);
             elevation = (1.0 - v).clamp(0.0, 1.0);
           }
 
@@ -848,7 +994,7 @@ class _PhysicsSwipeCardState extends State<_PhysicsSwipeCard> with TickerProvide
             ..rotateX(tiltX)
             ..rotateY(tiltY)
             ..rotateZ(tiltZ)
-            ..scale(scale, scale, 1.0);
+            ..scale(scaleX, scaleY, 1.0);
 
           final shadowColor = Colors.black.withOpacity((0.15 + (elevation * 0.15)).clamp(0.0, 1.0));
           final blur = 15.0 + (elevation * 45.0);
@@ -883,10 +1029,14 @@ class _PhysicsSwipeCardState extends State<_PhysicsSwipeCard> with TickerProvide
     });
   }
 
-  Widget _actionBtn({required IconData icon, required Color bgColor, required Color fgColor, required double size, required double iconSize, required Offset offset, required VoidCallback onTap}) {
+  Widget _actionBtn({required IconData icon, required Color bgColor, required Color fgColor, required double size, required double iconSize, required VoidCallback onTap}) {
     return _BouncingButton(
       onTap: onTap,
-      child: Container(width: size, height: size, decoration: BoxDecoration(color: bgColor, shape: BoxShape.circle, boxShadow: [BoxShadow(color: const Color(0xFF0A0A0A), offset: offset, blurRadius: 0)], border: Border.all(color: const Color(0xFF0A0A0A), width: 3)), child: Icon(icon, color: fgColor, size: iconSize)),
+      child: Container(
+        width: size, height: size, 
+        decoration: BoxDecoration(color: bgColor, shape: BoxShape.circle), 
+        child: Icon(icon, color: fgColor, size: iconSize)
+      ),
     );
   }
 }

@@ -106,6 +106,7 @@ class _ChatListRefreshState extends State<ChatListScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: _cream,
+      resizeToAvoidBottomInset: false,
       appBar: AppBar(
         toolbarHeight: 48,
         backgroundColor: _cream, elevation: 0, surfaceTintColor: Colors.transparent,
