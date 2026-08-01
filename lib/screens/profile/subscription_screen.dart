@@ -152,7 +152,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         backgroundColor: AppColors.cream,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: AppColors.inkBlack, width: 2),
+          side: const BorderSide(color: AppColors.textColor1, width: 2),
         ),
         title: Text(
           'CANCEL AUTOPAY?',
@@ -164,11 +164,11 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('KEEP AUTOPAY', style: TextStyle(color: AppColors.inkBlack)),
+            child: const Text('KEEP AUTOPAY', style: TextStyle(color: AppColors.textColor1)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.inkBlack,
+              backgroundColor: AppColors.textColor1,
               foregroundColor: AppColors.cream,
             ),
             onPressed: () => Navigator.pop(context, true),
@@ -200,11 +200,11 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         backgroundColor: AppColors.cream,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
-          side: const BorderSide(color: AppColors.inkBlack, width: 2.5),
+          side: const BorderSide(color: AppColors.textColor1, width: 2.5),
         ),
         title: Row(
           children: [
-            const Icon(Icons.stars, color: AppColors.inkBlack, size: 28),
+            const Icon(Icons.stars, color: AppColors.textColor1, size: 28),
             const SizedBox(width: 8),
             Text(
               'PASS UNLOCKED! ✦',
@@ -230,11 +230,11 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         backgroundColor: AppColors.cream,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
-          side: const BorderSide(color: AppColors.inkBlack, width: 2.5),
+          side: const BorderSide(color: AppColors.textColor1, width: 2.5),
         ),
         title: Row(
           children: [
-            const Icon(Icons.error_outline, color: AppColors.inkBlack, size: 28),
+            const Icon(Icons.error_outline, color: AppColors.textColor1, size: 28),
             const SizedBox(width: 8),
             Text(
               'PAYMENT ERROR',
@@ -280,7 +280,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         scrolledUnderElevation: 0,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.inkBlack),
+          icon: const Icon(Icons.arrow_back, color: AppColors.textColor1),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
@@ -289,19 +289,19 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             fontWeight: FontWeight.bold,
             fontSize: 16,
             letterSpacing: 1.2,
-            color: AppColors.inkBlack,
+            color: AppColors.textColor1,
           ),
         ),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(2),
-          child: Container(color: AppColors.inkBlack, height: 2),
+          child: Container(color: AppColors.textColor1, height: 2),
         ),
       ),
       body: SafeArea(
         child: _isLoading
             ? const Center(
                 child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.inkBlack),
+                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.textColor1),
                 ),
               )
             : SingleChildScrollView(
@@ -323,14 +323,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                               fontWeight: FontWeight.bold,
                               fontSize: 14,
                               letterSpacing: 1.2,
-                              color: AppColors.inkBlack,
+                              color: AppColors.textColor1,
                             ),
-                          ),
-                          const SizedBox(height: 4),
-                          const Text(
-                            'Upgrade visibility & get up to 50 daily likes',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(fontSize: 13, color: AppColors.inkBlack),
                           ),
                         ],
                       ),
@@ -341,9 +335,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                     _buildTierSelectorRow(),
                     const SizedBox(height: 24),
 
-                    // RPG Power Perks Section
-                    _buildPowerPerksSection(selectedTier),
-                    const SizedBox(height: 24),
 
                     // Feature Matrix Table
                     _buildComparisonMatrix(),
@@ -359,8 +350,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                     // Autopay Notice
                     Center(
                       child: Text(
-                        '⚡ Razorpay Autopay renews every 30 days. Cancel anytime.',
-                        style: GoogleFonts.spaceMono(fontSize: 10, color: AppColors.inkBlack),
+                        'Razorpay Autopay renews every 30 days. Cancel anytime.',
+                        style: GoogleFonts.spaceMono(fontSize: 10, color: AppColors.textColor1),
                         textAlign: TextAlign.center,
                       ),
                     ),
@@ -379,7 +370,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
 
     return SketchyContainer(
       padding: const EdgeInsets.all(16),
-      backgroundColor: isPremium ? AppColors.inkBlack : AppColors.cream,
+      backgroundColor: isPremium ? AppColors.textColor1 : AppColors.cream,
       child: Column(
         children: [
           Row(
@@ -389,7 +380,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                 children: [
                   Icon(
                     isPremium ? Icons.workspace_premium : Icons.stars_outlined,
-                    color: isPremium ? AppColors.cream : AppColors.inkBlack,
+                    color: isPremium ? AppColors.cream : AppColors.textColor1,
                     size: 26,
                   ),
                   const SizedBox(width: 8),
@@ -398,7 +389,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                     style: GoogleFonts.spaceMono(
                       fontWeight: FontWeight.bold,
                       fontSize: 14,
-                      color: isPremium ? AppColors.cream : AppColors.inkBlack,
+                      color: isPremium ? AppColors.cream : AppColors.textColor1,
                     ),
                   ),
                 ],
@@ -406,7 +397,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: isPremium ? AppColors.cream : AppColors.inkBlack,
+                  color: isPremium ? AppColors.cream : AppColors.textColor1,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
@@ -414,7 +405,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   style: GoogleFonts.spaceMono(
                     fontWeight: FontWeight.bold,
                     fontSize: 10,
-                    color: isPremium ? AppColors.inkBlack : AppColors.cream,
+                    color: isPremium ? AppColors.textColor1 : AppColors.cream,
                   ),
                 ),
               ),
@@ -487,9 +478,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
               duration: const Duration(milliseconds: 150),
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: _selectedTierKey == 'silver' ? AppColors.inkBlack : AppColors.cream,
+                color: _selectedTierKey == 'silver' ? AppColors.textColor1 : AppColors.cream,
                 borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: AppColors.inkBlack, width: 2.5),
+                border: Border.all(color: AppColors.textColor1, width: 2.5),
               ),
               child: Column(
                 children: [
@@ -498,7 +489,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                     style: GoogleFonts.spaceMono(
                       fontWeight: FontWeight.bold,
                       fontSize: 14,
-                      color: _selectedTierKey == 'silver' ? AppColors.cream : AppColors.inkBlack,
+                      color: _selectedTierKey == 'silver' ? AppColors.cream : AppColors.textColor1,
                     ),
                   ),
                   const SizedBox(height: 6),
@@ -507,7 +498,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                     style: GoogleFonts.spaceMono(
                       fontSize: 13,
                       fontWeight: FontWeight.w900,
-                      color: _selectedTierKey == 'silver' ? AppColors.cream : AppColors.inkBlack,
+                      color: _selectedTierKey == 'silver' ? AppColors.cream : AppColors.textColor1,
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -516,7 +507,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 11,
-                      color: _selectedTierKey == 'silver' ? AppColors.cream : AppColors.inkBlack,
+                      color: _selectedTierKey == 'silver' ? AppColors.cream : AppColors.textColor1,
                     ),
                   ),
                 ],
@@ -534,16 +525,16 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
               duration: const Duration(milliseconds: 150),
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: _selectedTierKey == 'gold' ? AppColors.inkBlack : AppColors.cream,
+                color: _selectedTierKey == 'gold' ? AppColors.textColor1 : AppColors.cream,
                 borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: AppColors.inkBlack, width: 2.5),
+                border: Border.all(color: AppColors.textColor1, width: 2.5),
               ),
               child: Column(
                 children: [
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
-                      color: _selectedTierKey == 'gold' ? AppColors.cream : AppColors.inkBlack,
+                      color: _selectedTierKey == 'gold' ? AppColors.cream : AppColors.textColor1,
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
@@ -551,7 +542,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                       style: GoogleFonts.spaceMono(
                         fontSize: 9,
                         fontWeight: FontWeight.bold,
-                        color: _selectedTierKey == 'gold' ? AppColors.inkBlack : AppColors.cream,
+                        color: _selectedTierKey == 'gold' ? AppColors.textColor1 : AppColors.cream,
                       ),
                     ),
                   ),
@@ -561,7 +552,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                     style: GoogleFonts.spaceMono(
                       fontWeight: FontWeight.bold,
                       fontSize: 14,
-                      color: _selectedTierKey == 'gold' ? AppColors.cream : AppColors.inkBlack,
+                      color: _selectedTierKey == 'gold' ? AppColors.cream : AppColors.textColor1,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -570,7 +561,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                     style: GoogleFonts.spaceMono(
                       fontSize: 13,
                       fontWeight: FontWeight.w900,
-                      color: _selectedTierKey == 'gold' ? AppColors.cream : AppColors.inkBlack,
+                      color: _selectedTierKey == 'gold' ? AppColors.cream : AppColors.textColor1,
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -579,7 +570,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 11,
-                      color: _selectedTierKey == 'gold' ? AppColors.cream : AppColors.inkBlack,
+                      color: _selectedTierKey == 'gold' ? AppColors.cream : AppColors.textColor1,
                     ),
                   ),
                 ],
@@ -591,86 +582,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     );
   }
 
-  Widget _buildPowerPerksSection(PaymentTier selectedTier) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'UNLOCKED PERKS FOR ${selectedTier.name.toUpperCase()}:',
-          style: GoogleFonts.spaceMono(
-            fontSize: 11,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 1.0,
-            color: AppColors.inkBlack,
-          ),
-        ),
-        const SizedBox(height: 10),
-        _buildPerkItem(
-          icon: Icons.favorite,
-          title: '${selectedTier.likesLimit} Daily Likes (Up from 15)',
-          subtitle: 'Swipe on more profiles every day without running out',
-        ),
-        const SizedBox(height: 8),
-        _buildPerkItem(
-          icon: Icons.star,
-          title: '${selectedTier.superlikesLimit} Daily Superlikes (Up from 3)',
-          subtitle: 'Stand out and instantly notify your top crushes',
-        ),
-        const SizedBox(height: 8),
-        _buildPerkItem(
-          icon: Icons.local_fire_department,
-          title: '${selectedTier.profileBoost}x Profile Discovery Boost',
-          subtitle: 'Priority ranking in discovery feeds across campus',
-        ),
-        const SizedBox(height: 8),
-        _buildPerkItem(
-          icon: Icons.autorenew,
-          title: '30-Day Autopay Protection',
-          subtitle: 'Seamless auto-renewal powered by Razorpay',
-        ),
-      ],
-    );
-  }
-
-  Widget _buildPerkItem({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: AppColors.cream,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.inkBlack, width: 1.5),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 22, color: AppColors.inkBlack),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: GoogleFonts.spaceMono(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.inkBlack,
-                  ),
-                ),
-                Text(
-                  subtitle,
-                  style: const TextStyle(fontSize: 11, color: AppColors.inkBlack),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildComparisonMatrix() {
     return SketchyContainer(
@@ -688,10 +599,10 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             ),
           ),
           const SizedBox(height: 12),
-          const Divider(color: AppColors.inkBlack, height: 1),
+          const Divider(color: AppColors.textColor1, height: 1),
           const SizedBox(height: 8),
           _buildMatrixRow('Feature', 'Free', 'Silver', 'Gold', isHeader: true),
-          const Divider(color: AppColors.inkBlack, height: 1),
+          const Divider(color: AppColors.textColor1, height: 1),
           _buildMatrixRow('Likes / Day', '15', '25', '50'),
           _buildMatrixRow('Superlikes / Day', '3', '6', '12'),
           _buildMatrixRow('Feed Boost', '1x Standard', '3x Higher', '6x Maximum'),
@@ -705,7 +616,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     final style = GoogleFonts.spaceMono(
       fontSize: isHeader ? 11 : 10,
       fontWeight: isHeader ? FontWeight.bold : FontWeight.normal,
-      color: AppColors.inkBlack,
+      color: AppColors.textColor1,
     );
 
     return Padding(
