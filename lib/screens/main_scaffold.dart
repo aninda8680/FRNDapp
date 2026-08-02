@@ -52,7 +52,7 @@ class _MainScaffoldState extends State<MainScaffold> {
       bottomNavigationBar: SafeArea(
         bottom: true,
         child: Padding(
-          padding: const EdgeInsets.only(left: 24, right: 24, bottom: 24, top: 8),
+          padding: const EdgeInsets.only(left: 24, right: 24, bottom: 12),
           child: Container(
             decoration: BoxDecoration(
               color: Colors.black, // Proper black

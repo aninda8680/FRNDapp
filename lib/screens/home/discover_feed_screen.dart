@@ -45,11 +45,12 @@ class _NetMeshPainter extends CustomPainter {
     
     final bgRect = Rect.fromCenter(center: Offset(cx, rimY - 10), width: size.width * 0.28, height: 75);
     final bgRRect = RRect.fromRectAndRadius(bgRect, const Radius.circular(12));
-    canvas.drawRRect(bgRRect, Paint()..color = Colors.white.withOpacity(0.35));
-    canvas.drawRRect(bgRRect, Paint()..style = PaintingStyle.stroke..color = Colors.white.withOpacity(0.7)..strokeWidth = 2.5);
+    final Color burgundyColor = const Color(0xFFA41534);
+    canvas.drawRRect(bgRRect, Paint()..color = burgundyColor.withOpacity(0.35));
+    canvas.drawRRect(bgRRect, Paint()..style = PaintingStyle.stroke..color = burgundyColor.withOpacity(0.7)..strokeWidth = 2.5);
 
     final innerRect = Rect.fromCenter(center: Offset(cx, rimY - 5), width: size.width * 0.12, height: 40);
-    canvas.drawRect(innerRect, Paint()..style = PaintingStyle.stroke..color = Colors.white.withOpacity(0.6)..strokeWidth = 2);
+    canvas.drawRect(innerRect, Paint()..style = PaintingStyle.stroke..color = burgundyColor.withOpacity(0.6)..strokeWidth = 2);
 
     const cols = 8;
     const rows = 5;
@@ -136,9 +137,27 @@ class _NetMeshPainter extends CustomPainter {
       final r = (5.0 + (i % 3) * 2.5) * (1.0 - t);
       final opacity = (1.0 - t * 1.2).clamp(0.0, 1.0);
       
-      canvas.drawCircle(pos, r, Paint()..color = _gold.withOpacity(opacity));
-      canvas.drawLine(pos - Offset(r*1.8, 0), pos + Offset(r*1.8, 0), Paint()..color = Colors.white.withOpacity(opacity)..strokeWidth=2);
-      canvas.drawLine(pos - Offset(0, r*1.8), pos + Offset(0, r*1.8), Paint()..color = Colors.white.withOpacity(opacity)..strokeWidth=2);
+      final path = Path();
+      const points = 5;
+      final outerR = r * 2.5;
+      final innerR = r * 1.0;
+      
+      // Give each star a slight rotation based on its index and expansion
+      final rotation = angle + t * (i.isEven ? 2.0 : -2.0);
+      
+      for (int j = 0; j < points * 2; j++) {
+        final radius = j.isEven ? outerR : innerR;
+        final theta = rotation + (j * math.pi / points) - math.pi / 2;
+        final px = pos.dx + radius * math.cos(theta);
+        final py = pos.dy + radius * math.sin(theta);
+        if (j == 0) path.moveTo(px, py);
+        else path.lineTo(px, py);
+      }
+      path.close();
+      
+      // Draw a burgundy star with a slight white glow/core
+      canvas.drawPath(path, Paint()..color = const Color(0xFFA41534).withOpacity(opacity));
+      canvas.drawPath(path, Paint()..color = Colors.white.withOpacity(opacity * 0.5)..style = PaintingStyle.stroke..strokeWidth = 1.0);
     }
   }
 
@@ -586,6 +605,7 @@ class _DiscoverFeedScreenState extends State<DiscoverFeedScreen> with TickerProv
     return Scaffold(
       backgroundColor: _burgundy,
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         toolbarHeight: 48,
         backgroundColor: _bgCream, elevation: 0, surfaceTintColor: Colors.transparent,
         title: const Text(
@@ -600,30 +620,38 @@ class _DiscoverFeedScreenState extends State<DiscoverFeedScreen> with TickerProv
         centerTitle: true,
         bottom: PreferredSize(preferredSize: const Size.fromHeight(1.0), child: Container(height: 1.0, color: const Color(0x121A1A1A))),
       ),
-      body: _isLoading && _profiles.isEmpty
-          ? Padding(
-              padding: EdgeInsets.fromLTRB(16, 16, 16, MediaQuery.of(context).padding.bottom + 16),
-              child: Shimmer.fromColors(
-                baseColor: Colors.grey[300]!,
-                highlightColor: Colors.grey[100]!,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(28),
+      body: Container(
+        decoration: const BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage('assets/images/bg.png'),
+            fit: BoxFit.cover,
+          ),
+        ),
+        child: _isLoading && _profiles.isEmpty
+            ? Padding(
+                padding: EdgeInsets.fromLTRB(16, 16, 16, MediaQuery.of(context).padding.bottom + 16),
+                child: Shimmer.fromColors(
+                  baseColor: Colors.grey[300]!,
+                  highlightColor: Colors.grey[100]!,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(28),
+                    ),
                   ),
                 ),
-              ),
-            )
-          : _currentProfile == null ? _buildEmptyState() : AnimatedBuilder(
-                  animation: _detailsCtrl,
-                  builder: (context, _) {
-                    return Stack(children: [
-                      Transform.scale(scale: _cardScaleAnim.value, alignment: Alignment.topCenter, child: _buildCardStack()),
-                      if (_detailsVisible) Positioned.fill(child: GestureDetector(onTap: _closeDetails, child: Container(color: Colors.black.withOpacity(_fadeAnim.value)))),
-                      if (_detailsVisible && _currentProfile != null) SlideTransition(position: _slideAnim, child: _buildFullDetailsSheet()),
-                    ]);
-                  },
-                ),
+              )
+            : _currentProfile == null ? _buildEmptyState() : AnimatedBuilder(
+                    animation: _detailsCtrl,
+                    builder: (context, _) {
+                      return Stack(children: [
+                        Transform.scale(scale: _cardScaleAnim.value, alignment: Alignment.topCenter, child: _buildCardStack()),
+                        if (_detailsVisible) Positioned.fill(child: GestureDetector(onTap: _closeDetails, child: Container(color: Colors.black.withOpacity(_fadeAnim.value)))),
+                        if (_detailsVisible && _currentProfile != null) SlideTransition(position: _slideAnim, child: _buildFullDetailsSheet()),
+                      ]);
+                    },
+                  ),
+      ),
     );
   }
 
@@ -658,7 +686,7 @@ class _DiscoverFeedScreenState extends State<DiscoverFeedScreen> with TickerProv
               child: _NetBasketWidget(controller: _netController),
             ),
             Positioned(
-              bottom: MediaQuery.of(context).padding.bottom + 14.0, left: 0, right: 0,
+              bottom: MediaQuery.of(context).padding.bottom + 0, left: 0, right: 0,
               child: Center(child: _DustbinWidget(key: _dustbinKey, controller: _dustbinController)),
             ),
             Positioned.fill(
@@ -977,11 +1005,11 @@ class _PhysicsSwipeCardState extends State<_PhysicsSwipeCard> with TickerProvide
             if (v > 0.4) {
               final shrinkV = (v - 0.4) / 0.6;
               final shrink = Curves.easeIn.transform(shrinkV);
-              scaleX = 1.0 - (shrink * 0.85);
-              scaleY = 1.0 - (shrink * 0.65);
+              scaleX = 1.0 - (shrink * 0.95);
+              scaleY = 1.0 - (shrink * 0.95);
             }
             
-            opacity = (1.0 - (v > 0.85 ? (v - 0.85) / 0.15 : 0.0)).clamp(0.0, 1.0);
+            opacity = (1.0 - (v > 0.65 ? (v - 0.65) / 0.35 : 0.0)).clamp(0.0, 1.0);
             
             tiltX = (_drag.dy * -0.0006) - (v * 2.2); // Aggressive tumbling forward
             tiltY = (currentDrag.dx * 0.0006);

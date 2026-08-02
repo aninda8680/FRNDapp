@@ -23,6 +23,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final TextEditingController _schoolController = TextEditingController();
   final TextEditingController _courseController = TextEditingController();
   final TextEditingController _heightController = TextEditingController();
+  final TextEditingController _religionController = TextEditingController();
+  final TextEditingController _beliefsController = TextEditingController();
 
   String? _selectedLookingFor;
   String? _selectedSexualOrientation;
@@ -35,6 +37,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   bool _isLoading = true;
   bool _isLoadingConfig = true;
   bool _isSaving = false;
+
+  bool _smoke = false;
+  bool _drink = false;
+  bool _pets = false;
 
   List<dynamic> _segments = [];
   List<dynamic> _sections = [];
@@ -68,6 +74,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _schoolController.dispose();
     _courseController.dispose();
     _heightController.dispose();
+    _religionController.dispose();
+    _beliefsController.dispose();
     super.dispose();
   }
 
@@ -79,9 +87,21 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _schoolController.text = data['school'] ?? '';
     _courseController.text = data['course'] ?? '';
     _heightController.text = data['height']?.toString() ?? '';
+    _religionController.text = data['religion'] ?? '';
+    _beliefsController.text = data['beliefs'] ?? '';
     _selectedLookingFor = data['lookingFor'];
     _selectedSexualOrientation = data['sexualOrientation'];
     _selectedGender = data['gender'];
+    
+    if (data['tags'] != null && data['tags'] is Map) {
+      _smoke = data['tags']['smoke'] == true;
+      _drink = data['tags']['drink'] == true;
+      _pets = data['tags']['pets'] == true;
+    } else {
+      _smoke = false;
+      _drink = false;
+      _pets = false;
+    }
 
     _selectedHobbies.clear();
     final hobbies = data['hobbies'] as List<dynamic>?;
@@ -152,6 +172,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       "school": _schoolController.text.trim(),
       "course": _courseController.text.trim(),
       "height": int.tryParse(_heightController.text.trim()),
+      "religion": _religionController.text.trim(),
+      "beliefs": _beliefsController.text.trim(),
+      "tags": {
+        "smoke": _smoke,
+        "drink": _drink,
+        "pets": _pets,
+      },
     };
 
     if (_selectedLookingFor != null) {
@@ -350,6 +377,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   _buildTextField('SCHOOL', _schoolController),
                   _buildTextField('COURSE', _courseController),
                   _buildTextField('HEIGHT (cm)', _heightController, keyboardType: TextInputType.number),
+                  _buildTextField('RELIGION', _religionController),
+                  _buildTextField('BELIEFS', _beliefsController),
                   
                   _buildMainSectionHeading(context, 'INTERESTS'),
                   const SizedBox(height: 16),
@@ -358,6 +387,18 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   _buildMainSectionHeading(context, 'PROMPTS'),
                   const SizedBox(height: 16),
                   _buildPromptsSection(),
+
+                  _buildMainSectionHeading(context, 'TAGS'),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _buildTagToggle('Smoke', _smoke, (v) => setState(() => _smoke = v)),
+                      _buildTagToggle('Drink', _drink, (v) => setState(() => _drink = v)),
+                      _buildTagToggle('Pets', _pets, (v) => setState(() => _pets = v)),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
 
                   _buildMainSectionHeading(context, 'LOOKING FOR'),
                   const SizedBox(height: 16),
@@ -718,6 +759,27 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             );
           }).toList(),
       ],
+    );
+  }
+
+  Widget _buildTagToggle(String label, bool value, ValueChanged<bool> onChanged) {
+    return GestureDetector(
+      onTap: () => onChanged(!value),
+      child: Column(
+        children: [
+          SketchyContainer(
+            padding: const EdgeInsets.all(12),
+            borderRadius: 999,
+            backgroundColor: value ? AppColors.textColor2 : AppColors.cream,
+            child: Icon(
+              value ? Icons.check : Icons.close,
+              color: value ? AppColors.cream : AppColors.textColor2,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(label, style: Theme.of(context).textTheme.labelMedium),
+        ],
+      ),
     );
   }
 

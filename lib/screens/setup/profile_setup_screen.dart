@@ -41,6 +41,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     _schoolController.addListener(updateState);
     _courseController.addListener(updateState);
     _heightController.addListener(updateState);
+    _religionController.addListener(updateState);
+    _beliefsController.addListener(updateState);
   }
 
   Future<void> _loadOnboardingConfig() async {
@@ -65,6 +67,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   final TextEditingController _schoolController = TextEditingController();
   final TextEditingController _courseController = TextEditingController();
   final TextEditingController _heightController = TextEditingController();
+  final TextEditingController _religionController = TextEditingController();
+  final TextEditingController _beliefsController = TextEditingController();
 
   final List<String> _availableHobbies = [
     'Gaming', 'Anime', 'Coding', 'Hiking', 'Music', 'Art', 'Coffee', 'Movies',
@@ -101,7 +105,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
            _bioController.text.trim().isNotEmpty &&
            _schoolController.text.trim().isNotEmpty &&
            _courseController.text.trim().isNotEmpty &&
-           _heightController.text.trim().isNotEmpty;
+           _heightController.text.trim().isNotEmpty &&
+           _religionController.text.trim().isNotEmpty &&
+           _beliefsController.text.trim().isNotEmpty;
   }
 
   bool get _isStep2Valid {
@@ -136,6 +142,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     _schoolController.dispose();
     _courseController.dispose();
     _heightController.dispose();
+    _religionController.dispose();
+    _beliefsController.dispose();
     super.dispose();
   }
 
@@ -336,6 +344,26 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
               controller: _heightController,
               keyboardType: TextInputType.number,
               decoration: InputDecoration(isDense: true, border: InputBorder.none, hintText: 'in cm', hintStyle: TextStyle(color: AppColors.textColor1.withOpacity(0.5))),
+            ),
+          ),
+          const SizedBox(height: 24),
+          _buildSectionHeading(context, 'RELIGION'),
+          const SizedBox(height: 8),
+          SketchyContainer(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            child: TextField(
+              controller: _religionController,
+              decoration: InputDecoration(isDense: true, border: InputBorder.none, hintText: 'Hinduism, Islam, Christianity, etc..', hintStyle: TextStyle(color: AppColors.textColor1.withOpacity(0.5))),
+            ),
+          ),
+          const SizedBox(height: 24),
+          _buildSectionHeading(context, 'BELIEFS'),
+          const SizedBox(height: 8),
+          SketchyContainer(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            child: TextField(
+              controller: _beliefsController,
+              decoration: InputDecoration(isDense: true, border: InputBorder.none, hintText: 'Spiritual, open-minded, etc..', hintStyle: TextStyle(color: AppColors.textColor1.withOpacity(0.5))),
             ),
           ),
           const SizedBox(height: 24),
@@ -869,6 +897,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       "school": _schoolController.text.trim(),
       "course": _courseController.text.trim(),
       "height": int.tryParse(_heightController.text.trim()) ?? 170,
+      "religion": _religionController.text.trim(),
+      "beliefs": _beliefsController.text.trim(),
       "gender": _selectedGender ?? 'other',
       "hobbies": _selectedHobbies.toList(),
       "skills": _selectedSkills.toList(),

@@ -160,7 +160,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
           style: GoogleFonts.spaceMono(fontWeight: FontWeight.bold),
         ),
         content: const Text(
-          'Are you sure you want to cancel recurring payments? Your benefits remain active until your current 30-day billing period ends.',
+          'Are you sure you want to cancel recurring payments? Your benefits remain active until your current 28-day billing period ends.',
         ),
         actions: [
           TextButton(
@@ -270,7 +270,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
           name: 'Gold Pass Autopay',
           priceINR: 49,
           pricePaise: 4900,
-          validityDays: 30,
+          validityDays: 28,
           likesLimit: 50,
           superlikesLimit: 12,
           profileBoost: 6,
@@ -355,7 +355,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                     // Autopay Notice
                     Center(
                       child: Text(
-                        'Razorpay Autopay renews every 30 days. Cancel anytime.',
+                        'Razorpay Autopay renews every 28 days. Cancel anytime.',
                         style: GoogleFonts.spaceMono(fontSize: 10, color: AppColors.textColor1),
                         textAlign: TextAlign.center,
                       ),
@@ -453,7 +453,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
           name: 'Silver Pass',
           priceINR: 39,
           pricePaise: 3900,
-          validityDays: 30,
+          validityDays: 28,
           likesLimit: 25,
           superlikesLimit: 6,
           profileBoost: 3,
@@ -466,7 +466,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
           name: 'Gold Pass',
           priceINR: 49,
           pricePaise: 4900,
-          validityDays: 30,
+          validityDays: 28,
           likesLimit: 50,
           superlikesLimit: 12,
           profileBoost: 6,
@@ -499,7 +499,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    '₹${silver.priceINR} / 30 Days',
+                    '₹${silver.priceINR} / 28 Days',
                     style: GoogleFonts.spaceMono(
                       fontSize: 13,
                       fontWeight: FontWeight.w900,
@@ -562,7 +562,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '₹${gold.priceINR} / 30 Days',
+                    '₹${gold.priceINR} / 28 Days',
                     style: GoogleFonts.spaceMono(
                       fontSize: 13,
                       fontWeight: FontWeight.w900,

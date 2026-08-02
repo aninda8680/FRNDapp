@@ -108,6 +108,7 @@ class _ChatListRefreshState extends State<ChatListScreen> {
       backgroundColor: _cream,
       resizeToAvoidBottomInset: false,
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         toolbarHeight: 48,
         backgroundColor: _cream, elevation: 0, surfaceTintColor: Colors.transparent,
         title: const Text(
