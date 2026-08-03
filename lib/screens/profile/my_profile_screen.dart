@@ -296,6 +296,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.6),
                 borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: _primaryBurgundy.withOpacity(0.3), width: 1.0),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withOpacity(0.03), 
@@ -306,7 +307,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
               ),
               child: Column(
                 children: [
-                  _buildSettingRow(Icons.star_outline_rounded, 'Premium Passes', () => Navigator.pushNamed(context, '/subscription')),
+                  _buildSettingRow(Icons.star_outline_rounded, 'Passes', () => Navigator.pushNamed(context, '/subscription')),
                   const Divider(color: _lightDivider, height: 1, indent: 56),
                   _buildSettingRow(Icons.person_outline_rounded, 'Edit Profile', () async {
                     await Navigator.pushNamed(context, '/edit_profile');
