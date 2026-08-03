@@ -32,6 +32,18 @@ class SettingsScreen extends StatelessWidget {
             ),
             const Divider(color: AppColors.lineBlack),
             ListTile(
+              title: const Text('Privacy Policy'),
+              trailing: const Icon(Icons.arrow_forward_ios),
+              onTap: () => Navigator.pushNamed(context, '/privacy_policy'),
+            ),
+            const Divider(color: AppColors.lineBlack),
+            ListTile(
+              title: const Text('Terms of Service'),
+              trailing: const Icon(Icons.arrow_forward_ios),
+              onTap: () => Navigator.pushNamed(context, '/terms_of_service'),
+            ),
+            const Divider(color: AppColors.lineBlack),
+            ListTile(
               title: const Text('Log Out'),
               onTap: () async {
                 await AuthService.logout();

@@ -87,10 +87,14 @@ class DiscoverService {
       final response = await http.post(url, headers: _headers);
       if (response.statusCode == 200) {
         return json.decode(response.body) as Map<String, dynamic>?;
+      } else if (response.statusCode == 403 || response.statusCode == 429) {
+        final data = json.decode(response.body);
+        throw Exception('QUOTA_EXCEEDED: ${data['message'] ?? 'Daily limit reached'}');
       }
       return null;
     } catch (e) {
       print('Error liking profile: $e');
+      if (e.toString().contains('QUOTA_EXCEEDED')) rethrow;
       return null;
     }
   }
@@ -102,10 +106,14 @@ class DiscoverService {
       final response = await http.post(url, headers: _headers);
       if (response.statusCode == 200) {
         return json.decode(response.body) as Map<String, dynamic>?;
+      } else if (response.statusCode == 403 || response.statusCode == 429) {
+        final data = json.decode(response.body);
+        throw Exception('QUOTA_EXCEEDED: ${data['message'] ?? 'Daily limit reached'}');
       }
       return null;
     } catch (e) {
       print('Error superliking profile: $e');
+      if (e.toString().contains('QUOTA_EXCEEDED')) rethrow;
       return null;
     }
   }

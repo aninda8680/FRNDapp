@@ -4,20 +4,187 @@ import '../../widgets/sketchy_container.dart';
 class PrivacyPolicyScreen extends StatelessWidget {
   const PrivacyPolicyScreen({super.key});
 
+  Widget _buildSectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 24.0, bottom: 12.0),
+      child: Text(
+        title.toUpperCase(),
+        style: const TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.w900,
+          color: Color(0xFFA41534), // Burgundy color
+          letterSpacing: 1.2,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSubTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 12.0, bottom: 8.0),
+      child: Text(
+        title,
+        style: const TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w800,
+          color: Colors.black87,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildText(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12.0),
+      child: Text(
+        text,
+        style: const TextStyle(
+          fontSize: 14,
+          height: 1.5,
+          color: Colors.black87,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBulletPoint(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0, left: 8.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('• ', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFFA41534))),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(
+                fontSize: 14,
+                height: 1.5,
+                color: Colors.black87,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('PRIVACY POLICY')),
+      backgroundColor: const Color(0xFFFDF4E5), // Cream background
+      appBar: AppBar(
+        title: const Text(
+          'PRIVACY POLICY',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w900,
+            color: Color(0xFF1A1A1A),
+            letterSpacing: 2.0,
+          ),
+        ),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        centerTitle: true,
+        iconTheme: const IconThemeData(color: Colors.black),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1.0),
+          child: Container(height: 1.0, color: const Color(0x121A1A1A)),
+        ),
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
+          padding: const EdgeInsets.all(16.0),
           child: SketchyContainer(
-            padding: const EdgeInsets.all(16.0),
-            child: const Text(
-              // TODO: Replace placeholder text with real policy content
-              'This is a placeholder for the privacy policy.\n\n'
-              'We collect data to make the app work and don\'t sell it to third parties.',
-              style: TextStyle(fontSize: 16, height: 1.5),
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildSectionTitle('Information We Collect'),
+                _buildText('We collect information you provide directly to us and information we obtain automatically when you use our services.'),
+                
+                _buildSubTitle('Personal Information:'),
+                _buildBulletPoint('Phone number and/or Email address (via Authentication)'),
+                _buildBulletPoint('Display name, age, gender, and profile pictures'),
+                _buildBulletPoint('Educational information (School/College, Course) for verification'),
+                _buildBulletPoint('Account creation, last login timestamps, and user preferences'),
+
+                _buildSubTitle('Payment Information:'),
+                _buildBulletPoint('Payment transaction IDs (via Razorpay)'),
+                _buildBulletPoint('Payment status and subscription details (Silver Passes)'),
+                _buildBulletPoint('Billing information processed by Razorpay'),
+                _buildBulletPoint('Payment timestamps and amounts'),
+
+                _buildSubTitle('Usage Information:'),
+                _buildBulletPoint('Swipe history (Likes, Superlikes, Passes) and Matches'),
+                _buildBulletPoint('Feature usage patterns (e.g., anonymous posts, chat frequency)'),
+                _buildBulletPoint('Device information and app version'),
+                _buildBulletPoint('IP address and general location data for distance calculations'),
+
+                _buildSectionTitle('How We Use Your Information'),
+                _buildBulletPoint('To provide and maintain our campus socializing and matching services'),
+                _buildBulletPoint('To process payments and manage premium subscriptions via Razorpay'),
+                _buildBulletPoint('To manage your account, daily swipe quotas, and subscription status'),
+                _buildBulletPoint('To communicate with you about your account, matches, and service updates'),
+                _buildBulletPoint('To verify student identity and ensure a safe community environment'),
+                _buildBulletPoint('To comply with legal obligations and prevent fraud or abuse'),
+                _buildBulletPoint('To provide customer support and technical assistance'),
+                _buildBulletPoint('To analyze usage patterns for service optimization and better match recommendations'),
+
+                _buildSectionTitle('Payment Processing'),
+                _buildText('We use Razorpay as our payment processor. Razorpay is PCI DSS compliant and follows industry best practices for handling payment information.'),
+                
+                _buildSubTitle('Payment Data Handling:'),
+                _buildBulletPoint('We do not store your complete payment card or bank details'),
+                _buildBulletPoint('Razorpay securely processes all payment information and autopay mandates'),
+                _buildBulletPoint('We only store transaction IDs, subscription status, and payment logs'),
+                _buildBulletPoint('All payment data is encrypted in transit and at rest'),
+                _buildBulletPoint('Refunds are processed through Razorpay\'s secure system'),
+
+                _buildSectionTitle('Data Security & Privacy'),
+                _buildText('We implement comprehensive security measures to protect your personal information and ensure the privacy of your interactions on Frnd.'),
+
+                _buildSubTitle('Data Protection & Anonymity:'),
+                _buildBulletPoint('Private chat messages are securely transmitted and stored'),
+                _buildBulletPoint('Anonymous posts and confessions are kept strictly disassociated from your public profile'),
+                _buildBulletPoint('Profile pictures and data are accessible only to other verified users within the platform'),
+                _buildBulletPoint('Strict access controls prevent unauthorized access to your account data'),
+
+                _buildSubTitle('Data Protection:'),
+                _buildBulletPoint('Robust backend security rules prevent unauthorized access to user data'),
+                _buildBulletPoint('All data transmission uses HTTPS/TLS encryption'),
+                _buildBulletPoint('Regular security audits, monitoring, and automated moderation for safety'),
+                _buildBulletPoint('Compliance with applicable data protection and privacy regulations'),
+
+                _buildSectionTitle('Your Rights & Choices'),
+                _buildBulletPoint('Access and review your personal information'),
+                _buildBulletPoint('Request correction of inaccurate data'),
+                _buildBulletPoint('Delete your account and associated data'),
+                _buildBulletPoint('Opt-out of non-essential communications'),
+                _buildBulletPoint('Request data portability in machine-readable format'),
+                _buildBulletPoint('Withdraw consent for data processing'),
+                _buildBulletPoint('File complaints with data protection authorities'),
+
+                _buildSectionTitle('Data Retention & Sharing'),
+                _buildSubTitle('Data Retention:'),
+                _buildBulletPoint('Account data and matches retained while your account is active'),
+                _buildBulletPoint('Payment records kept for 7 years for compliance'),
+                _buildBulletPoint('Usage logs and chat history retained according to our data policies for service improvement and safety'),
+                _buildBulletPoint('Deleted account data purged within 30 days'),
+
+                _buildSubTitle('Data Sharing:'),
+                _buildBulletPoint('We do not sell personal information to third parties'),
+                _buildBulletPoint('Payment data shared only with Razorpay for processing'),
+                _buildBulletPoint('Legal compliance or safety investigations may require data disclosure'),
+                _buildBulletPoint('Service providers bound by strict confidentiality agreements'),
+
+                _buildSectionTitle('Contact Us'),
+                _buildText('If you have questions about this Privacy Policy or our data practices, please contact us:'),
+                _buildText('Email: tb123983@gmail.com\nAddress: Barasat, Kolkata 700126'),
+                _buildText('We will respond to privacy inquiries within 30 days.'),
+              ],
             ),
           ),
         ),

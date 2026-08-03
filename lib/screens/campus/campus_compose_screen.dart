@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/top_notification.dart';
+import '../../services/auth_service.dart';
 
 class CampusComposeScreen extends StatefulWidget {
   final Color burgundy;
@@ -32,9 +33,26 @@ class _CampusComposeScreenState extends State<CampusComposeScreen> {
     super.dispose();
   }
 
+  int get _wordLimit {
+    final tier = AuthService.userProfile?['tier'] ?? 'free';
+    if (tier == 'gold') return 900;
+    if (tier == 'silver') return 400;
+    return 250;
+  }
+
+  int _getWordCount(String text) {
+    if (text.trim().isEmpty) return 0;
+    return text.trim().split(RegExp(r'\s+')).where((e) => e.isNotEmpty).length;
+  }
+
   void _submit() async {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
+    
+    if (_getWordCount(text) > _wordLimit) {
+      _showNotification('Exceeded word limit of $_wordLimit words.', Colors.redAccent);
+      return;
+    }
     
     setState(() => _isSubmitting = true);
     await widget.onSubmit(text, _isAnonymous);
@@ -82,13 +100,14 @@ class _CampusComposeScreenState extends State<CampusComposeScreen> {
               child: ListenableBuilder(
                 listenable: _controller,
                 builder: (context, _) {
-                  final count = _controller.text.length;
+                  final count = _getWordCount(_controller.text);
+                  final limit = _wordLimit;
                   return Text(
-                    '$count / 280',
+                    '$count / $limit words',
                     style: GoogleFonts.outfit(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      color: count >= 280
+                      color: count > limit
                           ? Colors.orangeAccent
                           : Colors.white70,
                     ),

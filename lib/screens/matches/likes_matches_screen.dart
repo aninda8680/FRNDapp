@@ -7,6 +7,8 @@ import '../chats/individual_chat_screen.dart';
 import '../../widgets/profile_card.dart';
 import '../../services/auth_service.dart';
 import '../chats/chat_list_screen.dart';
+import 'dart:ui' as ui;
+import '../profile/subscription_screen.dart';
 
 class LikesMatchesScreen extends StatefulWidget {
   const LikesMatchesScreen({super.key});
@@ -305,13 +307,18 @@ class _LikesMatchesScreenState extends State<LikesMatchesScreen> {
 
 
   Widget _buildLikerCard(Map<String, dynamic> liker) {
+    final bool isLocked = liker['isLocked'] == true || liker['hasAccess'] == false;
     final profile = liker['profile'] ?? {};
-    final name = profile['name'] ?? 'Student';
+    final name = isLocked ? 'Hidden Profile' : (profile['name'] ?? 'Student');
     final targetId = profile['_id'] as String? ?? '';
     final photoUrl = _getPartnerPhoto(profile);
 
     return GestureDetector(
       onTap: () {
+        if (isLocked) {
+          _showPaywallDialog('Who Liked You?');
+          return;
+        }
         showDialog(
           context: context,
           builder: (context) => Dialog(
@@ -356,13 +363,30 @@ class _LikesMatchesScreenState extends State<LikesMatchesScreen> {
                 shape: BoxShape.circle,
                 border: Border.all(color: _bgCream, width: 2),
               ),
-              child: ClipOval(
-                child: CachedNetworkImage(
-                  imageUrl: photoUrl,
-                  fit: BoxFit.cover,
-                  placeholder: (context, url) => Container(color: Colors.grey[200]),
-                  errorWidget: (context, url, error) => Container(color: Colors.grey[200]),
-                ),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  ClipOval(
+                    child: isLocked 
+                      ? ImageFiltered(
+                          imageFilter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                          child: CachedNetworkImage(
+                            imageUrl: photoUrl,
+                            fit: BoxFit.cover,
+                            placeholder: (context, url) => Container(color: Colors.grey[200]),
+                            errorWidget: (context, url, error) => Container(color: Colors.grey[200]),
+                          ),
+                        )
+                      : CachedNetworkImage(
+                          imageUrl: photoUrl,
+                          fit: BoxFit.cover,
+                          placeholder: (context, url) => Container(color: Colors.grey[200]),
+                          errorWidget: (context, url, error) => Container(color: Colors.grey[200]),
+                        ),
+                  ),
+                  if (isLocked)
+                    const Center(child: Icon(Icons.lock_rounded, color: Colors.white, size: 28)),
+                ],
               ),
             ),
             const SizedBox(height: 8),
@@ -378,7 +402,7 @@ class _LikesMatchesScreenState extends State<LikesMatchesScreen> {
             ),
             const SizedBox(height: 6),
             // Like Back Button
-            if (targetId.isNotEmpty)
+            if (!isLocked && targetId.isNotEmpty)
               GestureDetector(
                 onTap: () => _likeBack(targetId, name),
                 child: Container(
@@ -414,6 +438,59 @@ class _LikesMatchesScreenState extends State<LikesMatchesScreen> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  void _showPaywallDialog(String title) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.lock_clock, size: 64, color: _burgundy.withOpacity(0.8)),
+              const SizedBox(height: 16),
+              Text(
+                title,
+                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Unlock this profile and see who liked you by upgrading your tier!',
+                style: TextStyle(fontSize: 14, color: Colors.black54),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const SubscriptionScreen()));
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _burgundy,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size(double.infinity, 50),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                ),
+                child: const Text('Upgrade Now', style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+              const SizedBox(height: 12),
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Maybe Later', style: TextStyle(color: Colors.grey)),
+              ),
+            ],
+          ),
         ),
       ),
     );

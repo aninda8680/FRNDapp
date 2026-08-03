@@ -88,4 +88,24 @@ class PostService {
       return null;
     }
   }
+
+  /// Report a post or user
+  static Future<bool> report({String? targetPostId, String? targetUserId, required String reason}) async {
+    try {
+      final url = Uri.parse('$baseUrl/report');
+      final body = <String, dynamic>{'reason': reason};
+      if (targetPostId != null) body['targetPostId'] = targetPostId;
+      if (targetUserId != null) body['targetUserId'] = targetUserId;
+
+      final response = await http.post(
+        url,
+        headers: _headers,
+        body: json.encode(body),
+      );
+      return response.statusCode == 201;
+    } catch (e) {
+      debugPrint('Error reporting: $e');
+      return false;
+    }
+  }
 }

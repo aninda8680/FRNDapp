@@ -9,6 +9,7 @@ import 'dart:math' as math;
 import '../../services/discover_service.dart';
 import '../../widgets/full_profile_sheet.dart';
 import '../chats/individual_chat_screen.dart';
+import '../profile/subscription_screen.dart';
 
 const _bgCream = Color(0xFFFDF4E5);
 const _burgundy = Color(0xFFA41534);
@@ -523,6 +524,13 @@ class _DiscoverFeedScreenState extends State<DiscoverFeedScreen> with TickerProv
         }
       } catch (e) {
         debugPrint('Action error: $e');
+        if (e.toString().contains('QUOTA_EXCEEDED') && mounted) {
+          // Revert the swipe since it failed due to quota
+          setState(() {
+            _currentIndex = (_currentIndex - 1).clamp(0, _profiles.length);
+          });
+          _showPaywallDialog(action == 'superlike' ? 'Out of Superlikes!' : 'Out of Likes!');
+        }
       }
     }
   }
@@ -561,6 +569,39 @@ class _DiscoverFeedScreenState extends State<DiscoverFeedScreen> with TickerProv
             ),
             const SizedBox(height: 8),
             TextButton(onPressed: () => Navigator.pop(context), child: Text('Keep Swiping', style: TextStyle(color: Colors.black.withOpacity(0.4), fontSize: 13, fontWeight: FontWeight.w600))),
+          ]),
+        ),
+      ),
+    );
+  }
+
+  void _showPaywallDialog(String title) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(28),
+            boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 20, offset: Offset(0, 8))]),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Text(title, style: const TextStyle(fontFamily: 'monospace', fontSize: 16, fontWeight: FontWeight.w900, color: _burgundy, letterSpacing: 2)),
+            const SizedBox(height: 16),
+            const Text('You have run out of free actions.\nUpgrade to Premium for unlimited likes!', textAlign: TextAlign.center, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.black)),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity, height: 46,
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const SubscriptionScreen()));
+                },
+                style: ElevatedButton.styleFrom(backgroundColor: _burgundy, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(23)), elevation: 0),
+                child: const Text('GET PREMIUM', style: TextStyle(fontFamily: 'monospace', fontSize: 12, fontWeight: FontWeight.w900, letterSpacing: 1)),
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextButton(onPressed: () => Navigator.pop(context), child: Text('Maybe Later', style: TextStyle(color: Colors.black.withOpacity(0.4), fontSize: 13, fontWeight: FontWeight.w600))),
           ]),
         ),
       ),

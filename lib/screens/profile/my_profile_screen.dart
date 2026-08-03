@@ -318,6 +318,8 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
                   _buildSettingRow(Icons.help_outline_rounded, 'Help & Support', () => Navigator.pushNamed(context, '/help_support')),
                   const Divider(color: _lightDivider, height: 1, indent: 56),
                   _buildSettingRow(Icons.privacy_tip_outlined, 'Privacy Policy', () => Navigator.pushNamed(context, '/privacy_policy')),
+                  const Divider(color: _lightDivider, height: 1, indent: 56),
+                  _buildSettingRow(Icons.article_outlined, 'Terms of Service', () => Navigator.pushNamed(context, '/terms_of_service')),
                 ],
               ),
             ),

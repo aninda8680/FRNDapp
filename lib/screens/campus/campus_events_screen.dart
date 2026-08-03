@@ -150,6 +150,51 @@ class _CampusEventsScreenState extends State<CampusEventsScreen> {
     });
   }
 
+  Future<void> _showReportDialog(String postId) async {
+    final reasonController = TextEditingController();
+    final bool? submit = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Report Post', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+          content: TextField(
+            controller: reasonController,
+            decoration: InputDecoration(
+              hintText: 'Reason for reporting...',
+              hintStyle: GoogleFonts.outfit(),
+              border: const OutlineInputBorder(),
+            ),
+            maxLines: 3,
+            style: GoogleFonts.outfit(),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text('Cancel', style: GoogleFonts.outfit(color: Colors.black54)),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: ElevatedButton.styleFrom(backgroundColor: burgundy),
+              child: Text('Submit', style: GoogleFonts.outfit(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (submit == true && reasonController.text.trim().isNotEmpty) {
+      final success = await PostService.report(
+        targetPostId: postId,
+        reason: reasonController.text.trim(),
+      );
+      if (success) {
+        _showNotification('Post reported successfully', backgroundColor: Colors.green.shade600);
+      } else {
+        _showNotification('Failed to report post', backgroundColor: burgundy);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -235,6 +280,12 @@ class _CampusEventsScreenState extends State<CampusEventsScreen> {
                                     burgundy: burgundy,
                                     onUpvote: () => _onVote(index, true),
                                     onDownvote: () => _onVote(index, false),
+                                    onReport: () {
+                                      final postId = _posts[index]['id'] as String?;
+                                      if (postId != null) {
+                                        _showReportDialog(postId);
+                                      }
+                                    },
                                   );
                                 },
                               ),
@@ -287,12 +338,14 @@ class _PostCard extends StatelessWidget {
   final Color burgundy;
   final Future<void> Function() onUpvote;
   final Future<void> Function() onDownvote;
+  final VoidCallback onReport;
 
   const _PostCard({
     required this.post,
     required this.burgundy,
     required this.onUpvote,
     required this.onDownvote,
+    required this.onReport,
   });
 
   @override
@@ -406,21 +459,30 @@ class _PostCard extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _VoteButton(
-                icon: Icons.arrow_upward_rounded,
-                count: upvotes,
-                active: userVote == 'upvote',
-                activeColor: Colors.green.shade600,
-                onTap: onUpvote,
+              Row(
+                children: [
+                  _VoteButton(
+                    icon: Icons.arrow_upward_rounded,
+                    count: upvotes,
+                    active: userVote == 'upvote',
+                    activeColor: Colors.green.shade600,
+                    onTap: onUpvote,
+                  ),
+                  const SizedBox(width: 12),
+                  _VoteButton(
+                    icon: Icons.arrow_downward_rounded,
+                    count: downvotes,
+                    active: userVote == 'downvote',
+                    activeColor: burgundy,
+                    onTap: onDownvote,
+                  ),
+                ],
               ),
-              const SizedBox(width: 12),
-              _VoteButton(
-                icon: Icons.arrow_downward_rounded,
-                count: downvotes,
-                active: userVote == 'downvote',
-                activeColor: burgundy,
-                onTap: onDownvote,
+              GestureDetector(
+                onTap: onReport,
+                child: const Icon(Icons.flag_outlined, size: 18, color: Colors.black38),
               ),
             ],
           ),

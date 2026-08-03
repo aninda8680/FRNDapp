@@ -12,6 +12,7 @@ import 'screens/utilities/report_block_screen.dart';
 import 'screens/utilities/settings_screen.dart';
 import 'screens/utilities/help_support_screen.dart';
 import 'screens/utilities/privacy_policy_screen.dart';
+import 'screens/utilities/terms_of_service_screen.dart';
 import 'screens/profile/edit_profile_screen.dart';
 import 'screens/profile/subscription_screen.dart';
 import 'screens/profile/profile_updated_screen.dart';
@@ -30,6 +31,7 @@ class AppRoutes {
   static const String settings = '/settings';
   static const String helpSupport = '/help_support';
   static const String privacyPolicy = '/privacy_policy';
+  static const String termsOfService = '/terms_of_service';
   static const String myProfile = '/my_profile';
   static const String editProfile = '/edit_profile';
   static const String subscription = '/subscription';
@@ -52,6 +54,7 @@ class AppRoutes {
     settings: (context) => const SettingsScreen(),
     helpSupport: (context) => const HelpSupportScreen(),
     privacyPolicy: (context) => const PrivacyPolicyScreen(),
+    termsOfService: (context) => const TermsOfServiceScreen(),
     editProfile: (context) => const EditProfileScreen(),
     subscription: (context) => const SubscriptionScreen(),
     

@@ -34,6 +34,15 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
+
+    applicationVariants.all {
+        val variantName = name
+        outputs.all {
+            if (this is com.android.build.gradle.internal.api.BaseVariantOutputImpl) {
+                outputFileName = "frnd-${variantName}.apk"
+            }
+        }
+    }
 }
 
 kotlin {
