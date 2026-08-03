@@ -57,4 +57,8 @@ flutter {
 
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+    // Firebase BoM is intentionally NOT included here.
+    // Flutter's Firebase plugins (firebase_core, cloud_firestore, firebase_messaging)
+    // manage their own compatible native Android SDK versions via pub.dev.
+    // Adding a separate BoM causes version conflicts and NoSuchMethodError crashes.
 }

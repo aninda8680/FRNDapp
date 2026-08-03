@@ -9,6 +9,7 @@ import 'config/dev_config.dart';
 import 'services/auth_service.dart';
 import 'services/outbox_service.dart';
 import 'services/discover_service.dart';
+import 'screens/splash_version_screen.dart';
 
 import 'package:firebase_core/firebase_core.dart';
 
@@ -68,7 +69,7 @@ class FrndApp extends StatelessWidget {
     return MaterialApp(
       title: 'FRND MVP',
       theme: AppTheme.theme,
-      initialRoute: DevConfig.initialRouteOverride ?? initialRouteString,
+      home: SplashVersionScreen(targetRoute: DevConfig.initialRouteOverride ?? initialRouteString),
       routes: AppRoutes.routes,
       debugShowCheckedModeBanner: false,
     );

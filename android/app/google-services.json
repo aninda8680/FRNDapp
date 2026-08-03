@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "263930332842",
-    "project_id": "frnd-a3c9b",
-    "storage_bucket": "frnd-a3c9b.firebasestorage.app"
+    "project_number": "689973307689",
+    "project_id": "frnd-version",
+    "storage_bucket": "frnd-version.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:263930332842:android:6b5ef27aa5f959a99eb2d3",
+        "mobilesdk_app_id": "1:689973307689:android:cff99eadaf68bf294c6f38",
         "android_client_info": {
           "package_name": "frnd.buzz"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyBJJiqdPyEPsKqqE1U0zPzFeK1Z4hlYico"
+          "current_key": "AIzaSyBuoQ1ng6jSxJyE8dix2QAQLuQRGxQDbG0"
         }
       ],
       "services": {
