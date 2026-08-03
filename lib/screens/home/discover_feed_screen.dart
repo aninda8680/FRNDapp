@@ -6,7 +6,10 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
 import 'dart:ui' as ui;
 import 'dart:math' as math;
+import '../../theme/app_colors.dart';
+import '../../services/auth_service.dart';
 import '../../services/discover_service.dart';
+import '../../utils/responsive_utils.dart';
 import '../../widgets/full_profile_sheet.dart';
 import '../chats/individual_chat_screen.dart';
 import '../profile/subscription_screen.dart';
@@ -548,14 +551,14 @@ class _DiscoverFeedScreenState extends State<DiscoverFeedScreen> with TickerProv
             boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 20, offset: Offset(0, 8))]),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             const Text("IT'S A MATCH! 🎉", style: TextStyle(fontFamily: 'monospace', fontSize: 16, fontWeight: FontWeight.w900, color: _burgundy, letterSpacing: 2)),
-            const SizedBox(height: 16),
+            SizedBox(height: context.responsiveHeight(16)),
             Container(width: 90, height: 90, decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: _burgundy, width: 2.5)),
               child: ClipOval(child: photoUrl.isNotEmpty ? CachedNetworkImage(imageUrl: photoUrl, fit: BoxFit.cover) : Container(color: Colors.grey[200]))),
-            const SizedBox(height: 16),
+            SizedBox(height: context.responsiveHeight(16)),
             Text('You and $name liked each other!', textAlign: TextAlign.center, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.black)),
-            const SizedBox(height: 6),
+            SizedBox(height: context.responsiveHeight(6)),
             Text('Start a conversation now.', style: TextStyle(fontSize: 13, color: Colors.black.withOpacity(0.5))),
-            const SizedBox(height: 24),
+            SizedBox(height: context.responsiveHeight(24)),
             SizedBox(
               width: double.infinity, height: 46,
               child: ElevatedButton(
@@ -567,7 +570,7 @@ class _DiscoverFeedScreenState extends State<DiscoverFeedScreen> with TickerProv
                 child: const Text('SEND A MESSAGE', style: TextStyle(fontFamily: 'monospace', fontSize: 12, fontWeight: FontWeight.w900, letterSpacing: 1)),
               ),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: context.responsiveHeight(8)),
             TextButton(onPressed: () => Navigator.pop(context), child: Text('Keep Swiping', style: TextStyle(color: Colors.black.withOpacity(0.4), fontSize: 13, fontWeight: FontWeight.w600))),
           ]),
         ),
@@ -586,9 +589,9 @@ class _DiscoverFeedScreenState extends State<DiscoverFeedScreen> with TickerProv
             boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 20, offset: Offset(0, 8))]),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             Text(title, style: const TextStyle(fontFamily: 'monospace', fontSize: 16, fontWeight: FontWeight.w900, color: _burgundy, letterSpacing: 2)),
-            const SizedBox(height: 16),
+            SizedBox(height: context.responsiveHeight(16)),
             const Text('You have run out of free actions.\nUpgrade to Premium for unlimited likes!', textAlign: TextAlign.center, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.black)),
-            const SizedBox(height: 24),
+            SizedBox(height: context.responsiveHeight(24)),
             SizedBox(
               width: double.infinity, height: 46,
               child: ElevatedButton(
@@ -600,7 +603,7 @@ class _DiscoverFeedScreenState extends State<DiscoverFeedScreen> with TickerProv
                 child: const Text('GET PREMIUM', style: TextStyle(fontFamily: 'monospace', fontSize: 12, fontWeight: FontWeight.w900, letterSpacing: 1)),
               ),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: context.responsiveHeight(8)),
             TextButton(onPressed: () => Navigator.pop(context), child: Text('Maybe Later', style: TextStyle(color: Colors.black.withOpacity(0.4), fontSize: 13, fontWeight: FontWeight.w600))),
           ]),
         ),
@@ -701,11 +704,11 @@ class _DiscoverFeedScreenState extends State<DiscoverFeedScreen> with TickerProv
       child: Padding(padding: const EdgeInsets.all(32),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Container(width: 72, height: 72, decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withOpacity(0.12)), child: const Icon(Icons.auto_awesome, color: _bgCream, size: 36)),
-          const SizedBox(height: 20),
+          SizedBox(height: context.responsiveHeight(20)),
           const Text('No More Profiles', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: _bgCream)),
-          const SizedBox(height: 8),
+          SizedBox(height: context.responsiveHeight(8)),
           const Text("You've seen all verified students in your area.\nChange filters or check back later!", textAlign: TextAlign.center, style: TextStyle(color: Colors.white70, fontSize: 13, height: 1.5)),
-          const SizedBox(height: 24),
+          SizedBox(height: context.responsiveHeight(24)),
           ElevatedButton.icon(
             onPressed: () => _fetchFeed(reset: true), icon: const Icon(Icons.refresh_rounded), label: const Text('REFRESH FEED'),
             style: ElevatedButton.styleFrom(backgroundColor: _bgCream, foregroundColor: _burgundy, padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40)), textStyle: const TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.2, fontSize: 11)),
@@ -782,6 +785,7 @@ enum _AnimMode { idle, snapBack, toss, drop }
 class _PhysicsSwipeCardState extends State<_PhysicsSwipeCard> with TickerProviderStateMixin {
   Offset _drag = Offset.zero;
   _AnimMode _mode = _AnimMode.idle;
+  bool _ignoreDrag = false;
 
   late AnimationController _ctrl;
   Offset _arcP0 = Offset.zero;
@@ -838,12 +842,27 @@ class _PhysicsSwipeCardState extends State<_PhysicsSwipeCard> with TickerProvide
     return Offset(mt * mt * p0.dx + 2 * mt * t * p1.dx + t * t * p2.dx, mt * mt * p0.dy + 2 * mt * t * p1.dy + t * t * p2.dy);
   }
 
+  void _onPanStart(DragStartDetails d) {
+    final width = MediaQuery.of(context).size.width;
+    // Android back gesture is usually 20-24px from the edge. Use 30px as dead-zone.
+    if (d.globalPosition.dx < 30 || d.globalPosition.dx > width - 30) {
+      _ignoreDrag = true;
+    } else {
+      _ignoreDrag = false;
+    }
+  }
+
   void _onPanUpdate(DragUpdateDetails d) {
+    if (_ignoreDrag) return;
     if (_mode != _AnimMode.idle) return;
     setState(() => _drag += d.delta);
   }
 
   void _onPanEnd(DragEndDetails d) {
+    if (_ignoreDrag) {
+      _ignoreDrag = false;
+      return;
+    }
     if (_mode != _AnimMode.idle) return;
     final vel = d.velocity.pixelsPerSecond;
     if (_drag.dy < -85 || vel.dy < -650) { _launchToss('like', vel.dx); return; }
@@ -944,7 +963,7 @@ class _PhysicsSwipeCardState extends State<_PhysicsSwipeCard> with TickerProvide
           
           Positioned(top: 0, left: 0, right: 0, bottom: _cardSize.height * 0.45, child: Row(children: [Expanded(flex: 4, child: GestureDetector(behavior: HitTestBehavior.translucent, onTap: () { if (widget.currentPhotoIndex > 0) widget.onPhotoChange(widget.currentPhotoIndex - 1); })), const Spacer(flex: 2), Expanded(flex: 4, child: GestureDetector(behavior: HitTestBehavior.translucent, onTap: () { if (widget.currentPhotoIndex < widget.photoCount - 1) widget.onPhotoChange(widget.currentPhotoIndex + 1); }))])),
           
-          Positioned(bottom: 118, left: 20, right: 20, child: GestureDetector(onTap: widget.onShowDetails, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Positioned(bottom: context.bottomSafeArea + context.responsiveHeight(118), left: 20, right: 20, child: GestureDetector(onTap: widget.onShowDetails, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
               Flexible(child: Text('${profile['name'] ?? ''}, ${profile['age'] ?? ''}', style: const TextStyle(color: Colors.white, fontSize: 29, fontWeight: FontWeight.w900, height: 1.0, letterSpacing: -0.5, shadows: [Shadow(color: Colors.black54, blurRadius: 8, offset: Offset(0,2))]))), 
               if (profile['identityStatus'] == 'verified') ...[
@@ -953,23 +972,23 @@ class _PhysicsSwipeCardState extends State<_PhysicsSwipeCard> with TickerProvide
               ]
             ]), 
             if (profile['school'] != null || profile['course'] != null) ...[
-              const SizedBox(height: 6), 
+              SizedBox(height: context.responsiveHeight(6)), 
               Row(children: [const Icon(Icons.school_outlined, color: Color(0xFFC98AA0), size: 14), const SizedBox(width: 6), Expanded(child: Text('${profile['school'] ?? ''} ${profile['course'] != null ? '(${profile['course']})' : ''}', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.white.withOpacity(0.82), fontSize: 13)))])
             ], 
             if (profile['bio'] != null && (profile['bio'] as String).isNotEmpty) ...[
-              const SizedBox(height: 6), 
+              SizedBox(height: context.responsiveHeight(6)), 
               Text('"${profile['bio']}"', maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.white.withOpacity(0.78), fontSize: 13, height: 1.4, fontStyle: FontStyle.italic))
             ], 
-            const SizedBox(height: 12), 
+            SizedBox(height: context.responsiveHeight(12)), 
             Wrap(spacing: 8, runSpacing: 8, children: [
               if (profile['height'] != null) Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4), decoration: BoxDecoration(color: Colors.black.withOpacity(0.45), borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.white.withOpacity(0.35), width: 0.5)), child: Row(mainAxisSize: MainAxisSize.min, children: [const Icon(Icons.straighten_rounded, color: Colors.white, size: 11), const SizedBox(width: 4), Text(widget.formatHeight(profile['height']), style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600))])), 
               if (profile['lookingFor'] != null) Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4), decoration: BoxDecoration(color: const Color(0xFF8B1538), borderRadius: BorderRadius.circular(20), border: Border.all(color: const Color(0xFFC98AA0), width: 0.5)), child: Text((profile['lookingFor'] as String).toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.5)))
             ]),
           ]))),
           
-          Positioned(bottom: 84, left: 0, right: 0, child: Center(child: _AnimatedSwipeHint())),
+          Positioned(bottom: context.bottomSafeArea + context.responsiveHeight(84), left: 0, right: 0, child: Center(child: _AnimatedSwipeHint())),
           
-          Positioned(bottom: 18, left: 0, right: 0, child: Center(
+          Positioned(bottom: context.bottomSafeArea + context.responsiveHeight(18), left: 0, right: 0, child: Center(
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
@@ -1078,6 +1097,7 @@ class _PhysicsSwipeCardState extends State<_PhysicsSwipeCard> with TickerProvide
                 alignment: Alignment.center,
                 transform: transform,
                 child: GestureDetector(
+                  onPanStart: _onPanStart,
                   onPanUpdate: _onPanUpdate,
                   onPanEnd: _onPanEnd,
                   child: Container(

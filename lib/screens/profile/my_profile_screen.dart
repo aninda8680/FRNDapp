@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../widgets/profile_card.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/app_image.dart';
+import '../../utils/responsive_utils.dart';
 
 const Color _bgCream = Color(0xFFF5EFE0);
 const Color _primaryBurgundy = Color(0xFF6B1B35);
@@ -70,12 +71,12 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           const Icon(Icons.error_outline, size: 48, color: _primaryBurgundy),
-          const SizedBox(height: 16),
+          SizedBox(height: context.responsiveHeight(16)),
           Text(
             'Failed to load profile',
             style: Theme.of(context).textTheme.titleLarge?.copyWith(color: _textBlack),
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: context.responsiveHeight(24)),
           OutlinedButton(
             onPressed: _fetchProfile,
             style: OutlinedButton.styleFrom(
@@ -85,7 +86,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
             ),
             child: const Text('RETRY'),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: context.responsiveHeight(16)),
           TextButton.icon(
             onPressed: () => Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false),
             icon: const Icon(Icons.logout_rounded, size: 16, color: _mutedGray),
@@ -145,7 +146,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
               ),
             ),
             Container(color: _lightDivider, height: 1.0),
-            const SizedBox(height: 16),
+            SizedBox(height: context.responsiveHeight(16)),
             
             // Stats Card / Hero Element
             GestureDetector(
@@ -222,7 +223,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
                               letterSpacing: -0.5,
                             ),
                           ),
-                          const SizedBox(height: 4),
+                          SizedBox(height: context.responsiveHeight(4)),
                           Text(
                             '@${name.toLowerCase().replaceAll(' ', '')} • Member since 2026',
                             style: TextStyle(
@@ -231,7 +232,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
                               fontWeight: FontWeight.w400,
                             ),
                           ),
-                          const SizedBox(height: 8),
+                          SizedBox(height: context.responsiveHeight(8)),
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                             decoration: BoxDecoration(
@@ -276,7 +277,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
               ),
             ),
             
-            const SizedBox(height: 24),
+            SizedBox(height: context.responsiveHeight(24)),
             
             // Settings Section
             const Padding(
@@ -325,7 +326,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
               ),
             ),
 
-            const SizedBox(height: 16),
+            SizedBox(height: context.responsiveHeight(16)),
             
             // Log out button
             Center(
@@ -361,7 +362,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
               ),
             ),
             
-            const SizedBox(height: 100), // Extra space for floating nav bar
+            SizedBox(height: context.responsiveHeight(100)), // Extra space for floating nav bar
           ],
         ),
       ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:flutter_displaymode/flutter_displaymode.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -55,6 +56,13 @@ void main() async {
     }
   }
 
+  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent,
+    statusBarIconBrightness: Brightness.light,
+    systemNavigationBarColor: Colors.black, // Dark to match bottom nav
+    systemNavigationBarIconBrightness: Brightness.light,
+  ));
+
   runApp(FrndApp(initialRouteString: initialRouteString));
   FlutterNativeSplash.remove();
 }
@@ -72,6 +80,15 @@ class FrndApp extends StatelessWidget {
       home: SplashVersionScreen(targetRoute: DevConfig.initialRouteOverride ?? initialRouteString),
       routes: AppRoutes.routes,
       debugShowCheckedModeBanner: false,
+      builder: (context, child) {
+        final data = MediaQuery.of(context);
+        return MediaQuery(
+          data: data.copyWith(
+            textScaler: data.textScaler.clamp(minScaleFactor: 0.9, maxScaleFactor: 1.3),
+          ),
+          child: child!,
+        );
+      },
     );
   }
 }

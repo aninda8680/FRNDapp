@@ -6,6 +6,7 @@ import '../../widgets/sketchy_button.dart';
 import '../../widgets/sketchy_container.dart';
 import '../../services/payment_service.dart';
 import '../../models/payment_models.dart';
+import '../../utils/responsive_utils.dart';
 
 class SubscriptionScreen extends StatefulWidget {
   const SubscriptionScreen({super.key});
@@ -316,7 +317,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   children: [
                     // Active Status Header Card
                     _buildActiveStatusCard(),
-                    const SizedBox(height: 24),
+                    SizedBox(height: context.responsiveHeight(24)),
 
                     // Section Title
                     Center(
@@ -334,23 +335,23 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    SizedBox(height: context.responsiveHeight(20)),
 
                     // Tier Selector Cards (Silver vs Gold)
                     _buildTierSelectorRow(),
-                    const SizedBox(height: 24),
+                    SizedBox(height: context.responsiveHeight(24)),
 
 
                     // Feature Matrix Table
                     _buildComparisonMatrix(),
-                    const SizedBox(height: 28),
+                    SizedBox(height: context.responsiveHeight(28)),
 
                     // Action CTA Button
                     SketchyButton(
                       text: 'CLAIM ${selectedTier.tier.toUpperCase()} PASS — ₹${selectedTier.priceINR}',
                       onPressed: () => _openCheckout(selectedTier),
                     ),
-                    const SizedBox(height: 12),
+                    SizedBox(height: context.responsiveHeight(12)),
 
                     // Autopay Notice
                     Center(
@@ -417,7 +418,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             ],
           ),
           if (isPremium) ...[
-            const SizedBox(height: 12),
+            SizedBox(height: context.responsiveHeight(12)),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -497,7 +498,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                       color: _selectedTierKey == 'silver' ? AppColors.cream : AppColors.textColor1,
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  SizedBox(height: context.responsiveHeight(6)),
                   Text(
                     '₹${silver.priceINR} / 28 Days',
                     style: GoogleFonts.spaceMono(
@@ -506,7 +507,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                       color: _selectedTierKey == 'silver' ? AppColors.cream : AppColors.textColor1,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: context.responsiveHeight(8)),
                   Text(
                     '3x Profile Boost\n25 Likes / Day\n6 Superlikes / Day',
                     textAlign: TextAlign.center,
@@ -551,7 +552,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: context.responsiveHeight(4)),
                   Text(
                     'GOLD PASS',
                     style: GoogleFonts.spaceMono(
@@ -560,7 +561,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                       color: _selectedTierKey == 'gold' ? AppColors.cream : AppColors.textColor1,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: context.responsiveHeight(4)),
                   Text(
                     '₹${gold.priceINR} / 28 Days',
                     style: GoogleFonts.spaceMono(
@@ -569,7 +570,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                       color: _selectedTierKey == 'gold' ? AppColors.cream : AppColors.textColor1,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: context.responsiveHeight(8)),
                   Text(
                     '6x Max Boost\n50 Likes / Day\n12 Superlikes / Day',
                     textAlign: TextAlign.center,
@@ -603,9 +604,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
               letterSpacing: 1.1,
             ),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: context.responsiveHeight(12)),
           const Divider(color: AppColors.textColor1, height: 1),
-          const SizedBox(height: 8),
+          SizedBox(height: context.responsiveHeight(8)),
           _buildMatrixRow('Feature', 'Free', 'Silver', 'Gold', isHeader: true),
           const Divider(color: AppColors.textColor1, height: 1),
           _buildMatrixRow('Likes / Day', '15', '25', '50'),

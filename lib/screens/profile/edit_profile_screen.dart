@@ -7,6 +7,7 @@ import '../../theme/app_colors.dart';
 import '../../services/auth_service.dart';
 import '../../services/onboarding_service.dart';
 import 'profile_updated_screen.dart';
+import '../../utils/responsive_utils.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -248,7 +249,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildSectionHeading(context, label),
-        const SizedBox(height: 8),
+        SizedBox(height: context.responsiveHeight(8)),
         SketchyContainer(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           child: TextField(
@@ -263,7 +264,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             ),
           ),
         ),
-        const SizedBox(height: 24),
+        SizedBox(height: context.responsiveHeight(24)),
       ],
     );
   }
@@ -302,7 +303,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   _buildMainSectionHeading(context, 'PROFILE PHOTOS'),
-                  const SizedBox(height: 16),
+                  SizedBox(height: context.responsiveHeight(16)),
                   GridView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
@@ -340,16 +341,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       );
                     },
                   ),
-                  const SizedBox(height: 32),
+                  SizedBox(height: context.responsiveHeight(32)),
                   
                   _buildMainSectionHeading(context, 'BASIC INFO'),
-                  const SizedBox(height: 8),
+                  SizedBox(height: context.responsiveHeight(8)),
                   _buildTextField('USERNAME', _usernameController),
                   _buildTextField('NAME', _nameController),
                   _buildTextField('AGE', _ageController, keyboardType: TextInputType.number),
                   
                   _buildSectionHeading(context, 'GENDER'),
-                  const SizedBox(height: 16),
+                  SizedBox(height: context.responsiveHeight(16)),
                   Wrap(
                     spacing: 12,
                     runSpacing: 12,
@@ -369,10 +370,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       );
                     }).toList(),
                   ),
-                  const SizedBox(height: 28),
+                  SizedBox(height: context.responsiveHeight(28)),
 
                   _buildMainSectionHeading(context, 'ABOUT YOU'),
-                  const SizedBox(height: 8),
+                  SizedBox(height: context.responsiveHeight(8)),
                   _buildTextField('BIO', _bioController, maxLines: 3),
                   _buildTextField('SCHOOL', _schoolController),
                   _buildTextField('COURSE', _courseController),
@@ -381,15 +382,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   _buildTextField('BELIEFS', _beliefsController),
                   
                   _buildMainSectionHeading(context, 'INTERESTS'),
-                  const SizedBox(height: 16),
+                  SizedBox(height: context.responsiveHeight(16)),
                   _buildInterestsSection(),
 
                   _buildMainSectionHeading(context, 'PROMPTS'),
-                  const SizedBox(height: 16),
+                  SizedBox(height: context.responsiveHeight(16)),
                   _buildPromptsSection(),
 
                   _buildMainSectionHeading(context, 'TAGS'),
-                  const SizedBox(height: 16),
+                  SizedBox(height: context.responsiveHeight(16)),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
@@ -398,10 +399,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       _buildTagToggle('Pets', _pets, (v) => setState(() => _pets = v)),
                     ],
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: context.responsiveHeight(16)),
 
                   _buildMainSectionHeading(context, 'LOOKING FOR'),
-                  const SizedBox(height: 16),
+                  SizedBox(height: context.responsiveHeight(16)),
                   Row(
                     children: [
                       Expanded(
@@ -433,7 +434,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 48),
+                  SizedBox(height: context.responsiveHeight(48)),
                 ],
               ),
             ),
@@ -534,7 +535,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       ),
                   ],
                 ),
-                const SizedBox(height: 24),
+                SizedBox(height: context.responsiveHeight(24)),
               ],
             );
           }).toList()
@@ -570,7 +571,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               );
             }).toList(),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: context.responsiveHeight(20)),
           Padding(
             padding: const EdgeInsets.only(bottom: 10),
             child: Text('SKILLS', style: Theme.of(context).textTheme.labelLarge?.copyWith(
@@ -602,7 +603,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               );
             }).toList(),
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: context.responsiveHeight(24)),
         ]
       ],
     );
@@ -650,10 +651,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       color: AppColors.textColor2, fontWeight: FontWeight.w900)),
                 ),
                 if (sectionDesc.toString().isNotEmpty) ...[
-                  const SizedBox(height: 4),
+                  SizedBox(height: context.responsiveHeight(4)),
                   Text(sectionDesc.toString(), style: Theme.of(context).textTheme.bodyMedium),
                 ],
-                const SizedBox(height: 16),
+                SizedBox(height: context.responsiveHeight(16)),
                 ...visiblePrompts.map((prompt) {
                   final promptId = prompt['id'] as String;
                   final text = prompt['text'] as String;
@@ -694,7 +695,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           ],
                         ),
                         if (isActive) ...[
-                          const SizedBox(height: 8),
+                          SizedBox(height: context.responsiveHeight(8)),
                           SketchyContainer(
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                             child: TextField(
@@ -754,7 +755,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       ),
                     ),
                   ),
-                const SizedBox(height: 16),
+                SizedBox(height: context.responsiveHeight(16)),
               ],
             );
           }).toList(),
@@ -776,7 +777,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               color: value ? AppColors.cream : AppColors.textColor2,
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: context.responsiveHeight(8)),
           Text(label, style: Theme.of(context).textTheme.labelMedium),
         ],
       ),

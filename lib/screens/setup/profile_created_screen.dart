@@ -68,8 +68,9 @@ class _ProfileCreatedScreenState extends State<ProfileCreatedScreen> {
     return Scaffold(
       backgroundColor: AppColors.textColor2, // Crimson background
       body: SafeArea(
+        bottom: false,
         child: Padding(
-          padding: const EdgeInsets.all(24.0),
+          padding: const EdgeInsets.fromLTRB(24.0, 24.0, 24.0, 0),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -121,7 +122,7 @@ class _ProfileCreatedScreenState extends State<ProfileCreatedScreen> {
 
               if (_showEnterWorld)
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 24.0),
+                  padding: EdgeInsets.only(bottom: math.max(24.0, MediaQuery.of(context).padding.bottom)),
                   child: SketchyButton(
                     text: 'ENTER WORLD',
                     onPressed: () {

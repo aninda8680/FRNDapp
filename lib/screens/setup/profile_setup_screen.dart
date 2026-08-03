@@ -194,7 +194,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       canPop: _currentIndex == 0,
       onPopInvokedWithResult: (didPop, result) {
         if (!didPop && _currentIndex > 0) {
-          _previousStep();
+          if (!_pageController.position.isScrollingNotifier.value) {
+            _previousStep();
+          }
         }
       },
       child: Scaffold(

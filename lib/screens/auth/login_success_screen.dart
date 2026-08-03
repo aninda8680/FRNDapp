@@ -4,6 +4,7 @@ import '../../theme/app_colors.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../widgets/sketchy_button.dart';
 import '../setup/profile_created_screen.dart'; // To reuse ProfileBuildingIndicator
+import 'dart:math' as math;
 
 class LoginSuccessScreen extends StatefulWidget {
   final Future<String> processFuture; // Returns the next route name
@@ -67,8 +68,9 @@ class _LoginSuccessScreenState extends State<LoginSuccessScreen> {
     return Scaffold(
       backgroundColor: AppColors.textColor2, // Crimson background like setup
       body: SafeArea(
+        bottom: false,
         child: Padding(
-          padding: const EdgeInsets.all(24.0),
+          padding: const EdgeInsets.fromLTRB(24.0, 24.0, 24.0, 0),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -120,7 +122,7 @@ class _LoginSuccessScreenState extends State<LoginSuccessScreen> {
 
               if (_showEnterWorld)
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 24.0),
+                  padding: EdgeInsets.only(bottom: math.max(24.0, MediaQuery.of(context).padding.bottom)),
                   child: SketchyButton(
                     text: nextRoute == '/setup' ? 'CONTINUE' : 'ENTER WORLD',
                     onPressed: () {
