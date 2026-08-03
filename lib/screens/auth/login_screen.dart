@@ -5,6 +5,7 @@ import '../../widgets/sketchy_container.dart';
 import '../../widgets/top_notification.dart';
 import '../../services/auth_service.dart';
 import '../../config/dev_config.dart';
+import 'login_success_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -69,15 +70,18 @@ class _LoginScreenState extends State<LoginScreen> {
     switch (result) {
       case AuthResult.success:
         // Existing user, correct password
-        // Fetch profile to see if it's fully setup
-        final profile = await AuthService.getProfile();
-        if (!mounted) return;
-        
-        if (AuthService.isProfileComplete(profile)) {
-          Navigator.pushReplacementNamed(context, '/main');
-        } else {
-          Navigator.pushReplacementNamed(context, '/setup');
-        }
+        // Show success animation while evaluating route
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => LoginSuccessScreen(
+              processFuture: () async {
+                final profile = await AuthService.getProfile();
+                return AuthService.isProfileComplete(profile) ? '/main' : '/setup';
+              }(),
+            ),
+          ),
+        );
         break;
 
       case AuthResult.wrongPassword:

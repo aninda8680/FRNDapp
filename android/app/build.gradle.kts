@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "frnd.buzz"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
     compileOptions {

@@ -4,6 +4,7 @@ import '../../widgets/sketchy_button.dart';
 import '../../widgets/sketchy_container.dart';
 import '../../services/auth_service.dart';
 import '../../config/dev_config.dart';
+import 'login_success_screen.dart';
 
 class OtpVerificationScreen extends StatefulWidget {
   const OtpVerificationScreen({super.key});
@@ -59,7 +60,14 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
     if (!mounted) return;
 
     if (success) {
-      Navigator.pushReplacementNamed(context, '/setup');
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => LoginSuccessScreen(
+            processFuture: Future.value('/setup'),
+          ),
+        ),
+      );
     } else {
       _showSnackBar('Incorrect code. Please try again.');
     }
