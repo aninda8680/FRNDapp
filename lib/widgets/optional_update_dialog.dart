@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'update_progress_dialog.dart';
 
 /// A dismissible dialog that suggests an optional update to the user.
 class OptionalUpdateDialog extends StatelessWidget {
@@ -16,13 +17,14 @@ class OptionalUpdateDialog extends StatelessWidget {
   });
 
   Future<void> _launchStoreAndPop(BuildContext context) async {
-    final uri = Uri.parse(playStoreUrl);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
     if (context.mounted) {
       Navigator.of(context).pop();
     }
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => UpdateProgressDialog(apkUrl: playStoreUrl),
+    );
   }
 
   @override

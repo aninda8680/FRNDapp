@@ -47,6 +47,16 @@ class VersionService {
         return const VersionCheckResult(status: UpdateStatus.checkFailed);
       }
 
+      final info = await PackageInfo.fromPlatform();
+      print("Installed Version: ${info.version}");
+
+      final doc = await FirebaseFirestore.instance
+          .collection("app_config")
+          .doc("version")
+          .get();
+
+      print("Firestore data: ${doc.data()}");
+
       // c. Parse into AppVersion model
       final appVersion = AppVersion.fromMap(docSnapshot.data());
 

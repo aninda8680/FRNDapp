@@ -67,6 +67,9 @@ dependencies:
   cloud_firestore: ^6.7.1
   package_info_plus: ^10.2.1
   url_launcher: ^6.3.2
+  dio: ^5.11.0
+  open_filex: ^4.7.0
+  permission_handler: ^13.0.0
 
 dev_dependencies:
   flutter_test:
