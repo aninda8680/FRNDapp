@@ -585,11 +585,14 @@ class _IndividualChatScreenState extends State<IndividualChatScreen>
 
     for (final msg in _messages) {
       final day = _formatDateLabel(msg.timestamp);
-      result.add(_MessageItem(msg));
+      // In a reversed ListView, items are rendered bottom-to-top.
+      // We must add the separator BEFORE the message so it appears
+      // above the first (oldest) message of each day group visually.
       if (day != lastDay) {
         result.add(_DateSeparatorItem(day));
         lastDay = day;
       }
+      result.add(_MessageItem(msg));
     }
     return result;
   }
