@@ -16,15 +16,22 @@ class OptionalUpdateDialog extends StatelessWidget {
   });
 
   Future<void> _startUpdateAndPop(BuildContext context) async {
-    if (context.mounted) {
-      Navigator.of(context).pop();
-    }
-    showDialog(
+    if (!context.mounted) return;
+
+    // Pop this dialog first, then show the download progress dialog.
+    // We must NOT pop before showDialog — doing so invalidates the context,
+    // causes UpdateProgressDialog to dispose immediately, which triggers
+    // AppUpdater().cancel() and leaves a corrupt partial APK on disk.
+    Navigator.of(context).pop();
+
+    // Use the root navigator to ensure the dialog survives any inner navigators.
+    await showDialog(
       context: context,
+      useRootNavigator: true,
       barrierDismissible: false,
-      builder: (context) => UpdateProgressDialog(
+      builder: (ctx) => UpdateProgressDialog(
         apkUrl: playStoreUrl,
-        version: latestVersion, // version-stamped caching
+        version: latestVersion,
       ),
     );
   }

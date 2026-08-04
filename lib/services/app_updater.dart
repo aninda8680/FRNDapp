@@ -52,14 +52,31 @@ class AppUpdater {
       // Already fully downloaded — report 100% and skip straight to install
       onProgress(remoteSize, remoteSize);
     } else {
-      // ── Step 3: Download (resume if partial) ──
+      // If remoteSize is unknown (HEAD failed), wipe any partial file.
+      // Resuming into an unknown remote size risks appending into a corrupt file.
+      if (remoteSize == 0 && file.existsSync()) {
+        await file.delete();
+      }
+
+      // ── Step 3: Download (resume if partial, fresh if remoteSize unknown) ──
       await _download(
         url: url,
         filePath: filePath,
-        localSize: localSize,
+        localSize: remoteSize == 0 ? 0 : localSize,
         remoteSize: remoteSize,
         onProgress: onProgress,
       );
+
+      // ── Step 3a: Verify the downloaded file is complete ──
+      final downloadedSize = file.existsSync() ? file.lengthSync() : 0;
+      if (remoteSize > 0 && downloadedSize != remoteSize) {
+        // File is incomplete/corrupt — delete it so the next attempt re-downloads
+        await file.delete();
+        throw Exception(
+          'Download incomplete: got $downloadedSize bytes, expected $remoteSize. '
+          'Please try again.',
+        );
+      }
 
       // Clean up APKs from older versions to free space
       await _deleteOldVersionApks(version, filePath);
@@ -93,7 +110,10 @@ class AppUpdater {
         onProgress(actualReceived, actualTotal);
       },
       options: Options(
-        responseType: ResponseType.bytes,
+        // ResponseType.stream is required for correct byte-range resuming.
+        // ResponseType.bytes would overwrite the file from the start,
+        // producing a corrupt APK when a partial file already exists.
+        responseType: ResponseType.stream,
         headers: {
           'Accept': 'application/octet-stream',
           // Resume from where we left off if partial download exists

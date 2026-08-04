@@ -39,7 +39,7 @@ android {
         val variantName = name
         outputs.all {
             if (this is com.android.build.gradle.internal.api.BaseVariantOutputImpl) {
-                outputFileName = "frnd-${variantName}.apk"
+                outputFileName = if (variantName == "release") "frnd-buzz.apk" else "frnd-buzz-${variantName}.apk"
             }
         }
     }
