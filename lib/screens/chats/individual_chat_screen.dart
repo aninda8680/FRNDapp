@@ -439,6 +439,9 @@ class _IndividualChatScreenState extends State<IndividualChatScreen>
 
     return Scaffold(
       backgroundColor: _cream,
+      // Prevent the scaffold from resizing the body on every keyboard animation
+      // frame. Instead, only the input bar tracks the keyboard inset directly.
+      resizeToAvoidBottomInset: false,
       appBar: AppBar(
         backgroundColor: _cream,
         elevation: 0,
@@ -525,13 +528,11 @@ class _IndividualChatScreenState extends State<IndividualChatScreen>
           child: Container(color: _inkBlack.withOpacity(0.08), height: 1),
         ),
       ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(child: _buildMessageList(name, photoUrl)),
-            _buildInputArea(),
-          ],
-        ),
+      body: Column(
+        children: [
+          Expanded(child: _buildMessageList(name, photoUrl)),
+          _buildInputArea(),
+        ],
       ),
     );
   }
@@ -581,18 +582,22 @@ class _IndividualChatScreenState extends State<IndividualChatScreen>
   /// The list is in reversed order (newest first) to match the reversed ListView.
   List<Object> _buildItemList() {
     final result = <Object>[];
-    String? lastDay;
 
-    for (final msg in _messages) {
+    for (int i = 0; i < _messages.length; i++) {
+      final msg = _messages[i];
       final day = _formatDateLabel(msg.timestamp);
-      // In a reversed ListView, items are rendered bottom-to-top.
-      // We must add the separator BEFORE the message so it appears
-      // above the first (oldest) message of each day group visually.
-      if (day != lastDay) {
-        result.add(_DateSeparatorItem(day));
-        lastDay = day;
-      }
+      final nextDay = (i + 1 < _messages.length)
+          ? _formatDateLabel(_messages[i + 1].timestamp)
+          : null;
+
       result.add(_MessageItem(msg));
+
+      // In a reversed ListView (index 0 is at bottom of screen), higher indices
+      // render ABOVE lower indices. Adding the separator after the oldest message
+      // of a day group ensures it displays visually ABOVE that day's messages.
+      if (day != nextDay) {
+        result.add(_DateSeparatorItem(day));
+      }
     }
     return result;
   }
@@ -750,70 +755,80 @@ class _IndividualChatScreenState extends State<IndividualChatScreen>
   }
 
   Widget _buildInputArea() {
+    // Read the keyboard height directly — no setState, no rebuild of the list.
+    // When the keyboard slides up/down this widget rebuilds cheaply on its own.
+    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
     return Container(
       color: _cream,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: EdgeInsets.only(
+        left: 16,
+        right: 16,
+        top: 12,
+        // Add keyboard height + device bottom safe-area so the bar rides flush
+        // with the top of the keyboard without resizing the whole Scaffold.
+        bottom: 12 + bottomInset + MediaQuery.of(context).padding.bottom,
+      ),
       child: Row(
-        children: [
-          Expanded(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              decoration: BoxDecoration(
-                color: _cream,
-                borderRadius: BorderRadius.circular(24),
-                border:
-                    Border.all(color: _inkBlack.withOpacity(0.08), width: 1),
-              ),
-              child: TextField(
-                controller: _msgCtrl,
-                textInputAction: TextInputAction.send,
-                onSubmitted: (_) {
-                  if (_canSend) _sendMessage();
-                },
-                minLines: 1,
-                maxLines: 4,
-                decoration: InputDecoration(
-                  border: InputBorder.none,
-                  hintText: 'Message...',
-                  hintStyle: GoogleFonts.inter(
-                    color: _inkBlack.withOpacity(0.4),
-                    fontSize: 15,
+            children: [
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: _cream,
+                    borderRadius: BorderRadius.circular(24),
+                    border:
+                        Border.all(color: _inkBlack.withOpacity(0.08), width: 1),
+                  ),
+                  child: TextField(
+                    controller: _msgCtrl,
+                    textInputAction: TextInputAction.send,
+                    onSubmitted: (_) {
+                      if (_canSend) _sendMessage();
+                    },
+                    minLines: 1,
+                    maxLines: 4,
+                    decoration: InputDecoration(
+                      border: InputBorder.none,
+                      hintText: 'Message...',
+                      hintStyle: GoogleFonts.inter(
+                        color: _inkBlack.withOpacity(0.4),
+                        fontSize: 15,
+                      ),
+                    ),
+                    style: GoogleFonts.inter(fontSize: 15, color: _inkBlack),
                   ),
                 ),
-                style: GoogleFonts.inter(fontSize: 15, color: _inkBlack),
               ),
-            ),
+              const SizedBox(width: 12),
+              GestureDetector(
+                onTap: _canSend ? _sendMessage : null,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: _canSend ? _crimson : _inkBlack.withOpacity(0.05),
+                    shape: BoxShape.circle,
+                    boxShadow: _canSend
+                        ? [
+                            BoxShadow(
+                              color: _crimson.withOpacity(0.15),
+                              blurRadius: 8,
+                              offset: const Offset(0, 4),
+                            )
+                          ]
+                        : [],
+                  ),
+                  child: Icon(
+                    Icons.send_rounded,
+                    color: _canSend ? Colors.white : _inkBlack.withOpacity(0.2),
+                    size: 18,
+                  ),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 12),
-          GestureDetector(
-            onTap: _canSend ? _sendMessage : null,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: _canSend ? _crimson : _inkBlack.withOpacity(0.05),
-                shape: BoxShape.circle,
-                boxShadow: _canSend
-                    ? [
-                        BoxShadow(
-                          color: _crimson.withOpacity(0.15),
-                          blurRadius: 8,
-                          offset: const Offset(0, 4),
-                        )
-                      ]
-                    : [],
-              ),
-              child: Icon(
-                Icons.send_rounded,
-                color: _canSend ? Colors.white : _inkBlack.withOpacity(0.2),
-                size: 18,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+        );
   }
 }
 
