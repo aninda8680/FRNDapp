@@ -3,6 +3,7 @@ import '../../widgets/profile_card.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/app_image.dart';
 import '../../utils/responsive_utils.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 const Color _bgCream = Color(0xFFF5EFE0);
 const Color _primaryBurgundy = Color(0xFF6B1B35);
@@ -20,11 +21,26 @@ class MyProfileScreen extends StatefulWidget {
 class _MyProfileScreenState extends State<MyProfileScreen> {
   bool _isLoading = true;
   Map<String, dynamic>? _profileData;
+  String _appVersion = '';
 
   @override
   void initState() {
     super.initState();
     _fetchProfile();
+    _fetchVersion();
+  }
+
+  Future<void> _fetchVersion() async {
+    try {
+      final packageInfo = await PackageInfo.fromPlatform();
+      if (mounted) {
+        setState(() {
+          _appVersion = 'v${packageInfo.version} (${packageInfo.buildNumber})';
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching version: $e');
+    }
   }
 
   Future<void> _fetchProfile() async {
@@ -345,6 +361,22 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
                 ),
               ),
             ),
+            
+            SizedBox(height: context.responsiveHeight(16)),
+            
+            // App Version
+            if (_appVersion.isNotEmpty)
+              Center(
+                child: Text(
+                  'FRND Buzz $_appVersion',
+                  style: TextStyle(
+                    color: _mutedGray.withOpacity(0.6),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 1.0,
+                  ),
+                ),
+              ),
             
             Expanded(
               child: Align(
