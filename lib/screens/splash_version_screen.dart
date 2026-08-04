@@ -45,7 +45,10 @@ class _SplashVersionScreenState extends State<SplashVersionScreen> {
 
       case UpdateStatus.forceUpdate:
         setState(() => _isChecking = false);
-        _showForceUpdateDialog(result.appVersion?.playStoreUrl ?? '');
+        _showForceUpdateDialog(
+          result.appVersion?.playStoreUrl ?? '',
+          result.appVersion?.latestVersion ?? '',
+        );
         break;
 
       case UpdateStatus.optionalUpdate:
@@ -62,11 +65,14 @@ class _SplashVersionScreenState extends State<SplashVersionScreen> {
     }
   }
 
-  void _showForceUpdateDialog(String playStoreUrl) {
+  void _showForceUpdateDialog(String playStoreUrl, String latestVersion) {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) => ForceUpdateDialog(playStoreUrl: playStoreUrl),
+      builder: (_) => ForceUpdateDialog(
+        playStoreUrl: playStoreUrl,
+        latestVersion: latestVersion,
+      ),
     );
   }
 

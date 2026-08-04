@@ -4,30 +4,40 @@ import '../../widgets/sketchy_container.dart';
 class PrivacyPolicyScreen extends StatelessWidget {
   const PrivacyPolicyScreen({super.key});
 
-  Widget _buildSectionTitle(String title) {
+  Widget _buildSectionTitle(String title, {IconData? icon}) {
     return Padding(
-      padding: const EdgeInsets.only(top: 24.0, bottom: 12.0),
-      child: Text(
-        title.toUpperCase(),
-        style: const TextStyle(
-          fontSize: 18,
-          fontWeight: FontWeight.w900,
-          color: Color(0xFFA41534), // Burgundy color
-          letterSpacing: 1.2,
-        ),
+      padding: const EdgeInsets.only(top: 24.0, bottom: 8.0),
+      child: Row(
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: 16, color: const Color(0xFFA41534)),
+            const SizedBox(width: 6),
+          ],
+          Expanded(
+            child: Text(
+              title.toUpperCase(),
+              style: const TextStyle(
+                fontSize: 14.5,
+                fontWeight: FontWeight.w900,
+                color: Color(0xFFA41534), // Burgundy color
+                letterSpacing: 1.1,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildSubTitle(String title) {
     return Padding(
-      padding: const EdgeInsets.only(top: 12.0, bottom: 8.0),
+      padding: const EdgeInsets.only(top: 12.0, bottom: 6.0),
       child: Text(
         title,
         style: const TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w800,
-          color: Colors.black87,
+          fontSize: 13.5,
+          fontWeight: FontWeight.w700,
+          color: Color(0xFF1A1A1A),
         ),
       ),
     );
@@ -35,14 +45,14 @@ class PrivacyPolicyScreen extends StatelessWidget {
 
   Widget _buildText(String text) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12.0),
+      padding: const EdgeInsets.only(bottom: 10.0),
       child: Text(
         text,
         style: const TextStyle(
-          fontSize: 14,
+          fontSize: 12.5,
           height: 1.5,
-          color: Colors.black87,
-          fontWeight: FontWeight.w600,
+          color: Color(0xFF333333),
+          fontWeight: FontWeight.w400,
         ),
       ),
     );
@@ -50,19 +60,26 @@ class PrivacyPolicyScreen extends StatelessWidget {
 
   Widget _buildBulletPoint(String text) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8.0, left: 8.0),
+      padding: const EdgeInsets.only(bottom: 6.0, left: 6.0),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('• ', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFFA41534))),
+          const Text(
+            '• ',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFFA41534),
+            ),
+          ),
           Expanded(
             child: Text(
               text,
               style: const TextStyle(
-                fontSize: 14,
+                fontSize: 12.5,
                 height: 1.5,
-                color: Colors.black87,
-                fontWeight: FontWeight.w600,
+                color: Color(0xFF333333),
+                fontWeight: FontWeight.w400,
               ),
             ),
           ),
@@ -76,14 +93,32 @@ class PrivacyPolicyScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: const Color(0xFFFDF4E5), // Cream background
       appBar: AppBar(
-        title: const Text(
-          'PRIVACY POLICY',
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w900,
-            color: Color(0xFF1A1A1A),
-            letterSpacing: 2.0,
-          ),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: const Color(0xFFA41534).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: const Icon(
+                Icons.privacy_tip_outlined,
+                color: Color(0xFFA41534),
+                size: 18,
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Text(
+              'PRIVACY POLICY',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w900,
+                color: Color(0xFF1A1A1A),
+                letterSpacing: 1.8,
+              ),
+            ),
+          ],
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -98,11 +133,15 @@ class PrivacyPolicyScreen extends StatelessWidget {
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16.0),
           child: SketchyContainer(
-            padding: const EdgeInsets.all(24.0),
+            padding: const EdgeInsets.all(20.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildSectionTitle('Information We Collect'),
+                _buildText('We value your privacy and implement comprehensive security measures to protect your personal information and interactions on FRND Campus.'),
+
+                const Divider(height: 20, thickness: 1, color: Color(0x1F000000)),
+
+                _buildSectionTitle('Information We Collect', icon: Icons.folder_open_outlined),
                 _buildText('We collect information you provide directly to us and information we obtain automatically when you use our services.'),
                 
                 _buildSubTitle('Personal Information:'),
@@ -123,7 +162,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
                 _buildBulletPoint('Device information and app version'),
                 _buildBulletPoint('IP address and general location data for distance calculations'),
 
-                _buildSectionTitle('How We Use Your Information'),
+                _buildSectionTitle('How We Use Your Information', icon: Icons.insights_outlined),
                 _buildBulletPoint('To provide and maintain our campus socializing and matching services'),
                 _buildBulletPoint('To process payments and manage premium subscriptions via Razorpay'),
                 _buildBulletPoint('To manage your account, daily swipe quotas, and subscription status'),
@@ -133,7 +172,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
                 _buildBulletPoint('To provide customer support and technical assistance'),
                 _buildBulletPoint('To analyze usage patterns for service optimization and better match recommendations'),
 
-                _buildSectionTitle('Payment Processing'),
+                _buildSectionTitle('Payment Processing', icon: Icons.payment_outlined),
                 _buildText('We use Razorpay as our payment processor. Razorpay is PCI DSS compliant and follows industry best practices for handling payment information.'),
                 
                 _buildSubTitle('Payment Data Handling:'),
@@ -143,7 +182,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
                 _buildBulletPoint('All payment data is encrypted in transit and at rest'),
                 _buildBulletPoint('Refunds are processed through Razorpay\'s secure system'),
 
-                _buildSectionTitle('Data Security & Privacy'),
+                _buildSectionTitle('Data Security & Privacy', icon: Icons.security_outlined),
                 _buildText('We implement comprehensive security measures to protect your personal information and ensure the privacy of your interactions on Frnd.'),
 
                 _buildSubTitle('Data Protection & Anonymity:'),
@@ -158,7 +197,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
                 _buildBulletPoint('Regular security audits, monitoring, and automated moderation for safety'),
                 _buildBulletPoint('Compliance with applicable data protection and privacy regulations'),
 
-                _buildSectionTitle('Your Rights & Choices'),
+                _buildSectionTitle('Your Rights & Choices', icon: Icons.rule_outlined),
                 _buildBulletPoint('Access and review your personal information'),
                 _buildBulletPoint('Request correction of inaccurate data'),
                 _buildBulletPoint('Delete your account and associated data'),
@@ -167,7 +206,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
                 _buildBulletPoint('Withdraw consent for data processing'),
                 _buildBulletPoint('File complaints with data protection authorities'),
 
-                _buildSectionTitle('Data Retention & Sharing'),
+                _buildSectionTitle('Data Retention & Sharing', icon: Icons.dataset_outlined),
                 _buildSubTitle('Data Retention:'),
                 _buildBulletPoint('Account data and matches retained while your account is active'),
                 _buildBulletPoint('Payment records kept for 7 years for compliance'),
@@ -180,9 +219,9 @@ class PrivacyPolicyScreen extends StatelessWidget {
                 _buildBulletPoint('Legal compliance or safety investigations may require data disclosure'),
                 _buildBulletPoint('Service providers bound by strict confidentiality agreements'),
 
-                _buildSectionTitle('Contact Us'),
+                _buildSectionTitle('Contact Us', icon: Icons.contact_support_outlined),
                 _buildText('If you have questions about this Privacy Policy or our data practices, please contact us:'),
-                _buildText('Email: tb123983@gmail.com\nAddress: Barasat, Kolkata 700126'),
+                _buildText('Email: support@frndapp.edu\nAddress: Barasat, Kolkata 700126'),
                 _buildText('We will respond to privacy inquiries within 30 days.'),
               ],
             ),

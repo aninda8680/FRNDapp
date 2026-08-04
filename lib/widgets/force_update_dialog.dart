@@ -1,21 +1,28 @@
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'update_progress_dialog.dart';
 
 /// A non-dismissible dialog that forces the user to update the app.
 class ForceUpdateDialog extends StatelessWidget {
-  /// The store URL to redirect the user to.
+  /// The APK download URL from Firestore.
   final String playStoreUrl;
+
+  /// The latest version string — used for version-stamped APK caching.
+  final String latestVersion;
 
   const ForceUpdateDialog({
     super.key,
     required this.playStoreUrl,
+    required this.latestVersion,
   });
-  Future<void> _launchStore(BuildContext context) async {
+
+  Future<void> _startUpdate(BuildContext context) async {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => UpdateProgressDialog(apkUrl: playStoreUrl),
+      builder: (context) => UpdateProgressDialog(
+        apkUrl: playStoreUrl,
+        version: latestVersion,
+      ),
     );
   }
 
@@ -29,7 +36,7 @@ class ForceUpdateDialog extends StatelessWidget {
             'A new version of the app is required to continue. Please update to the latest version.'),
         actions: [
           ElevatedButton(
-            onPressed: () => _launchStore(context),
+            onPressed: () => _startUpdate(context),
             child: const Text('Update Now'),
           ),
         ],

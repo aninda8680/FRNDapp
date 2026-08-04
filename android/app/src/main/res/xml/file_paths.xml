@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- External storage (used by getExternalStorageDirectory) -->
+    <external-path name="external_files" path="." />
+    <!-- App-specific external files directory -->
+    <external-files-path name="external_app_files" path="." />
+    <!-- Cache directory fallback -->
+    <cache-path name="cache" path="." />
+    <external-cache-path name="external_cache" path="." />
+</paths>
