@@ -122,7 +122,7 @@ class _LoginSuccessScreenState extends State<LoginSuccessScreen> {
 
               if (_showEnterWorld)
                 Padding(
-                  padding: EdgeInsets.only(bottom: math.max(24.0, MediaQuery.of(context).padding.bottom)),
+                  padding: EdgeInsets.only(bottom: math.max(60.0, MediaQuery.of(context).padding.bottom + 32.0)),
                   child: SketchyButton(
                     text: nextRoute == '/setup' ? 'CONTINUE' : 'ENTER WORLD',
                     onPressed: () {

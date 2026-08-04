@@ -4,6 +4,8 @@
     <external-path name="external_files" path="." />
     <!-- App-specific external files directory -->
     <external-files-path name="external_app_files" path="." />
+    <!-- Internal files directory (getApplicationDocumentsDirectory fallback) -->
+    <files-path name="internal_files" path="." />
     <!-- Cache directory fallback -->
     <cache-path name="cache" path="." />
     <external-cache-path name="external_cache" path="." />

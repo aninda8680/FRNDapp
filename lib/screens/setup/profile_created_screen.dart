@@ -28,14 +28,8 @@ class _ProfileCreatedScreenState extends State<ProfileCreatedScreen> {
   }
 
   Future<void> _handleCreate() async {
-    // Ensure the creating state shows for at least 3 seconds, 
-    // or however long the API takes if it's slower than 3s.
-    final results = await Future.wait([
-      widget.saveFuture,
-      Future.delayed(const Duration(seconds: 3)),
-    ]);
-    
-    final success = results[0] as bool;
+    // Wait for the endpoint to finish creating the profile
+    final success = await widget.saveFuture;
     
     if (mounted) {
       setState(() {
@@ -51,13 +45,10 @@ class _ProfileCreatedScreenState extends State<ProfileCreatedScreen> {
       });
 
       if (success) {
-        final profile = await AuthService.getProfile();
-        if (AuthService.isProfileComplete(profile)) {
-          if (mounted) {
-            setState(() {
-              _showEnterWorld = true;
-            });
-          }
+        // Show the 'Profile created' state for 3 seconds before auto-redirecting
+        await Future.delayed(const Duration(seconds: 3));
+        if (mounted) {
+          Navigator.pushNamedAndRemoveUntil(context, '/main', (route) => false);
         }
       }
     }
@@ -119,17 +110,6 @@ class _ProfileCreatedScreenState extends State<ProfileCreatedScreen> {
               ),
 
               const Spacer(),
-
-              if (_showEnterWorld)
-                Padding(
-                  padding: EdgeInsets.only(bottom: math.max(24.0, MediaQuery.of(context).padding.bottom)),
-                  child: SketchyButton(
-                    text: 'ENTER WORLD',
-                    onPressed: () {
-                      Navigator.pushNamedAndRemoveUntil(context, '/main', (route) => false);
-                    },
-                  ),
-                ),
             ],
           ),
         ),

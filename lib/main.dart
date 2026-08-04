@@ -33,25 +33,30 @@ void main() async {
 
   String initialRouteString = AppRoutes.onboarding;
 
-  final cachedProfile = AuthService.userProfile;
-  if (cachedProfile != null) {
-    AuthService.getProfile(); // background refresh
-    if (AuthService.isProfileComplete(cachedProfile)) {
-      DiscoverService.prefetchFeed();
-      initialRouteString = AppRoutes.main;
-    } else {
-      initialRouteString = AppRoutes.profileSetup;
-    }
+  if (AuthService.token == null || AuthService.token!.isEmpty) {
+    initialRouteString = AppRoutes.onboarding;
   } else {
-    final fetchedProfile = await AuthService.getProfile();
-    if (fetchedProfile == null) {
-      initialRouteString = AppRoutes.onboarding;
-    } else {
-      if (AuthService.isProfileComplete(fetchedProfile)) {
+    final cachedProfile = AuthService.userProfile;
+    if (cachedProfile != null) {
+      AuthService.getProfile(); // background refresh
+      if (AuthService.isProfileComplete(cachedProfile)) {
         DiscoverService.prefetchFeed();
         initialRouteString = AppRoutes.main;
       } else {
         initialRouteString = AppRoutes.profileSetup;
+      }
+    } else {
+      final fetchedProfile = await AuthService.getProfile();
+      if (fetchedProfile == null) {
+        await AuthService.logout();
+        initialRouteString = AppRoutes.onboarding;
+      } else {
+        if (AuthService.isProfileComplete(fetchedProfile)) {
+          DiscoverService.prefetchFeed();
+          initialRouteString = AppRoutes.main;
+        } else {
+          initialRouteString = AppRoutes.profileSetup;
+        }
       }
     }
   }

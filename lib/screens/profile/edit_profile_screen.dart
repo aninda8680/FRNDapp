@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../widgets/sketchy_button.dart';
 import '../../widgets/sketchy_container.dart';
 import '../../widgets/profile_photo_picker.dart';
@@ -22,10 +23,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final TextEditingController _ageController = TextEditingController();
   final TextEditingController _bioController = TextEditingController();
   final TextEditingController _schoolController = TextEditingController();
+  String _selectedCollegeOption = 'Adamas University';
   final TextEditingController _courseController = TextEditingController();
   final TextEditingController _heightController = TextEditingController();
   final TextEditingController _religionController = TextEditingController();
-  final TextEditingController _beliefsController = TextEditingController();
 
   String? _selectedLookingFor;
   String? _selectedSexualOrientation;
@@ -49,6 +50,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final Set<String> _selectedInterests = {};
   final Map<String, String> _promptAnswers = {};
   final Set<String> _activePromptIds = {};
+  final Map<String, FocusNode> _promptFocusNodes = {};
   final Set<String> _expandedSegments = {};
 
   final List<String> _availableHobbies = [
@@ -56,6 +58,63 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     'Reading', 'Photography', 'Sports', 'Travel'
   ];
   final Set<String> _selectedHobbies = {};
+
+  final List<String> kAvailableCourses = const [
+    'BA (Hons)',
+    'BA LL.B (Hons)',
+    'BBA',
+    'BBA LL.B (Hons)',
+    'BCA',
+    'B.Com (Hons)',
+    'B.Ed',
+    'B.Pharm',
+    'B.Sc (Hons) / B.Sc',
+    'B.Tech',
+    'Bachelor of Optometry',
+    'D.Pharm',
+    'Diploma',
+    'LL.M',
+    'MA',
+    'MBA',
+    'MCA',
+    'M.Com',
+    'M.Pharm',
+    'M.Sc',
+    'M.Tech',
+    'P.G.D',
+    'Ph.D.',
+    'Other',
+  ];
+  String? _selectedCourseOption;
+
+  int _selectedFeet = 5;
+  int _selectedInches = 8;
+
+  void _updateHeightCm() {
+    final totalInches = (_selectedFeet * 12) + _selectedInches;
+    final cm = (totalInches * 2.54).round();
+    _heightController.text = cm.toString();
+  }
+
+  final List<String> kAvailableReligions = const [
+    'Hindu',
+    'Muslim',
+    'Christian',
+    'Sikh',
+    'Buddhist',
+    'Jain',
+    'Parsi (Zoroastrian)',
+    'Jewish',
+    'Baháʼí',
+    'Tribal / Indigenous Religion',
+    'Atheist',
+    'Agnostic',
+    'No Religion',
+    'Spiritual but Not Religious',
+    'Prefer Not to Say',
+    'Other',
+  ];
+  String? _selectedReligionOption;
 
   final List<String> _availableSkills = ['JavaScript', 'Python', 'Dart', 'Figma', 'UI/UX', 'Writing', 'Music', 'Public Speaking'];
   final Set<String> _selectedSkills = {};
@@ -76,7 +135,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _courseController.dispose();
     _heightController.dispose();
     _religionController.dispose();
-    _beliefsController.dispose();
+    for (var node in _promptFocusNodes.values) {
+      node.dispose();
+    }
     super.dispose();
   }
 
@@ -85,11 +146,47 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     _nameController.text = data['name'] ?? '';
     _ageController.text = data['age']?.toString() ?? '';
     _bioController.text = data['bio'] ?? '';
-    _schoolController.text = data['school'] ?? '';
-    _courseController.text = data['course'] ?? '';
-    _heightController.text = data['height']?.toString() ?? '';
-    _religionController.text = data['religion'] ?? '';
-    _beliefsController.text = data['beliefs'] ?? '';
+    final schoolVal = data['school']?.toString() ?? '';
+    if (schoolVal.isEmpty || schoolVal == 'Adamas University') {
+      _selectedCollegeOption = 'Adamas University';
+      _schoolController.text = 'Adamas University';
+    } else {
+      _selectedCollegeOption = 'Other';
+      _schoolController.text = schoolVal;
+    }
+    final courseVal = data['course']?.toString() ?? '';
+    if (kAvailableCourses.contains(courseVal)) {
+      _selectedCourseOption = courseVal;
+      _courseController.text = courseVal;
+    } else if (courseVal.isNotEmpty) {
+      _selectedCourseOption = 'Other';
+      _courseController.text = courseVal;
+    } else {
+      _selectedCourseOption = null;
+      _courseController.text = '';
+    }
+    final heightVal = int.tryParse(data['height']?.toString() ?? '');
+    if (heightVal != null && heightVal > 0) {
+      final totalInches = (heightVal / 2.54).round();
+      _selectedFeet = (totalInches ~/ 12).clamp(4, 7);
+      _selectedInches = (totalInches % 12).clamp(0, 11);
+      _heightController.text = heightVal.toString();
+    } else {
+      _selectedFeet = 5;
+      _selectedInches = 8;
+      _updateHeightCm();
+    }
+    final religionVal = data['religion']?.toString() ?? '';
+    if (kAvailableReligions.contains(religionVal)) {
+      _selectedReligionOption = religionVal;
+      _religionController.text = religionVal;
+    } else if (religionVal.isNotEmpty) {
+      _selectedReligionOption = 'Other';
+      _religionController.text = religionVal;
+    } else {
+      _selectedReligionOption = null;
+      _religionController.text = '';
+    }
     _selectedLookingFor = data['lookingFor'];
     _selectedSexualOrientation = data['sexualOrientation'];
     _selectedGender = data['gender'];
@@ -174,7 +271,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       "course": _courseController.text.trim(),
       "height": int.tryParse(_heightController.text.trim()),
       "religion": _religionController.text.trim(),
-      "beliefs": _beliefsController.text.trim(),
       "tags": {
         "smoke": _smoke,
         "drink": _drink,
@@ -244,11 +340,42 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
   }
 
+  int _getWordCount(String text) {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) return 0;
+    return trimmed.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).length;
+  }
+
   Widget _buildTextField(String label, TextEditingController controller, {int maxLines = 1, TextInputType? keyboardType}) {
+    final isBio = label.toUpperCase() == 'BIO';
+    final wordCount = isBio ? _getWordCount(controller.text) : 0;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionHeading(context, label),
+        Row(
+          children: [
+            _buildSectionHeading(context, label),
+            if (isBio) ...[
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: AppColors.textColor2.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '$wordCount/150 words',
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: wordCount >= 150 ? Colors.red : AppColors.textColor2,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
         SizedBox(height: context.responsiveHeight(8)),
         SketchyContainer(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -256,6 +383,19 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             controller: controller,
             maxLines: maxLines,
             keyboardType: keyboardType,
+            onChanged: isBio
+                ? (text) {
+                    final words = text.trim().split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
+                    if (words.length > 150) {
+                      final truncated = words.take(150).join(' ');
+                      controller.text = truncated;
+                      controller.selection = TextSelection.fromPosition(
+                        TextPosition(offset: truncated.length),
+                      );
+                    }
+                    setState(() {});
+                  }
+                : null,
             decoration: InputDecoration(
               isDense: true, 
               border: InputBorder.none, 
@@ -375,11 +515,307 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   _buildMainSectionHeading(context, 'ABOUT YOU'),
                   SizedBox(height: context.responsiveHeight(8)),
                   _buildTextField('BIO', _bioController, maxLines: 3),
-                  _buildTextField('SCHOOL', _schoolController),
-                  _buildTextField('COURSE', _courseController),
-                  _buildTextField('HEIGHT (cm)', _heightController, keyboardType: TextInputType.number),
-                  _buildTextField('RELIGION', _religionController),
-                  _buildTextField('BELIEFS', _beliefsController),
+                  
+                  // College selection section
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 6.0),
+                        child: Text(
+                          'COLLEGE',
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textColor2,
+                          ),
+                        ),
+                      ),
+                      Wrap(
+                        spacing: 12,
+                        runSpacing: 12,
+                        children: ['Adamas University', 'Other'].map((option) {
+                          final isSelected = _selectedCollegeOption == option;
+                          return GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _selectedCollegeOption = option;
+                                if (option == 'Adamas University') {
+                                  _schoolController.text = 'Adamas University';
+                                } else {
+                                  _schoolController.clear();
+                                }
+                              });
+                            },
+                            child: SketchyContainer(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                              borderRadius: 999,
+                              backgroundColor: isSelected ? AppColors.textColor2 : AppColors.cream,
+                              child: Text(
+                                option.toUpperCase(),
+                                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                                      color: isSelected ? AppColors.cream : AppColors.textColor2,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                      if (_selectedCollegeOption == 'Other') ...[
+                        const SizedBox(height: 12),
+                        SketchyContainer(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          child: TextField(
+                            controller: _schoolController,
+                            decoration: InputDecoration(
+                              isDense: true,
+                              border: InputBorder.none,
+                              hintText: 'Enter your college name',
+                              hintStyle: TextStyle(color: AppColors.textColor1.withOpacity(0.5)),
+                            ),
+                          ),
+                        ),
+                      ],
+                      SizedBox(height: context.responsiveHeight(16)),
+                    ],
+                  ),
+
+                  // Course selection section
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 6.0),
+                        child: Text(
+                          'COURSE',
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textColor2,
+                          ),
+                        ),
+                      ),
+                      SketchyContainer(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            value: kAvailableCourses.contains(_selectedCourseOption)
+                                ? _selectedCourseOption
+                                : (_selectedCourseOption == null ? null : 'Other'),
+                            hint: Text(
+                              'Select your course',
+                              style: TextStyle(color: AppColors.textColor1.withOpacity(0.5)),
+                            ),
+                            isExpanded: true,
+                            dropdownColor: AppColors.cream,
+                            icon: const Icon(Icons.keyboard_arrow_down, color: AppColors.textColor2),
+                            items: kAvailableCourses.map((String course) {
+                              return DropdownMenuItem<String>(
+                                value: course,
+                                child: Text(
+                                  course,
+                                  style: GoogleFonts.inter(
+                                    color: AppColors.textColor2,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                            onChanged: (String? newValue) {
+                              if (newValue == null) return;
+                              setState(() {
+                                _selectedCourseOption = newValue;
+                                if (newValue != 'Other') {
+                                  _courseController.text = newValue;
+                                } else {
+                                  _courseController.clear();
+                                }
+                              });
+                            },
+                          ),
+                        ),
+                      ),
+                      if (_selectedCourseOption == 'Other') ...[
+                        const SizedBox(height: 12),
+                        SketchyContainer(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          child: TextField(
+                            controller: _courseController,
+                            decoration: InputDecoration(
+                              isDense: true,
+                              border: InputBorder.none,
+                              hintText: 'Enter your course name',
+                              hintStyle: TextStyle(color: AppColors.textColor1.withOpacity(0.5)),
+                            ),
+                          ),
+                        ),
+                      ],
+                      SizedBox(height: context.responsiveHeight(16)),
+                    ],
+                  ),
+                  // Height selection section
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            'HEIGHT',
+                            style: GoogleFonts.inter(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.textColor2,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          if (_heightController.text.isNotEmpty)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: AppColors.textColor2.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                '~${_heightController.text} cm',
+                                style: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.textColor2,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          // Feet Dropdown
+                          Expanded(
+                            child: SketchyContainer(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                              child: DropdownButtonHideUnderline(
+                                child: DropdownButton<int>(
+                                  value: _selectedFeet,
+                                  isExpanded: true,
+                                  dropdownColor: AppColors.cream,
+                                  icon: const Icon(Icons.keyboard_arrow_down, color: AppColors.textColor2),
+                                  items: [4, 5, 6, 7].map((int ft) {
+                                    return DropdownMenuItem<int>(
+                                      value: ft,
+                                      child: Text(
+                                        '$ft ft',
+                                        style: GoogleFonts.inter(
+                                          color: AppColors.textColor2,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    );
+                                  }).toList(),
+                                  onChanged: (int? newFt) {
+                                    if (newFt == null) return;
+                                    setState(() {
+                                      _selectedFeet = newFt;
+                                      _updateHeightCm();
+                                    });
+                                  },
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          // Inches Dropdown
+                          Expanded(
+                            child: SketchyContainer(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                              child: DropdownButtonHideUnderline(
+                                child: DropdownButton<int>(
+                                  value: _selectedInches,
+                                  isExpanded: true,
+                                  dropdownColor: AppColors.cream,
+                                  icon: const Icon(Icons.keyboard_arrow_down, color: AppColors.textColor2),
+                                  items: List.generate(12, (index) => index).map((int inch) {
+                                    return DropdownMenuItem<int>(
+                                      value: inch,
+                                      child: Text(
+                                        '$inch in',
+                                        style: GoogleFonts.inter(
+                                          color: AppColors.textColor2,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    );
+                                  }).toList(),
+                                  onChanged: (int? newInch) {
+                                    if (newInch == null) return;
+                                    setState(() {
+                                      _selectedInches = newInch;
+                                      _updateHeightCm();
+                                    });
+                                  },
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: context.responsiveHeight(24)),
+                    ],
+                  ),
+                  // Religion selection section
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 6.0),
+                        child: Text(
+                          'RELIGION',
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textColor2,
+                          ),
+                        ),
+                      ),
+                      SketchyContainer(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            value: kAvailableReligions.contains(_selectedReligionOption)
+                                ? _selectedReligionOption
+                                : null,
+                            hint: Text(
+                              'Select your religion / belief',
+                              style: TextStyle(color: AppColors.textColor1.withOpacity(0.5)),
+                            ),
+                            isExpanded: true,
+                            dropdownColor: AppColors.cream,
+                            icon: const Icon(Icons.keyboard_arrow_down, color: AppColors.textColor2),
+                            items: kAvailableReligions.map((String religion) {
+                              return DropdownMenuItem<String>(
+                                value: religion,
+                                child: Text(
+                                  religion,
+                                  style: GoogleFonts.inter(
+                                    color: AppColors.textColor2,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                            onChanged: (String? newValue) {
+                              if (newValue == null) return;
+                              setState(() {
+                                _selectedReligionOption = newValue;
+                                _religionController.text = newValue;
+                              });
+                            },
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: context.responsiveHeight(24)),
+                    ],
+                  ),
                   
                   _buildMainSectionHeading(context, 'INTERESTS'),
                   SizedBox(height: context.responsiveHeight(16)),
@@ -676,7 +1112,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                 icon: const Icon(Icons.add_circle_outline, color: AppColors.textColor2),
                                 onPressed: () {
                                   setState(() {
-                                    _activePromptIds.add(promptId);
+                                    if (_activePromptIds.length < 3) {
+                                      _activePromptIds.add(promptId);
+                                      _promptFocusNodes[promptId] ??= FocusNode();
+                                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                                        _promptFocusNodes[promptId]?.requestFocus();
+                                      });
+                                    } else {
+                                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('You can only select up to 3 prompts')));
+                                    }
                                   });
                                 },
                               ),
@@ -699,16 +1143,27 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           SketchyContainer(
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                             child: TextField(
+                              focusNode: _promptFocusNodes.putIfAbsent(promptId, () => FocusNode()),
                               maxLines: 3,
                               minLines: 1,
                               onChanged: (val) {
-                                _promptAnswers[promptId] = val;
+                                setState(() {
+                                  _promptAnswers[promptId] = val;
+                                });
                               },
                               controller: TextEditingController(text: _promptAnswers[promptId])..selection = TextSelection.collapsed(offset: _promptAnswers[promptId]?.length ?? 0),
-                              decoration: const InputDecoration(
+                              decoration: InputDecoration(
                                 border: InputBorder.none,
                                 hintText: 'Write your answer...',
                                 isDense: true,
+                                suffixIcon: (_promptAnswers[promptId]?.isNotEmpty ?? false)
+                                    ? IconButton(
+                                        icon: const Icon(Icons.check, color: AppColors.textColor2),
+                                        onPressed: () {
+                                          _promptFocusNodes[promptId]?.unfocus();
+                                        },
+                                      )
+                                    : null,
                               ),
                             ),
                           ),

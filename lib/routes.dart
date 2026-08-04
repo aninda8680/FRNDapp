@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'screens/auth/onboarding_screen.dart';
 import 'screens/auth/login_screen.dart';
+import 'screens/auth/signup_screen.dart';
 import 'screens/auth/otp_verification_screen.dart';
 import 'screens/setup/profile_setup_screen.dart';
 import 'screens/setup/profile_created_screen.dart';
@@ -21,6 +22,7 @@ class AppRoutes {
 
   static const String onboarding = '/onboarding';
   static const String login = '/login';
+  static const String signup = '/signup';
   static const String otp = '/otp';
   static const String profileSetup = '/setup';
   static const String main = '/main';
@@ -44,6 +46,7 @@ class AppRoutes {
 
     onboarding: (context) => const OnboardingScreen(),
     login: (context) => const LoginScreen(),
+    signup: (context) => const SignUpScreen(),
     otp: (context) => const OtpVerificationScreen(),
     profileSetup: (context) => const ProfileSetupScreen(),
     main: (context) => const MainScaffold(),

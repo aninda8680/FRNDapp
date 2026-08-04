@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
+import '../services/update_download_service.dart';
 import 'update_progress_dialog.dart';
 
 /// A dismissible dialog that suggests an optional update to the user.
 class OptionalUpdateDialog extends StatelessWidget {
-  /// The latest available version string to display.
   final String latestVersion;
-
-  /// The APK download URL from Firestore.
   final String playStoreUrl;
 
   const OptionalUpdateDialog({
@@ -15,20 +13,18 @@ class OptionalUpdateDialog extends StatelessWidget {
     required this.playStoreUrl,
   });
 
-  Future<void> _startUpdateAndPop(BuildContext context) async {
-    if (!context.mounted) return;
+  void _startUpdate(BuildContext context) {
+    // Start download via the persistent singleton service
+    UpdateDownloadService().start(url: playStoreUrl, version: latestVersion);
 
-    // Pop this dialog first, then show the download progress dialog.
-    // We must NOT pop before showDialog — doing so invalidates the context,
-    // causes UpdateProgressDialog to dispose immediately, which triggers
-    // AppUpdater().cancel() and leaves a corrupt partial APK on disk.
+    // Close this suggestion dialog so user can keep using the app
     Navigator.of(context).pop();
 
-    // Use the root navigator to ensure the dialog survives any inner navigators.
-    await showDialog(
+    // Show a non-blocking progress dialog (user can dismiss it anytime)
+    showDialog(
       context: context,
       useRootNavigator: true,
-      barrierDismissible: false,
+      barrierDismissible: true,
       builder: (ctx) => UpdateProgressDialog(
         apkUrl: playStoreUrl,
         version: latestVersion,
@@ -41,14 +37,14 @@ class OptionalUpdateDialog extends StatelessWidget {
     return AlertDialog(
       title: const Text('Update Available'),
       content: Text(
-          'Version $latestVersion is now available. Would you like to update now?'),
+          'Version $latestVersion is now available. The download runs in the background — you can keep using the app while it downloads.'),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
           child: const Text('Later'),
         ),
         ElevatedButton(
-          onPressed: () => _startUpdateAndPop(context),
+          onPressed: () => _startUpdate(context),
           child: const Text('Update'),
         ),
       ],

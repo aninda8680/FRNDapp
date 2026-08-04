@@ -51,8 +51,30 @@ class OnboardingScreen extends StatelessWidget {
 
                   const Spacer(),
                   SketchyButton(
-                    text: 'Begin Your Story',
-                    onPressed: () => Navigator.pushNamed(context, '/login'),
+                    text: 'Create Account',
+                    onPressed: () => Navigator.pushNamed(context, '/signup'),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        "Already have an account? ",
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: Colors.grey[700],
+                            ),
+                      ),
+                      GestureDetector(
+                        onTap: () => Navigator.pushNamed(context, '/login'),
+                        child: Text(
+                          'Log In',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: AppColors.textColor2,
+                                fontWeight: FontWeight.bold,
+                              ),
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 16),
                 ],

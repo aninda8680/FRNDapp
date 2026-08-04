@@ -18,6 +18,9 @@ enum AuthResult {
   /// Existing user but wrong password — tell the user to try again.
   wrongPassword,
 
+  /// Email does not exist in the database.
+  userNotFound,
+
   /// Network error or unexpected server response.
   failure,
 }
@@ -49,6 +52,14 @@ class AuthService {
     
     // Securely read the token
     _cookie = await _secureStorage.read(key: 'auth_cookie');
+    
+    if (_cookie == null || _cookie!.isEmpty) {
+      _cookie = null;
+      userProfile = null;
+      userName = null;
+      userGender = null;
+      return;
+    }
     
     // Read cached user schema
     final userStr = prefs.getString('user_session_v1');
@@ -86,19 +97,71 @@ class AuthService {
     await ChatDB.clearAll(); // Wipe all locally cached messages on logout
   }
 
-  /// Main entry point for the "Sign Up / Login" button.
-  ///
-  /// The backend returns 401 for BOTH "wrong password" and "user not found" on
-  /// the login endpoint, so we cannot use login-first to distinguish new users.
-  ///
-  /// Correct flow:
-  ///   1. Try SIGNUP first.
-  ///      • 201  → new user created, OTP sent       → [AuthResult.needsOtp]
-  ///      • 400/409/other → email already exists    → fall through to login
-  ///   2. Try LOGIN with the same credentials.
-  ///      • 200  → existing user, correct password  → [AuthResult.success]
-  ///      • 401  → existing user, WRONG password    → [AuthResult.wrongPassword]
-  ///      • other→ unexpected error                 → [AuthResult.failure]
+  /// Dedicated Login endpoint for existing users.
+  static Future<AuthResult> loginOnly(String email, String password) async {
+    try {
+      final loginRes = await http.post(
+        Uri.parse('$baseUrl/login'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'identity': email, 'password': password}),
+      );
+
+      print('[Auth] Login → ${loginRes.statusCode}: ${loginRes.body}');
+
+      if (loginRes.statusCode == 200) {
+        _updateCookie(loginRes);
+        return AuthResult.success;
+      }
+
+      final bodyStr = loginRes.body.toLowerCase();
+      if (loginRes.statusCode == 404 ||
+          bodyStr.contains('user not found') ||
+          bodyStr.contains('not found') ||
+          bodyStr.contains('does not exist') ||
+          bodyStr.contains('no user')) {
+        return AuthResult.userNotFound;
+      }
+
+      if (loginRes.statusCode == 401 || loginRes.statusCode == 403) {
+        return AuthResult.wrongPassword;
+      }
+
+      return AuthResult.failure;
+    } catch (e) {
+      print('[Auth] Error during login: $e');
+      return AuthResult.failure;
+    }
+  }
+
+  /// Dedicated Signup endpoint for new users.
+  static Future<AuthResult> signupOnly(String email, String password) async {
+    try {
+      final signupRes = await http.post(
+        Uri.parse('$baseUrl/signup'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'email': email, 'password': password}),
+      );
+
+      print('[Auth] Signup → ${signupRes.statusCode}: ${signupRes.body}');
+
+      if (signupRes.statusCode == 201) {
+        _updateCookie(signupRes);
+        return AuthResult.needsOtp;
+      }
+
+      if (signupRes.statusCode == 400 || signupRes.statusCode == 409) {
+        // User already exists, try logging in
+        return signupOrLogin(email, password);
+      }
+
+      return AuthResult.failure;
+    } catch (e) {
+      print('[Auth] Error during signup: $e');
+      return AuthResult.failure;
+    }
+  }
+
+  /// Combined signup or login fallback.
   static Future<AuthResult> signupOrLogin(String email, String password) async {
     try {
       // ── Step 1: Try signup (new-user path) ─────────────────────────────────
@@ -253,6 +316,7 @@ class AuthService {
 
   /// Fetches the authenticated user's own full profile.
   static Future<Map<String, dynamic>?> getProfile() async {
+    if (_cookie == null || _cookie!.isEmpty) return null;
     try {
       final response = await http.get(
         Uri.parse('https://frnd-api-n3hv.onrender.com/api/users/me'),

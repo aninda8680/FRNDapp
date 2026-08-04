@@ -7,25 +7,27 @@ import '../../services/auth_service.dart';
 import '../../config/dev_config.dart';
 import 'login_success_screen.dart';
 
-class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+class SignUpScreen extends StatefulWidget {
+  const SignUpScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  State<SignUpScreen> createState() => _SignUpScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _SignUpScreenState extends State<SignUpScreen> {
   bool _isLoading = false;
-  bool _showForgotPassword = false;
   bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
 
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _confirmPasswordController = TextEditingController();
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
@@ -44,7 +46,7 @@ class _LoginScreenState extends State<LoginScreen> {
     overlay.insert(entry);
   }
 
-  Future<void> _onLogin() async {
+  Future<void> _onSignUp() async {
     // ── Dev bypass ────────────────────────────────────────────────────────────
     if (DevConfig.bypassAuth) {
       Navigator.pushNamed(context, '/otp');
@@ -54,23 +56,45 @@ class _LoginScreenState extends State<LoginScreen> {
     // ── Validation ────────────────────────────────────────────────────────────
     final email = _emailController.text.trim();
     final password = _passwordController.text;
+    final confirmPassword = _confirmPasswordController.text;
 
-    if (email.isEmpty || password.isEmpty) {
-      _showSnackBar('Please enter your college email and password.');
+    if (email.isEmpty || password.isEmpty || confirmPassword.isEmpty) {
+      _showSnackBar('Please fill in all fields.');
+      return;
+    }
+
+    if (password != confirmPassword) {
+      _showSnackBar('Passwords do not match.');
+      return;
+    }
+
+    if (password.length < 8) {
+      _showSnackBar('Password must be at least 8 characters long.');
+      return;
+    }
+
+    final hasSpecialChar = RegExp(r'[^\w\s]').hasMatch(password);
+    if (!hasSpecialChar) {
+      _showSnackBar(r'Password must contain at least 1 special character (e.g. @, #, $, !).');
       return;
     }
 
     setState(() => _isLoading = true);
 
-    final result = await AuthService.loginOnly(email, password);
+    final result = await AuthService.signupOnly(email, password);
 
     setState(() => _isLoading = false);
 
     if (!mounted) return;
 
     switch (result) {
+      case AuthResult.needsOtp:
+        // New user → OTP was sent → open OTP verification screen
+        Navigator.pushReplacementNamed(context, '/otp');
+        break;
+
       case AuthResult.success:
-        // Existing user, correct password
+        // Already existed and logged in
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
@@ -85,26 +109,16 @@ class _LoginScreenState extends State<LoginScreen> {
         break;
 
       case AuthResult.wrongPassword:
-        // Existing user, wrong password
-        _showSnackBar('Wrong password. Please try again.');
-        setState(() => _showForgotPassword = true);
-        break;
-
-      case AuthResult.userNotFound:
-        _showSnackBar('No such mail exists. Redirecting to Sign Up...');
+        _showSnackBar('An account with this email already exists. Redirecting to login...');
         Future.delayed(const Duration(seconds: 1), () {
           if (mounted) {
-            Navigator.pushReplacementNamed(context, '/signup');
+            Navigator.pushReplacementNamed(context, '/login');
           }
         });
         break;
-
-      case AuthResult.needsOtp:
-        Navigator.pushReplacementNamed(context, '/otp');
-        break;
-
+      case AuthResult.userNotFound:
       case AuthResult.failure:
-        _showSnackBar('Could not log in. Please check your credentials or try again.');
+        _showSnackBar('Sign up failed. Please try again.');
         break;
     }
   }
@@ -116,7 +130,7 @@ class _LoginScreenState extends State<LoginScreen> {
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text('Log In'),
+        title: const Text('Create Account'),
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
@@ -124,7 +138,7 @@ class _LoginScreenState extends State<LoginScreen> {
         children: [
           // Background illustration — blurs when keyboard is up
           Positioned(
-            top: 180,
+            top: 165,
             left: 0,
             right: 0,
             child: TweenAnimationBuilder<double>(
@@ -141,7 +155,7 @@ class _LoginScreenState extends State<LoginScreen> {
               },
               child: Image.asset(
                 'assets/images/login.png',
-                height: 300,
+                height: 240,
                 fit: BoxFit.contain,
               ),
             ),
@@ -197,7 +211,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                               // Password field
                               Text(
-                                'PASSWORD',
+                                'CREATE PASSWORD',
                                 style: Theme.of(context).textTheme.labelLarge?.copyWith(
                                       color: const Color(0xFF800000),
                                       fontWeight: FontWeight.bold,
@@ -212,9 +226,10 @@ class _LoginScreenState extends State<LoginScreen> {
                                   obscureText: _obscurePassword,
                                   decoration: InputDecoration(
                                     border: InputBorder.none,
-                                    hintText: 'enter password',
+                                    hintText: 'min 8 chars with a special character',
                                     hintStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(
                                           color: Colors.grey.withOpacity(0.5),
+                                          fontSize: 13,
                                         ),
                                     suffixIcon: IconButton(
                                       icon: Icon(
@@ -224,6 +239,44 @@ class _LoginScreenState extends State<LoginScreen> {
                                       onPressed: () {
                                         setState(() {
                                           _obscurePassword = !_obscurePassword;
+                                        });
+                                      },
+                                    ),
+                                  ),
+                                  style: Theme.of(context).textTheme.bodyLarge,
+                                ),
+                              ),
+                              const SizedBox(height: 14),
+
+                              // Confirm Password field
+                              Text(
+                                'CONFIRM PASSWORD',
+                                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                                      color: const Color(0xFF800000),
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                              ),
+                              const SizedBox(height: 8),
+                              SketchyContainer(
+                                backgroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                                child: TextField(
+                                  controller: _confirmPasswordController,
+                                  obscureText: _obscureConfirmPassword,
+                                  decoration: InputDecoration(
+                                    border: InputBorder.none,
+                                    hintText: 'confirm password',
+                                    hintStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                          color: Colors.grey.withOpacity(0.5),
+                                        ),
+                                    suffixIcon: IconButton(
+                                      icon: Icon(
+                                        _obscureConfirmPassword ? Icons.visibility_off : Icons.visibility,
+                                        color: Colors.grey[600],
+                                      ),
+                                      onPressed: () {
+                                        setState(() {
+                                          _obscureConfirmPassword = !_obscureConfirmPassword;
                                         });
                                       },
                                     ),
@@ -242,29 +295,29 @@ class _LoginScreenState extends State<LoginScreen> {
                           const Center(child: CircularProgressIndicator())
                         else
                           SketchyButton(
-                            text: 'LOG IN',
-                            onPressed: _onLogin,
+                            text: 'SIGN UP',
+                            onPressed: _onSignUp,
                           ),
 
                         const SizedBox(height: 12),
 
-                        // Link to Sign Up
+                        // Link to Login
                         Center(
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Text(
-                                "Don't have an account? ",
+                                "Already have an account? ",
                                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                                       color: Colors.grey[700],
                                     ),
                               ),
                               GestureDetector(
                                 onTap: () {
-                                  Navigator.pushReplacementNamed(context, '/signup');
+                                  Navigator.pushReplacementNamed(context, '/login');
                                 },
                                 child: Text(
-                                  'Sign Up',
+                                  'Log In',
                                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                                         color: const Color(0xFF800000),
                                         fontWeight: FontWeight.bold,
@@ -274,35 +327,6 @@ class _LoginScreenState extends State<LoginScreen> {
                             ],
                           ),
                         ),
-
-                        // Forgot password — only visible after a wrong-password attempt
-                        if (_showForgotPassword) ...[
-                          const SizedBox(height: 8),
-                          Center(
-                            child: TextButton(
-                              onPressed: () async {
-                                final email = _emailController.text.trim();
-                                if (email.isEmpty) {
-                                  _showSnackBar('Enter your email above first.');
-                                  return;
-                                }
-                                final sent = await AuthService.forgotPassword(email);
-                                if (!mounted) return;
-                                _showSnackBar(
-                                  sent
-                                      ? 'If that email is registered, a reset link has been sent.'
-                                      : 'Could not send reset link. Please try again.',
-                                );
-                              },
-                              child: Text(
-                                'Forgot Password?',
-                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                      color: Theme.of(context).colorScheme.primary,
-                                    ),
-                              ),
-                            ),
-                          ),
-                        ],
 
                         const SizedBox(height: 16),
                       ],

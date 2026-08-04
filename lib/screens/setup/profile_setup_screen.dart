@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../widgets/sketchy_button.dart';
 import '../../widgets/sketchy_container.dart';
 import '../../widgets/profile_photo_picker.dart';
@@ -42,7 +43,13 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     _courseController.addListener(updateState);
     _heightController.addListener(updateState);
     _religionController.addListener(updateState);
-    _beliefsController.addListener(updateState);
+
+    // Default college to Adamas University
+    _schoolController.text = 'Adamas University';
+    
+    // Default height to 5 ft 8 in (~173 cm) and age from DOB
+    _updateAgeFromDob();
+    _updateHeightCm();
   }
 
   Future<void> _loadOnboardingConfig() async {
@@ -60,6 +67,43 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     }
   }
 
+  String _selectedCollegeOption = 'Adamas University';
+  String? _selectedCourseOption;
+  String? _selectedReligionOption;
+  int _selectedFeet = 5;
+  int _selectedInches = 8;
+  int? _selectedMonth = 1;
+  int? _selectedDay = 15;
+  int? _selectedYear = DateTime.now().year - 18;
+
+  final List<String> kMonths = const [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+  ];
+
+  void _updateAgeFromDob() {
+    if (_selectedYear == null || _selectedMonth == null || _selectedDay == null) return;
+    final today = DateTime.now();
+    int age = today.year - _selectedYear!;
+    if (today.month < _selectedMonth! ||
+        (today.month == _selectedMonth! && today.day < _selectedDay!)) {
+      age--;
+    }
+    if (age < 0) age = 0;
+    _ageController.text = age.toString();
+  }
+
+  void _updateHeightCm() {
+    final totalInches = (_selectedFeet * 12) + _selectedInches;
+    final cm = (totalInches * 2.54).round();
+    _heightController.text = cm.toString();
+  }
+
+  int _getWordCount(String text) {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) return 0;
+    return trimmed.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).length;
+  }
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _ageController = TextEditingController();
@@ -68,7 +112,52 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   final TextEditingController _courseController = TextEditingController();
   final TextEditingController _heightController = TextEditingController();
   final TextEditingController _religionController = TextEditingController();
-  final TextEditingController _beliefsController = TextEditingController();
+
+  final List<String> kAvailableReligions = const [
+    'Hindu',
+    'Muslim',
+    'Christian',
+    'Sikh',
+    'Buddhist',
+    'Jain',
+    'Parsi (Zoroastrian)',
+    'Jewish',
+    'Baháʼí',
+    'Tribal / Indigenous Religion',
+    'Atheist',
+    'Agnostic',
+    'No Religion',
+    'Spiritual but Not Religious',
+    'Prefer Not to Say',
+    'Other',
+  ];
+
+  final List<String> kAvailableCourses = const [
+    'BA (Hons)',
+    'BA LL.B (Hons)',
+    'BBA',
+    'BBA LL.B (Hons)',
+    'BCA',
+    'B.Com (Hons)',
+    'B.Ed',
+    'B.Pharm',
+    'B.Sc (Hons) / B.Sc',
+    'B.Tech',
+    'Bachelor of Optometry',
+    'D.Pharm',
+    'Diploma',
+    'LL.M',
+    'MA',
+    'MBA',
+    'MCA',
+    'M.Com',
+    'M.Pharm',
+    'M.Sc',
+    'M.Tech',
+    'P.G.D',
+    'Ph.D.',
+    'Other',
+  ];
 
   final List<String> _availableHobbies = [
     'Gaming', 'Anime', 'Coding', 'Hiking', 'Music', 'Art', 'Coffee', 'Movies',
@@ -84,6 +173,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   // Mapping of promptId to answer string
   final Map<String, String> _promptAnswers = {};
   final Set<String> _activePromptIds = {};
+  final Map<String, FocusNode> _promptFocusNodes = {};
 
   final List<String?> _photoPaths = List.filled(4, null);
   final List<Uint8List?> _photoBytes = List.filled(4, null);
@@ -102,33 +192,36 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     return _usernameController.text.trim().isNotEmpty &&
            _nameController.text.trim().isNotEmpty &&
            _ageController.text.trim().isNotEmpty &&
-           _bioController.text.trim().isNotEmpty &&
-           _schoolController.text.trim().isNotEmpty &&
-           _courseController.text.trim().isNotEmpty &&
-           _heightController.text.trim().isNotEmpty &&
-           _religionController.text.trim().isNotEmpty &&
-           _beliefsController.text.trim().isNotEmpty;
+           _selectedGender != null &&
+           _bioController.text.trim().isNotEmpty;
   }
 
   bool get _isStep2Valid {
-    return true; // Photos can be added later
+    if (DevConfig.bypassProfileValidation) return true;
+    return _schoolController.text.trim().isNotEmpty &&
+           _courseController.text.trim().isNotEmpty &&
+           _heightController.text.trim().isNotEmpty &&
+           _religionController.text.trim().isNotEmpty;
   }
 
   bool get _isStep3Valid {
     if (DevConfig.bypassProfileValidation) return true;
-    return _selectedInterests.length >= 5 && _selectedInterests.length <= 10;
+    return _photoPaths.any((p) => p != null) || _photoBytes.any((b) => b != null);
   }
 
   bool get _isStep4Valid {
+    return true; // Step 4 (Interests) can be skipped or submitted
+  }
+
+  bool get _isStep5Valid {
     if (DevConfig.bypassProfileValidation) return true;
     final validAnswersCount = _promptAnswers.values.where((ans) => ans.trim().isNotEmpty).length;
     return validAnswersCount == 3;
   }
 
-  bool get _isStep5Valid {
+  bool get _isStep6Valid {
     if (DevConfig.bypassProfileValidation) return true;
-    return _selectedGender != null && 
-           _selectedLookingFor != null && 
+    return _selectedLookingFor != null && 
            _selectedSexualOrientation != null;
   }
 
@@ -143,12 +236,14 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     _courseController.dispose();
     _heightController.dispose();
     _religionController.dispose();
-    _beliefsController.dispose();
+    for (var node in _promptFocusNodes.values) {
+      node.dispose();
+    }
     super.dispose();
   }
 
   void _nextStep() {
-    if (_currentIndex < 5) {
+    if (_currentIndex < 6) {
       _pageController.nextPage(
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
@@ -169,11 +264,12 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
 
   @override
   Widget build(BuildContext context) {
-    double progress = (_currentIndex + 1) / 6.0;
+    double progress = (_currentIndex + 1) / 7.0;
     String leftLabel = 'STEP ${_currentIndex + 1}';
     
     final titles = [
-      'CREATE PROFILE',
+      'BASIC INFO',
+      'ABOUT YOU',
       'PROFILE PHOTOS',
       'INTERESTS',
       'PROMPTS',
@@ -182,7 +278,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     ];
     
     final rightLabels = [
-      'BASIC INFO',
+      'PERSONAL',
+      'DETAILS',
       'VISUALS',
       'INTERESTS',
       'QUESTIONS',
@@ -191,23 +288,74 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     ];
 
     return PopScope(
-      canPop: _currentIndex == 0,
+      canPop: false,
       onPopInvokedWithResult: (didPop, result) {
-        if (!didPop && _currentIndex > 0) {
+        if (didPop) return;
+        if (_currentIndex > 0) {
           if (!_pageController.position.isScrollingNotifier.value) {
             _previousStep();
+          }
+        } else {
+          if (Navigator.canPop(context)) {
+            Navigator.pop(context);
+          } else {
+            Navigator.pushReplacementNamed(context, '/login');
           }
         }
       },
       child: Scaffold(
         appBar: AppBar(
           title: _isLoadingConfig ? const Text('LOADING...') : Text(titles[_currentIndex]),
-          leading: _currentIndex > 0
-              ? IconButton(
-                  icon: const Icon(Icons.arrow_back),
-                  onPressed: _previousStep,
-                )
-              : null,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () {
+              if (_currentIndex > 0) {
+                _previousStep();
+              } else {
+                if (Navigator.canPop(context)) {
+                  Navigator.pop(context);
+                } else {
+                  Navigator.pushReplacementNamed(context, '/login');
+                }
+              }
+            },
+          ),
+          actions: [
+            if (_currentIndex == 2 || _currentIndex == 3)
+              TextButton(
+                onPressed: _nextStep,
+                child: Text(
+                  (_currentIndex == 3 && (_selectedInterests.isNotEmpty || _selectedHobbies.isNotEmpty || _selectedSkills.isNotEmpty)) ||
+                  (_currentIndex == 2 && _photoPaths.any((p) => p != null))
+                      ? 'NEXT'
+                      : 'SKIP',
+                  style: GoogleFonts.inter(
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textColor2,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            if (_currentIndex == 4)
+              Builder(
+                builder: (context) {
+                  final answeredCount = _promptAnswers.values.where((v) => v.trim().isNotEmpty).length;
+                  if (answeredCount >= 3) {
+                    return TextButton(
+                      onPressed: _nextStep,
+                      child: Text('NEXT', style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: AppColors.textColor2, fontSize: 14)),
+                    );
+                  } else {
+                    return Center(
+                      child: Padding(
+                        padding: const EdgeInsets.only(right: 16.0),
+                        child: Text('$answeredCount/3', style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: AppColors.textColor2, fontSize: 14)),
+                      ),
+                    );
+                  }
+                },
+              ),
+          ],
         ),
         body: SafeArea(
           child: _isLoadingConfig 
@@ -234,6 +382,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                   },
                   children: [
                     _buildBasicInfoStep(),
+                    _buildAboutYouStep(),
                     _buildUploadPhotosStep(),
                     _buildInterestsStep(),
                     _buildPromptsStep(),
@@ -275,15 +424,159 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
             ),
           ),
           const SizedBox(height: 24),
-          _buildSectionHeading(context, 'AGE'),
+          Row(
+            children: [
+              Text(
+                'DATE OF BIRTH',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textColor2,
+                    ),
+              ),
+              const SizedBox(width: 8),
+              if (_ageController.text.isNotEmpty)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: AppColors.textColor2.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '${_ageController.text} yrs old',
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textColor2,
+                    ),
+                  ),
+                ),
+            ],
+          ),
           const SizedBox(height: 8),
-          SketchyContainer(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            child: TextField(
-              controller: _ageController,
-              keyboardType: TextInputType.number, 
-              decoration: InputDecoration(isDense: true, border: InputBorder.none, hintText: 'Enter your age', hintStyle: TextStyle(color: AppColors.textColor1.withOpacity(0.5))),
-            ),
+          Row(
+            children: [
+              // Month Dropdown
+              Expanded(
+                flex: 3,
+                child: SketchyContainer(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<int>(
+                      value: _selectedMonth,
+                      isExpanded: true,
+                      dropdownColor: AppColors.cream,
+                      icon: const Icon(Icons.keyboard_arrow_down, color: AppColors.textColor2),
+                      hint: Text('Month', style: TextStyle(color: AppColors.textColor1.withOpacity(0.5))),
+                      items: List.generate(12, (index) => index + 1).map((int m) {
+                        return DropdownMenuItem<int>(
+                          value: m,
+                          child: Text(
+                            kMonths[m - 1],
+                            style: GoogleFonts.inter(
+                              color: AppColors.textColor2,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: (int? newMonth) {
+                        if (newMonth == null) return;
+                        setState(() {
+                          _selectedMonth = newMonth;
+                          final maxDays = DateTime(_selectedYear ?? DateTime.now().year - 18, newMonth + 1, 0).day;
+                          if ((_selectedDay ?? 1) > maxDays) {
+                            _selectedDay = maxDays;
+                          }
+                          _updateAgeFromDob();
+                        });
+                      },
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              // Day Dropdown
+              Expanded(
+                flex: 2,
+                child: SketchyContainer(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<int>(
+                      value: _selectedDay,
+                      isExpanded: true,
+                      dropdownColor: AppColors.cream,
+                      icon: const Icon(Icons.keyboard_arrow_down, color: AppColors.textColor2),
+                      hint: Text('Day', style: TextStyle(color: AppColors.textColor1.withOpacity(0.5))),
+                      items: List.generate(
+                        DateTime(_selectedYear ?? DateTime.now().year - 18, (_selectedMonth ?? 1) + 1, 0).day,
+                        (index) => index + 1,
+                      ).map((int day) {
+                        return DropdownMenuItem<int>(
+                          value: day,
+                          child: Text(
+                            '$day',
+                            style: GoogleFonts.inter(
+                              color: AppColors.textColor2,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: (int? newDay) {
+                        if (newDay == null) return;
+                        setState(() {
+                          _selectedDay = newDay;
+                          _updateAgeFromDob();
+                        });
+                      },
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              // Year Dropdown
+              Expanded(
+                flex: 3,
+                child: SketchyContainer(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<int>(
+                      value: _selectedYear,
+                      isExpanded: true,
+                      dropdownColor: AppColors.cream,
+                      icon: const Icon(Icons.keyboard_arrow_down, color: AppColors.textColor2),
+                      hint: Text('Year', style: TextStyle(color: AppColors.textColor1.withOpacity(0.5))),
+                      items: List.generate(
+                        60,
+                        (index) => (DateTime.now().year - 18) - index,
+                      ).map((int yr) {
+                        return DropdownMenuItem<int>(
+                          value: yr,
+                          child: Text(
+                            '$yr',
+                            style: GoogleFonts.inter(
+                              color: AppColors.textColor2,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: (int? newYear) {
+                        if (newYear == null) return;
+                        setState(() {
+                          _selectedYear = newYear;
+                          final maxDays = DateTime(newYear, (_selectedMonth ?? 1) + 1, 0).day;
+                          if ((_selectedDay ?? 1) > maxDays) {
+                            _selectedDay = maxDays;
+                          }
+                          _updateAgeFromDob();
+                        });
+                      },
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 24),
           _buildSectionHeading(context, 'GENDER'),
@@ -307,71 +600,321 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
             }).toList(),
           ),
           const SizedBox(height: 24),
-          _buildSectionHeading(context, 'BIO'),
+          Row(
+            children: [
+              _buildSectionHeading(context, 'BIO'),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: AppColors.textColor2.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '${_getWordCount(_bioController.text)}/150 words',
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: _getWordCount(_bioController.text) >= 150
+                        ? Colors.red
+                        : AppColors.textColor2,
+                  ),
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 8),
           SketchyContainer(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             child: TextField(
               controller: _bioController,
               maxLines: 3,
-              decoration: InputDecoration(isDense: true, border: InputBorder.none, hintText: 'Some lines about you', hintStyle: TextStyle(color: AppColors.textColor1.withOpacity(0.5))),
-            ),
-          ),
-          const SizedBox(height: 24),
-          _buildSectionHeading(context, 'SCHOOL'),
-          const SizedBox(height: 8),
-          SketchyContainer(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            child: TextField(
-              controller: _schoolController,
-              decoration: InputDecoration(isDense: true, border: InputBorder.none, hintText: 'SOET, SOMC, SOLJ, etc..', hintStyle: TextStyle(color: AppColors.textColor1.withOpacity(0.5))),
-            ),
-          ),
-          const SizedBox(height: 24),
-          _buildSectionHeading(context, 'COURSE'),
-          const SizedBox(height: 8),
-          SketchyContainer(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            child: TextField(
-              controller: _courseController,
-              decoration: InputDecoration(isDense: true, border: InputBorder.none, hintText: 'CSE, BCA, LLB, etc..', hintStyle: TextStyle(color: AppColors.textColor1.withOpacity(0.5))),
-            ),
-          ),
-          const SizedBox(height: 24),
-          _buildSectionHeading(context, 'HEIGHT (cm)'),
-          const SizedBox(height: 8),
-          SketchyContainer(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            child: TextField(
-              controller: _heightController,
-              keyboardType: TextInputType.number,
-              decoration: InputDecoration(isDense: true, border: InputBorder.none, hintText: 'in cm', hintStyle: TextStyle(color: AppColors.textColor1.withOpacity(0.5))),
-            ),
-          ),
-          const SizedBox(height: 24),
-          _buildSectionHeading(context, 'RELIGION'),
-          const SizedBox(height: 8),
-          SketchyContainer(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            child: TextField(
-              controller: _religionController,
-              decoration: InputDecoration(isDense: true, border: InputBorder.none, hintText: 'Hinduism, Islam, Christianity, etc..', hintStyle: TextStyle(color: AppColors.textColor1.withOpacity(0.5))),
-            ),
-          ),
-          const SizedBox(height: 24),
-          _buildSectionHeading(context, 'BELIEFS'),
-          const SizedBox(height: 8),
-          SketchyContainer(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            child: TextField(
-              controller: _beliefsController,
-              decoration: InputDecoration(isDense: true, border: InputBorder.none, hintText: 'Spiritual, open-minded, etc..', hintStyle: TextStyle(color: AppColors.textColor1.withOpacity(0.5))),
+              onChanged: (text) {
+                final words = text.trim().split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
+                if (words.length > 150) {
+                  final truncated = words.take(150).join(' ');
+                  _bioController.text = truncated;
+                  _bioController.selection = TextSelection.fromPosition(
+                    TextPosition(offset: truncated.length),
+                  );
+                }
+                setState(() {});
+              },
+              decoration: InputDecoration(
+                isDense: true,
+                border: InputBorder.none,
+                hintText: 'Some lines about you',
+                hintStyle: TextStyle(color: AppColors.textColor1.withOpacity(0.5)),
+              ),
             ),
           ),
           const SizedBox(height: 24),
           SketchyButton(
             text: 'NEXT STEP',
             onPressed: _isStep1Valid ? _nextStep : null,
+          ),
+          const SizedBox(height: 24),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAboutYouStep() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildSectionHeading(context, 'COLLEGE'),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: ['Adamas University', 'Other'].map((option) {
+              final isSelected = _selectedCollegeOption == option;
+              return GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _selectedCollegeOption = option;
+                    if (option == 'Adamas University') {
+                      _schoolController.text = 'Adamas University';
+                    } else {
+                      _schoolController.clear();
+                    }
+                  });
+                },
+                child: SketchyContainer(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  borderRadius: 999,
+                  backgroundColor: isSelected ? AppColors.textColor2 : AppColors.cream,
+                  child: Text(
+                    option.toUpperCase(),
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          color: isSelected ? AppColors.cream : AppColors.textColor2,
+                          fontWeight: FontWeight.bold,
+                        ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+          if (_selectedCollegeOption == 'Other') ...[
+            const SizedBox(height: 12),
+            SketchyContainer(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              child: TextField(
+                controller: _schoolController,
+                decoration: InputDecoration(
+                  isDense: true,
+                  border: InputBorder.none,
+                  hintText: 'Enter your college name',
+                  hintStyle: TextStyle(color: AppColors.textColor1.withOpacity(0.5)),
+                ),
+              ),
+            ),
+          ],
+          const SizedBox(height: 24),
+          _buildSectionHeading(context, 'COURSE'),
+          const SizedBox(height: 8),
+          SketchyContainer(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: kAvailableCourses.contains(_selectedCourseOption)
+                    ? _selectedCourseOption
+                    : (_selectedCourseOption == null ? null : 'Other'),
+                hint: Text(
+                  'Select your course',
+                  style: TextStyle(color: AppColors.textColor1.withOpacity(0.5)),
+                ),
+                isExpanded: true,
+                dropdownColor: AppColors.cream,
+                icon: const Icon(Icons.keyboard_arrow_down, color: AppColors.textColor2),
+                items: kAvailableCourses.map((String course) {
+                  return DropdownMenuItem<String>(
+                    value: course,
+                    child: Text(
+                      course,
+                      style: GoogleFonts.inter(
+                        color: AppColors.textColor2,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  );
+                }).toList(),
+                onChanged: (String? newValue) {
+                  if (newValue == null) return;
+                  setState(() {
+                    _selectedCourseOption = newValue;
+                    if (newValue != 'Other') {
+                      _courseController.text = newValue;
+                    } else {
+                      _courseController.clear();
+                    }
+                  });
+                },
+              ),
+            ),
+          ),
+          if (_selectedCourseOption == 'Other') ...[
+            const SizedBox(height: 12),
+            SketchyContainer(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              child: TextField(
+                controller: _courseController,
+                decoration: InputDecoration(
+                  isDense: true,
+                  border: InputBorder.none,
+                  hintText: 'Enter your course name',
+                  hintStyle: TextStyle(color: AppColors.textColor1.withOpacity(0.5)),
+                ),
+              ),
+            ),
+          ],
+          const SizedBox(height: 24),
+          Row(
+            children: [
+              Text(
+                'HEIGHT',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textColor2,
+                    ),
+              ),
+              const SizedBox(width: 8),
+              if (_heightController.text.isNotEmpty)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: AppColors.textColor2.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '~${_heightController.text} cm',
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textColor2,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              // Feet Dropdown
+              Expanded(
+                child: SketchyContainer(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<int>(
+                      value: _selectedFeet,
+                      isExpanded: true,
+                      dropdownColor: AppColors.cream,
+                      icon: const Icon(Icons.keyboard_arrow_down, color: AppColors.textColor2),
+                      items: [4, 5, 6, 7].map((int ft) {
+                        return DropdownMenuItem<int>(
+                          value: ft,
+                          child: Text(
+                            '$ft ft',
+                            style: GoogleFonts.inter(
+                              color: AppColors.textColor2,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: (int? newFt) {
+                        if (newFt == null) return;
+                        setState(() {
+                          _selectedFeet = newFt;
+                          _updateHeightCm();
+                        });
+                      },
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              // Inches Dropdown
+              Expanded(
+                child: SketchyContainer(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<int>(
+                      value: _selectedInches,
+                      isExpanded: true,
+                      dropdownColor: AppColors.cream,
+                      icon: const Icon(Icons.keyboard_arrow_down, color: AppColors.textColor2),
+                      items: List.generate(12, (index) => index).map((int inch) {
+                        return DropdownMenuItem<int>(
+                          value: inch,
+                          child: Text(
+                            '$inch in',
+                            style: GoogleFonts.inter(
+                              color: AppColors.textColor2,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: (int? newInch) {
+                        if (newInch == null) return;
+                        setState(() {
+                          _selectedInches = newInch;
+                          _updateHeightCm();
+                        });
+                      },
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          _buildSectionHeading(context, 'RELIGION'),
+          const SizedBox(height: 8),
+          SketchyContainer(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: kAvailableReligions.contains(_selectedReligionOption)
+                    ? _selectedReligionOption
+                    : null,
+                hint: Text(
+                  'Select your religion / belief',
+                  style: TextStyle(color: AppColors.textColor1.withOpacity(0.5)),
+                ),
+                isExpanded: true,
+                dropdownColor: AppColors.cream,
+                icon: const Icon(Icons.keyboard_arrow_down, color: AppColors.textColor2),
+                items: kAvailableReligions.map((String religion) {
+                  return DropdownMenuItem<String>(
+                    value: religion,
+                    child: Text(
+                      religion,
+                      style: GoogleFonts.inter(
+                        color: AppColors.textColor2,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  );
+                }).toList(),
+                onChanged: (String? newValue) {
+                  if (newValue == null) return;
+                  setState(() {
+                    _selectedReligionOption = newValue;
+                    _religionController.text = newValue;
+                  });
+                },
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          SketchyButton(
+            text: 'NEXT STEP',
+            onPressed: _isStep2Valid ? _nextStep : null,
           ),
           const SizedBox(height: 24),
         ],
@@ -426,8 +969,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
           ),
           const SizedBox(height: 32),
           SketchyButton(
-            text: _photoPaths.any((p) => p != null) ? 'NEXT STEP' : 'SKIP',
-            onPressed: _isStep2Valid ? _nextStep : null,
+            text: 'NEXT STEP',
+            onPressed: _isStep3Valid ? _nextStep : null,
           ),
           const SizedBox(height: 24),
         ],
@@ -441,6 +984,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+
+          const SizedBox(height: 16),
           if (_segments.isNotEmpty)
             ..._segments.map((segment) {
               final segmentName = segment['name'] ?? 'INTERESTS';
@@ -606,8 +1151,10 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
           const SizedBox(height: 48),
 
           SketchyButton(
-            text: 'NEXT STEP',
-            onPressed: _isStep3Valid ? _nextStep : null,
+            text: (_selectedInterests.isNotEmpty || _selectedHobbies.isNotEmpty || _selectedSkills.isNotEmpty)
+                ? 'NEXT STEP'
+                : 'SKIP',
+            onPressed: _nextStep,
           ),
           const SizedBox(height: 24),
         ],
@@ -700,6 +1247,10 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                                     setState(() {
                                       if (_activePromptIds.length < 3) {
                                         _activePromptIds.add(promptId);
+                                        _promptFocusNodes[promptId] ??= FocusNode();
+                                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                                          _promptFocusNodes[promptId]?.requestFocus();
+                                        });
                                       } else {
                                         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('You can only select up to 3 prompts')));
                                       }
@@ -725,16 +1276,27 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                             SketchyContainer(
                               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                               child: TextField(
+                                focusNode: _promptFocusNodes.putIfAbsent(promptId, () => FocusNode()),
                                 maxLines: 3,
                                 minLines: 1,
                                 onChanged: (val) {
-                                  _promptAnswers[promptId] = val;
+                                  setState(() {
+                                    _promptAnswers[promptId] = val;
+                                  });
                                 },
                                 controller: TextEditingController(text: _promptAnswers[promptId])..selection = TextSelection.collapsed(offset: _promptAnswers[promptId]?.length ?? 0),
-                                decoration: const InputDecoration(
+                                decoration: InputDecoration(
                                   border: InputBorder.none,
                                   hintText: 'Write your answer...',
                                   isDense: true,
+                                  suffixIcon: (_promptAnswers[promptId]?.isNotEmpty ?? false)
+                                      ? IconButton(
+                                          icon: const Icon(Icons.check, color: AppColors.textColor2),
+                                          onPressed: () {
+                                            _promptFocusNodes[promptId]?.unfocus();
+                                          },
+                                        )
+                                      : null,
                                 ),
                               ),
                             ),
@@ -791,7 +1353,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
           const SizedBox(height: 32),
           SketchyButton(
             text: 'NEXT STEP',
-            onPressed: _isStep4Valid ? _nextStep : null,
+            onPressed: _isStep5Valid ? _nextStep : null,
           ),
           const SizedBox(height: 24),
         ],
@@ -811,13 +1373,13 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
             onTap: () => setState(() => _selectedLookingFor = 'dating'),
             child: SketchyContainer(
               padding: const EdgeInsets.all(24),
-              backgroundColor: _selectedLookingFor == 'dating' ? AppColors.textColor2.withOpacity(0.1) : AppColors.cream,
+              backgroundColor: _selectedLookingFor == 'dating' ? AppColors.textColor2 : AppColors.cream,
               child: Row(
                 children: [
-                  Icon(Icons.favorite_border, size: 32, color: _selectedLookingFor == 'dating' ? AppColors.textColor2 : AppColors.inkBlack),
+                  Icon(Icons.favorite_border, size: 32, color: _selectedLookingFor == 'dating' ? AppColors.cream : AppColors.inkBlack),
                   const SizedBox(width: 16),
                   Text('DATING', style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: _selectedLookingFor == 'dating' ? AppColors.textColor2 : AppColors.inkBlack
+                    color: _selectedLookingFor == 'dating' ? AppColors.cream : AppColors.inkBlack
                   )),
                 ],
               ),
@@ -828,13 +1390,13 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
             onTap: () => setState(() => _selectedLookingFor = 'friends'),
             child: SketchyContainer(
               padding: const EdgeInsets.all(24),
-              backgroundColor: _selectedLookingFor == 'friends' ? AppColors.textColor2.withOpacity(0.1) : AppColors.cream,
+              backgroundColor: _selectedLookingFor == 'friends' ? AppColors.textColor2 : AppColors.cream,
               child: Row(
                 children: [
-                  Icon(Icons.people_outline, size: 32, color: _selectedLookingFor == 'friends' ? AppColors.textColor2 : AppColors.inkBlack),
+                  Icon(Icons.people_outline, size: 32, color: _selectedLookingFor == 'friends' ? AppColors.cream : AppColors.inkBlack),
                   const SizedBox(width: 16),
                   Text('FRIENDS ONLY', style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: _selectedLookingFor == 'friends' ? AppColors.textColor2 : AppColors.inkBlack
+                    color: _selectedLookingFor == 'friends' ? AppColors.cream : AppColors.inkBlack
                   )),
                 ],
               ),
@@ -864,7 +1426,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
           const SizedBox(height: 48),
           SketchyButton(
             text: 'NEXT STEP',
-            onPressed: _isStep5Valid ? _nextStep : null,
+            onPressed: _isStep6Valid ? _nextStep : null,
           ),
           const SizedBox(height: 24),
         ],
@@ -900,7 +1462,6 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       "course": _courseController.text.trim(),
       "height": int.tryParse(_heightController.text.trim()) ?? 170,
       "religion": _religionController.text.trim(),
-      "beliefs": _beliefsController.text.trim(),
       "gender": _selectedGender ?? 'other',
       "hobbies": _selectedHobbies.toList(),
       "skills": _selectedSkills.toList(),
