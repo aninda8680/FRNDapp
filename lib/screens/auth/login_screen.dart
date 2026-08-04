@@ -85,8 +85,8 @@ class _LoginScreenState extends State<LoginScreen> {
         break;
 
       case AuthResult.wrongPassword:
-        // Existing user, wrong password
-        _showSnackBar('Wrong password. Please try again.');
+        // Existing user, wrong password (or non-existent email returning 401)
+        _showSnackBar('Invalid email or password. Please try again or sign up.');
         setState(() => _showForgotPassword = true);
         break;
 
