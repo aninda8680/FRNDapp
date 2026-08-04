@@ -58,6 +58,8 @@ class ChatService {
   static Function(ChatMessage)? onMessageReceived;
   static Function(String, DateTime)? onMessageSent;
   static Function(String)? onError;
+  static Function(Map<String, dynamic>)? onNewMatch;
+  static Function(Map<String, dynamic>)? onNewLike;
 
   static String? _currentConversationId;
   static Timer? _heartbeatTimer;
@@ -312,7 +314,24 @@ class ChatService {
         if (err != null && onError != null) onError!(err);
       }
     });
+
+    // Server → Client: real-time new match push notification
+    _socket!.on('new_match', (data) {
+      print('ChatService: new_match event received=$data');
+      if (data is Map && onNewMatch != null) {
+        onNewMatch!(Map<String, dynamic>.from(data));
+      }
+    });
+
+    // Server → Client: real-time new like push notification
+    _socket!.on('new_like', (data) {
+      print('ChatService: new_like event received=$data');
+      if (data is Map && onNewLike != null) {
+        onNewLike!(Map<String, dynamic>.from(data));
+      }
+    });
   }
+
 
   static void _emitJoin(String conversationId) {
     print('ChatService: Emitting join_conversation for $conversationId');

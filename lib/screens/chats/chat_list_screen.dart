@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../services/matches_service.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -106,11 +107,15 @@ class _ChatListRefreshState extends State<ChatListScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: _cream,
+      extendBodyBehindAppBar: true,
       resizeToAvoidBottomInset: false,
       appBar: AppBar(
         automaticallyImplyLeading: false,
         toolbarHeight: 48,
-        backgroundColor: _cream, elevation: 0, surfaceTintColor: Colors.transparent,
+        backgroundColor: Colors.transparent, 
+        elevation: 0, 
+        surfaceTintColor: Colors.transparent,
+        systemOverlayStyle: SystemUiOverlayStyle.dark,
         title: const Text(
           'CAMPUS CHATS',
           style: TextStyle(
@@ -125,7 +130,40 @@ class _ChatListRefreshState extends State<ChatListScreen> {
       ),
       body: Stack(
         children: [
-          // Layer 1: Skeleton (behind image)
+          // Background layer
+          Positioned(
+            top: -30,
+            left: 0,
+            right: 0,
+            child: Image.asset(
+              'assets/images/redTreebg.png',
+              fit: BoxFit.fitWidth,
+              alignment: Alignment.topCenter,
+              opacity: const AlwaysStoppedAnimation(0.65),
+            ),
+          ),
+          // Status bar gradient for better icon visibility
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            height: MediaQuery.paddingOf(context).top + 40,
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    const Color(0xFFFAF4E1),
+                    const Color(0xFFFAF4E1).withOpacity(0.9),
+                    const Color(0xFFFAF4E1).withOpacity(0.0),
+                  ],
+                  stops: const [0.0, 0.5, 1.0],
+                ),
+              ),
+            ),
+          ),
+          // Layer 1: Skeleton
           if (_isLoading)
             SafeArea(
               bottom: false,
@@ -165,28 +203,26 @@ class _ChatListRefreshState extends State<ChatListScreen> {
               ),
             ),
 
-          // Layer 2: Background Image (always visible)
+          // Layer 2: Tonight.png
           Positioned(
             left: 0,
             right: 0,
             bottom: 0,
-            child: Opacity(
-              opacity: 0.3,
-              child: Transform.translate(
-                offset: const Offset(-2, 0), // Moves it left by 40 pixels
-                child: Transform.scale(
-                  scale: 1.6, // 50% bigger!
-                  alignment: Alignment.bottomCenter, // Keeps it pinned to the navbar
-                  child: Image.asset(
-                    'assets/images/Tonight.png',
-                    width: double.infinity,
-                    fit: BoxFit.contain,
-                  ),
+            child: Transform.translate(
+              offset: const Offset(-2, 0), // Moves it left by 40 pixels
+              child: Transform.scale(
+                scale: 1.6, // 50% bigger!
+                alignment: Alignment.bottomCenter, // Keeps it pinned to the navbar
+                child: Image.asset(
+                  'assets/images/Tonight.png',
+                  width: double.infinity,
+                  fit: BoxFit.contain,
+                  opacity: const AlwaysStoppedAnimation(0.3),
                 ),
               ),
             ),
           ),
-          
+
           // Layer 3: Foreground content
           RefreshIndicator(
             color: _crimson,

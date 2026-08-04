@@ -101,15 +101,26 @@ class SubscriptionStatus {
   factory SubscriptionStatus.fromJson(Map<String, dynamic> json) {
     final limits = json['limits'] as Map<String, dynamic>? ?? {};
     final expiresAtStr = json['subscriptionExpiresAt'] as String?;
+    final expiresAt = expiresAtStr != null ? DateTime.tryParse(expiresAtStr) : null;
+    final int rawRemainingDays = (json['validityDaysRemaining'] ?? 0) as int;
+
+    // Evaluate client-side expiration fallback
+    final bool isExpired = (expiresAt != null && DateTime.now().isAfter(expiresAt)) ||
+        (json['tier'] != null && json['tier'] != 'free' && rawRemainingDays <= 0);
+
+    final String effectiveTier = isExpired ? 'free' : (json['tier'] ?? 'free');
+    final bool effectiveIsPremium = isExpired ? false : (json['isPremium'] ?? false);
+    final int effectiveDays = isExpired ? 0 : rawRemainingDays;
+
     return SubscriptionStatus(
-      tier: json['tier'] ?? 'free',
-      isPremium: json['isPremium'] ?? false,
-      autopayStatus: json['autopayStatus'] ?? 'none',
-      subscriptionExpiresAt: expiresAtStr != null ? DateTime.tryParse(expiresAtStr) : null,
-      validityDaysRemaining: (json['validityDaysRemaining'] ?? 0) as int,
-      likesLimit: (limits['likesLimit'] ?? 15) as int,
-      superlikesLimit: (limits['superlikesLimit'] ?? 3) as int,
-      profileBoost: (limits['profileBoost'] ?? 1) as int,
+      tier: effectiveTier,
+      isPremium: effectiveIsPremium,
+      autopayStatus: isExpired ? 'none' : (json['autopayStatus'] ?? 'none'),
+      subscriptionExpiresAt: expiresAt,
+      validityDaysRemaining: effectiveDays > 0 ? effectiveDays : 0,
+      likesLimit: isExpired ? 15 : ((limits['likesLimit'] ?? 15) as int),
+      superlikesLimit: isExpired ? 3 : ((limits['superlikesLimit'] ?? 3) as int),
+      profileBoost: isExpired ? 1 : ((limits['profileBoost'] ?? 1) as int),
     );
   }
 }

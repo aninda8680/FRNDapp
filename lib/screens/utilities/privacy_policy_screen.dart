@@ -221,7 +221,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
 
                 _buildSectionTitle('Contact Us', icon: Icons.contact_support_outlined),
                 _buildText('If you have questions about this Privacy Policy or our data practices, please contact us:'),
-                _buildText('Email: support@frndapp.edu\nAddress: Barasat, Kolkata 700126'),
+                _buildText('Email: contact@frnd.buzz\nAddress: Barasat, Kolkata 700126'),
                 _buildText('We will respond to privacy inquiries within 30 days.'),
               ],
             ),

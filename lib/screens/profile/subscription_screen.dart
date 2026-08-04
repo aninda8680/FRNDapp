@@ -17,9 +17,32 @@ class SubscriptionScreen extends StatefulWidget {
 
 class _SubscriptionScreenState extends State<SubscriptionScreen> {
   late Razorpay _razorpay;
-  bool _isLoading = true;
+  bool _isLoading = false;
   String _selectedTierKey = 'gold'; // Default selection
-  Map<String, PaymentTier> _tiers = {};
+  Map<String, PaymentTier> _tiers = {
+    'silver': const PaymentTier(
+      tier: 'silver',
+      name: 'Silver Pass Autopay',
+      priceINR: 39,
+      pricePaise: 3900,
+      validityDays: 28,
+      likesLimit: 25,
+      superlikesLimit: 6,
+      profileBoost: 3,
+      isAutopay: true,
+    ),
+    'gold': const PaymentTier(
+      tier: 'gold',
+      name: 'Gold Pass Autopay',
+      priceINR: 49,
+      pricePaise: 4900,
+      validityDays: 28,
+      likesLimit: 50,
+      superlikesLimit: 12,
+      profileBoost: 6,
+      isAutopay: true,
+    ),
+  };
   SubscriptionStatus? _userStatus;
 
   @override
@@ -29,7 +52,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handlePaymentSuccess);
     _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _handlePaymentError);
     _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleExternalWallet);
-    _loadData();
+    _loadDataBackground();
   }
 
   @override
@@ -38,9 +61,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     super.dispose();
   }
 
-  Future<void> _loadData() async {
-    setState(() => _isLoading = true);
-
+  Future<void> _loadDataBackground() async {
     try {
       final fetchedTiers = await PaymentService.getTiers();
       SubscriptionStatus? status;
@@ -60,15 +81,16 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
 
       if (mounted) {
         setState(() {
-          _tiers = fetchedTiers;
-          _userStatus = status;
-          _isLoading = false;
+          if (fetchedTiers.isNotEmpty) {
+            _tiers = fetchedTiers;
+          }
+          if (status != null) {
+            _userStatus = status;
+          }
         });
       }
     } catch (_) {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      // Keep existing local defaults silently
     }
   }
 
@@ -107,11 +129,12 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   Future<void> _handlePaymentSuccess(PaymentSuccessResponse response) async {
     try {
       setState(() => _isLoading = true);
-      
+
       // Razorpay Flutter plugin stores the raw response map in `data`. For subscriptions,
       // it returns `razorpay_subscription_id` instead of `razorpay_order_id`.
-      final String subId = response.data?['razorpay_subscription_id'] ?? response.orderId ?? '';
-      
+      final String subId =
+          response.data?['razorpay_subscription_id'] ?? response.orderId ?? '';
+
       // 3. Send signature and IDs to backend for verification
       final verifiedStatus = await PaymentService.verifySubscription(
         subscriptionId: subId,
@@ -121,8 +144,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
 
       if (mounted) {
         setState(() => _isLoading = false);
-        _showSuccessDialog('🎉 Pass activated! (${verifiedStatus.validityDaysRemaining} days remaining)');
-        _loadData(); // Refresh UI
+        _showSuccessDialog(
+            '🎉 Pass activated! (${verifiedStatus.validityDaysRemaining} days remaining)');
+        _loadDataBackground(); // Refresh UI silently
       }
     } catch (e) {
       if (mounted) {
@@ -166,7 +190,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('KEEP AUTOPAY', style: TextStyle(color: AppColors.textColor1)),
+            child: const Text('KEEP AUTOPAY',
+                style: TextStyle(color: AppColors.textColor1)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
@@ -182,13 +207,17 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
 
     if (confirm == true) {
       try {
+        setState(() => _isLoading = true);
         await PaymentService.cancelSubscription();
         if (mounted) {
-          _showSuccessDialog('Autopay cancelled. Pass benefits stay active until period expires.');
-          _loadData();
+          setState(() => _isLoading = false);
+          _showSuccessDialog(
+              'Autopay cancelled. Pass benefits stay active until period expires.');
+          _loadDataBackground();
         }
       } catch (e) {
         if (mounted) {
+          setState(() => _isLoading = false);
           _showFailureDialog(e.toString());
         }
       }
@@ -211,7 +240,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             const SizedBox(width: 8),
             Text(
               'PASS UNLOCKED! ✦',
-              style: GoogleFonts.spaceMono(fontWeight: FontWeight.bold, fontSize: 16),
+              style: GoogleFonts.spaceMono(
+                  fontWeight: FontWeight.bold, fontSize: 16),
             ),
           ],
         ),
@@ -243,7 +273,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             const SizedBox(width: 8),
             Text(
               'PAYMENT ERROR',
-              style: GoogleFonts.spaceMono(fontWeight: FontWeight.bold, fontSize: 16),
+              style: GoogleFonts.spaceMono(
+                  fontWeight: FontWeight.bold, fontSize: 16),
             ),
           ],
         ),
@@ -304,66 +335,74 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         ),
       ),
       body: SafeArea(
-        child: _isLoading
-            ? const Center(
-                child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.textColor1),
-                ),
-              )
-            : SingleChildScrollView(
-                padding: const EdgeInsets.all(20.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // Active Status Header Card
-                    _buildActiveStatusCard(),
-                    SizedBox(height: context.responsiveHeight(24)),
+        child: Stack(
+          children: [
+            SingleChildScrollView(
+              padding: const EdgeInsets.all(20.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Active Status Header Card
+                  _buildActiveStatusCard(),
+                  SizedBox(height: context.responsiveHeight(24)),
 
-                    // Section Title
-                    Center(
-                      child: Column(
-                        children: [
-                          Text(
-                            '✦ SELECT YOUR PASS ✦',
-                            style: GoogleFonts.spaceMono(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                              letterSpacing: 1.2,
-                              color: AppColors.textColor1,
-                            ),
+                  // Section Title
+                  Center(
+                    child: Column(
+                      children: [
+                        Text(
+                          '✦ SELECT YOUR PASS ✦',
+                          style: GoogleFonts.spaceMono(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                            letterSpacing: 1.2,
+                            color: AppColors.textColor1,
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                    SizedBox(height: context.responsiveHeight(20)),
+                  ),
+                  SizedBox(height: context.responsiveHeight(20)),
 
-                    // Tier Selector Cards (Silver vs Gold)
-                    _buildTierSelectorRow(),
-                    SizedBox(height: context.responsiveHeight(24)),
+                  // Tier Selector Cards (Silver vs Gold)
+                  _buildTierSelectorRow(),
+                  SizedBox(height: context.responsiveHeight(24)),
 
+                  // Feature Matrix Table
+                  _buildComparisonMatrix(),
+                  SizedBox(height: context.responsiveHeight(28)),
 
-                    // Feature Matrix Table
-                    _buildComparisonMatrix(),
-                    SizedBox(height: context.responsiveHeight(28)),
+                  // Action CTA Button
+                  SketchyButton(
+                    text:
+                        'CLAIM ${selectedTier.tier.toUpperCase()} PASS — ₹${selectedTier.priceINR}',
+                    onPressed: () => _openCheckout(selectedTier),
+                  ),
+                  SizedBox(height: context.responsiveHeight(12)),
 
-                    // Action CTA Button
-                    SketchyButton(
-                      text: 'CLAIM ${selectedTier.tier.toUpperCase()} PASS — ₹${selectedTier.priceINR}',
-                      onPressed: () => _openCheckout(selectedTier),
+                  // Autopay Notice
+                  Center(
+                    child: Text(
+                      'Razorpay Autopay renews every 28 days. Cancel anytime.',
+                      style: GoogleFonts.spaceMono(
+                          fontSize: 10, color: AppColors.textColor1),
+                      textAlign: TextAlign.center,
                     ),
-                    SizedBox(height: context.responsiveHeight(12)),
-
-                    // Autopay Notice
-                    Center(
-                      child: Text(
-                        'Razorpay Autopay renews every 28 days. Cancel anytime.',
-                        style: GoogleFonts.spaceMono(fontSize: 10, color: AppColors.textColor1),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  ],
+                  ),
+                ],
+              ),
+            ),
+            if (_isLoading)
+              Container(
+                color: Colors.black.withValues(alpha: 0.3),
+                child: const Center(
+                  child: CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(AppColors.textColor1),
+                  ),
                 ),
               ),
+          ],
+        ),
       ),
     );
   }
@@ -424,7 +463,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
               children: [
                 Text(
                   'Validity: $remainingDays Days Remaining',
-                  style: GoogleFonts.spaceMono(fontSize: 12, color: AppColors.cream),
+                  style:
+                      GoogleFonts.spaceMono(fontSize: 12, color: AppColors.cream),
                 ),
                 if (autopayStatus == 'active')
                   GestureDetector(
@@ -484,7 +524,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
               duration: const Duration(milliseconds: 150),
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: _selectedTierKey == 'silver' ? AppColors.textColor1 : AppColors.cream,
+                color: _selectedTierKey == 'silver'
+                    ? AppColors.textColor1
+                    : AppColors.cream,
                 borderRadius: BorderRadius.circular(18),
                 border: Border.all(color: AppColors.textColor1, width: 2.5),
               ),
@@ -495,7 +537,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                     style: GoogleFonts.spaceMono(
                       fontWeight: FontWeight.bold,
                       fontSize: 14,
-                      color: _selectedTierKey == 'silver' ? AppColors.cream : AppColors.textColor1,
+                      color: _selectedTierKey == 'silver'
+                          ? AppColors.cream
+                          : AppColors.textColor1,
                     ),
                   ),
                   SizedBox(height: context.responsiveHeight(6)),
@@ -504,7 +548,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                     style: GoogleFonts.spaceMono(
                       fontSize: 13,
                       fontWeight: FontWeight.w900,
-                      color: _selectedTierKey == 'silver' ? AppColors.cream : AppColors.textColor1,
+                      color: _selectedTierKey == 'silver'
+                          ? AppColors.cream
+                          : AppColors.textColor1,
                     ),
                   ),
                   SizedBox(height: context.responsiveHeight(8)),
@@ -513,7 +559,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 11,
-                      color: _selectedTierKey == 'silver' ? AppColors.cream : AppColors.textColor1,
+                      color: _selectedTierKey == 'silver'
+                          ? AppColors.cream
+                          : AppColors.textColor1,
                     ),
                   ),
                 ],
@@ -531,16 +579,21 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
               duration: const Duration(milliseconds: 150),
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: _selectedTierKey == 'gold' ? AppColors.textColor1 : AppColors.cream,
+                color: _selectedTierKey == 'gold'
+                    ? AppColors.textColor1
+                    : AppColors.cream,
                 borderRadius: BorderRadius.circular(18),
                 border: Border.all(color: AppColors.textColor1, width: 2.5),
               ),
               child: Column(
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
-                      color: _selectedTierKey == 'gold' ? AppColors.cream : AppColors.textColor1,
+                      color: _selectedTierKey == 'gold'
+                          ? AppColors.cream
+                          : AppColors.textColor1,
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
@@ -548,7 +601,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                       style: GoogleFonts.spaceMono(
                         fontSize: 9,
                         fontWeight: FontWeight.bold,
-                        color: _selectedTierKey == 'gold' ? AppColors.textColor1 : AppColors.cream,
+                        color: _selectedTierKey == 'gold'
+                            ? AppColors.textColor1
+                            : AppColors.cream,
                       ),
                     ),
                   ),
@@ -558,7 +613,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                     style: GoogleFonts.spaceMono(
                       fontWeight: FontWeight.bold,
                       fontSize: 14,
-                      color: _selectedTierKey == 'gold' ? AppColors.cream : AppColors.textColor1,
+                      color: _selectedTierKey == 'gold'
+                          ? AppColors.cream
+                          : AppColors.textColor1,
                     ),
                   ),
                   SizedBox(height: context.responsiveHeight(4)),
@@ -567,7 +624,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                     style: GoogleFonts.spaceMono(
                       fontSize: 13,
                       fontWeight: FontWeight.w900,
-                      color: _selectedTierKey == 'gold' ? AppColors.cream : AppColors.textColor1,
+                      color: _selectedTierKey == 'gold'
+                          ? AppColors.cream
+                          : AppColors.textColor1,
                     ),
                   ),
                   SizedBox(height: context.responsiveHeight(8)),
@@ -576,7 +635,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 11,
-                      color: _selectedTierKey == 'gold' ? AppColors.cream : AppColors.textColor1,
+                      color: _selectedTierKey == 'gold'
+                          ? AppColors.cream
+                          : AppColors.textColor1,
                     ),
                   ),
                 ],
@@ -587,7 +648,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       ],
     );
   }
-
 
   Widget _buildComparisonMatrix() {
     return SketchyContainer(
@@ -618,7 +678,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     );
   }
 
-  Widget _buildMatrixRow(String feature, String free, String silver, String gold, {bool isHeader = false}) {
+  Widget _buildMatrixRow(String feature, String free, String silver,
+      String gold,
+      {bool isHeader = false}) {
     final style = GoogleFonts.spaceMono(
       fontSize: isHeader ? 11 : 10,
       fontWeight: isHeader ? FontWeight.bold : FontWeight.normal,

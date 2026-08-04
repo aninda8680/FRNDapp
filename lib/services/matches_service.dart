@@ -50,4 +50,24 @@ class MatchesService {
       return {};
     }
   }
+
+  /// Like a user back (POST /api/like/:senderId).
+  /// Returns response map e.g. { "success": true, "matchFormed": true, "conversationId": "..." }
+  static Future<Map<String, dynamic>?> likeUser(String targetId) async {
+    try {
+      final url = Uri.parse('$baseUrl/like/$targetId');
+      print('Liking user at: $url');
+      final response = await http.post(url, headers: _headers);
+      print('Like API Status Code: ${response.statusCode}');
+      print('Like API Body: ${response.body}');
+      if (response.statusCode == 200) {
+        return json.decode(response.body) as Map<String, dynamic>?;
+      }
+      return null;
+    } catch (e) {
+      print('Error liking user: $e');
+      return null;
+    }
+  }
 }
+

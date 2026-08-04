@@ -197,8 +197,10 @@ class _CampusEventsScreenState extends State<CampusEventsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.transparent,
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.dark,
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
       body: Stack(
         children: [
           // Background layer
@@ -242,17 +244,12 @@ class _CampusEventsScreenState extends State<CampusEventsScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Header
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 16.0),
+                SizedBox(
+                  height: 48,
                   child: Center(
-                    child: Text(
-                      'CAMPUS',
-                      style: TextStyle(
-                        color: Color(0xFF1A1A1A),
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 2.0,
-                      ),
+                    child: Image.asset(
+                      'assets/images/whisper.png',
+                      height: 35,
                     ),
                   ),
                 ),
@@ -307,6 +304,7 @@ class _CampusEventsScreenState extends State<CampusEventsScreen> {
             width: 34,
             height: 34,
           ),
+        ),
         ),
       ),
     );

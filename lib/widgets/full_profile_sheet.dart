@@ -53,6 +53,10 @@ class FullProfileSheet extends StatelessWidget {
     return "$c cm ($ft'$inch\")";
   }
 
+  bool get isSuperlike =>
+      profile['isSuperlike'] == true ||
+      profile['type']?.toString().toLowerCase() == 'superlike';
+
   @override
   Widget build(BuildContext context) {
     return Material(
@@ -72,10 +76,10 @@ class FullProfileSheet extends StatelessWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      'STUDENT PROFILE',
+                    Text(
+                      isSuperlike ? '⭐ SUPERLIKE PROFILE' : 'STUDENT PROFILE',
                       style: TextStyle(
-                        color: _burgundy,
+                        color: isSuperlike ? const Color(0xFF0284C7) : _burgundy,
                         fontSize: 10,
                         fontWeight: FontWeight.w900,
                         letterSpacing: 2,
@@ -104,6 +108,58 @@ class FullProfileSheet extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Glowing Superlike Banner
+                      if (isSuperlike) ...[
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF0284C7), Color(0xFF6366F1)],
+                            ),
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF38BDF8).withOpacity(0.5),
+                                blurRadius: 12,
+                                spreadRadius: 2,
+                              ),
+                            ],
+                          ),
+                          child: const Row(
+                            children: [
+                              Icon(Icons.star_rounded, color: Colors.amberAccent, size: 26),
+                              SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'SUPER LIKED YOU! ⭐',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w900,
+                                        fontSize: 13,
+                                        letterSpacing: 1.2,
+                                      ),
+                                    ),
+                                    SizedBox(height: 2),
+                                    Text(
+                                      'This student prioritized your profile with a Superlike!',
+                                      style: TextStyle(
+                                        color: Colors.white70,
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+
                       // Photo 1
                       _detailPhoto(_getPhoto(0)),
 
@@ -131,10 +187,48 @@ class FullProfileSheet extends StatelessWidget {
                               ],
                             ),
                             const SizedBox(height: 10),
+
+                            // Badges list if present
+                            if ((profile['badges'] as List?)?.isNotEmpty == true) ...[
+                              Wrap(
+                                spacing: 6,
+                                runSpacing: 6,
+                                children: (profile['badges'] as List).map((badge) {
+                                  final bName = badge is Map ? (badge['name'] ?? badge['label'] ?? '') : badge.toString();
+                                  if (bName.isEmpty) return const SizedBox.shrink();
+                                  return Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.amber.withOpacity(0.15),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(color: Colors.amber.shade700, width: 1),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.military_tech_rounded, color: Colors.amber.shade800, size: 14),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          bName,
+                                          style: TextStyle(
+                                            color: Colors.amber.shade900,
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w800,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                }).toList(),
+                              ),
+                              const SizedBox(height: 8),
+                            ],
+
                             Wrap(
                               spacing: 8,
                               runSpacing: 8,
                               children: [
+
                                 if (profile['height'] != null)
                                   _chip(
                                     _formatHeight(profile['height']),
