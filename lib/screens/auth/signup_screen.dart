@@ -1,10 +1,12 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
-import '../../widgets/sketchy_button.dart';
-import '../../widgets/sketchy_container.dart';
-import '../../widgets/top_notification.dart';
+import '../../utils/route_transitions.dart';
+import 'login_screen.dart';
 import '../../services/auth_service.dart';
 import '../../config/dev_config.dart';
+import '../../widgets/top_notification.dart';
+import '../../widgets/auth_text_field.dart';
+import '../../widgets/animated_auth_button.dart';
+import 'auth_form_screen.dart';
 import 'login_success_screen.dart';
 
 class SignUpScreen extends StatefulWidget {
@@ -89,12 +91,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
     switch (result) {
       case AuthResult.needsOtp:
-        // New user → OTP was sent → open OTP verification screen
         Navigator.pushReplacementNamed(context, '/otp');
         break;
 
       case AuthResult.success:
-        // Already existed and logged in
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
@@ -116,6 +116,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
           }
         });
         break;
+        
       case AuthResult.userNotFound:
       case AuthResult.failure:
         _showSnackBar('Sign up failed. Please try again.');
@@ -125,215 +126,81 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final bool isKeyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
-
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        title: const Text('Create Account'),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-      ),
-      body: Stack(
-        children: [
-          // Background illustration — blurs when keyboard is up
-          Positioned(
-            top: 165,
-            left: 0,
-            right: 0,
-            child: TweenAnimationBuilder<double>(
-              tween: Tween<double>(begin: 0.0, end: isKeyboardVisible ? 6.0 : 0.0),
-              duration: const Duration(milliseconds: 300),
-              builder: (context, blurValue, child) {
-                return ImageFiltered(
-                  imageFilter: ImageFilter.blur(
-                    sigmaX: blurValue.clamp(0.001, 10.0),
-                    sigmaY: blurValue.clamp(0.001, 10.0),
-                  ),
-                  child: child,
-                );
-              },
-              child: Image.asset(
-                'assets/images/login.png',
-                height: 240,
-                fit: BoxFit.contain,
-              ),
+    return AuthFormScreen(
+      title: 'Create Account',
+      subtitle: 'Sign up with your college email to continue',
+      fields: [
+        AuthTextField(
+          label: 'College ID',
+          hintText: 'Enter your college mail',
+          controller: _emailController,
+          keyboardType: TextInputType.emailAddress,
+        ),
+        AuthTextField(
+          label: 'Create Password',
+          hintText: 'Min 8 chars, 1 special char',
+          controller: _passwordController,
+          obscureText: _obscurePassword,
+          suffixIcon: IconButton(
+            icon: Icon(
+              _obscurePassword ? Icons.visibility_off : Icons.visibility,
+              color: Colors.grey[600],
             ),
+            onPressed: () {
+              setState(() {
+                _obscurePassword = !_obscurePassword;
+              });
+            },
           ),
-
-          // Form content
-          SafeArea(
-            child: CustomScrollView(
-              slivers: [
-                SliverFillRemaining(
-                  hasScrollBody: false,
-                  child: Padding(
-                    padding: const EdgeInsets.all(24.0),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        const Spacer(flex: 5),
-
-                        // Background box wrapping form fields
-                        SketchyContainer(
-                          padding: const EdgeInsets.all(16),
-                          backgroundColor: const Color(0xFFFAF4E1),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              // Email field
-                              Text(
-                                'ENTER COLLEGE ID',
-                                style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                                      color: const Color(0xFF800000),
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                              ),
-                              const SizedBox(height: 8),
-                              SketchyContainer(
-                                backgroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                                child: TextField(
-                                  controller: _emailController,
-                                  keyboardType: TextInputType.emailAddress,
-                                  decoration: InputDecoration(
-                                    border: InputBorder.none,
-                                    hintText: 'enter your college mail',
-                                    hintStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                          color: Colors.grey.withOpacity(0.5),
-                                        ),
-                                  ),
-                                  style: Theme.of(context).textTheme.bodyLarge,
-                                ),
-                              ),
-                              const SizedBox(height: 14),
-
-                              // Password field
-                              Text(
-                                'CREATE PASSWORD',
-                                style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                                      color: const Color(0xFF800000),
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                              ),
-                              const SizedBox(height: 8),
-                              SketchyContainer(
-                                backgroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                                child: TextField(
-                                  controller: _passwordController,
-                                  obscureText: _obscurePassword,
-                                  decoration: InputDecoration(
-                                    border: InputBorder.none,
-                                    hintText: 'min 8 chars with a special character',
-                                    hintStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                          color: Colors.grey.withOpacity(0.5),
-                                          fontSize: 13,
-                                        ),
-                                    suffixIcon: IconButton(
-                                      icon: Icon(
-                                        _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                                        color: Colors.grey[600],
-                                      ),
-                                      onPressed: () {
-                                        setState(() {
-                                          _obscurePassword = !_obscurePassword;
-                                        });
-                                      },
-                                    ),
-                                  ),
-                                  style: Theme.of(context).textTheme.bodyLarge,
-                                ),
-                              ),
-                              const SizedBox(height: 14),
-
-                              // Confirm Password field
-                              Text(
-                                'CONFIRM PASSWORD',
-                                style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                                      color: const Color(0xFF800000),
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                              ),
-                              const SizedBox(height: 8),
-                              SketchyContainer(
-                                backgroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                                child: TextField(
-                                  controller: _confirmPasswordController,
-                                  obscureText: _obscureConfirmPassword,
-                                  decoration: InputDecoration(
-                                    border: InputBorder.none,
-                                    hintText: 'confirm password',
-                                    hintStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                          color: Colors.grey.withOpacity(0.5),
-                                        ),
-                                    suffixIcon: IconButton(
-                                      icon: Icon(
-                                        _obscureConfirmPassword ? Icons.visibility_off : Icons.visibility,
-                                        color: Colors.grey[600],
-                                      ),
-                                      onPressed: () {
-                                        setState(() {
-                                          _obscureConfirmPassword = !_obscureConfirmPassword;
-                                        });
-                                      },
-                                    ),
-                                  ),
-                                  style: Theme.of(context).textTheme.bodyLarge,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        const SizedBox(height: 20),
-
-                        // Action button
-                        if (_isLoading)
-                          const Center(child: CircularProgressIndicator())
-                        else
-                          SketchyButton(
-                            text: 'SIGN UP',
-                            onPressed: _onSignUp,
-                          ),
-
-                        const SizedBox(height: 12),
-
-                        // Link to Login
-                        Center(
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                "Already have an account? ",
-                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                      color: Colors.grey[700],
-                                    ),
-                              ),
-                              GestureDetector(
-                                onTap: () {
-                                  Navigator.pushReplacementNamed(context, '/login');
-                                },
-                                child: Text(
-                                  'Log In',
-                                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                        color: const Color(0xFF800000),
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        const SizedBox(height: 16),
-                      ],
-                    ),
-                  ),
+        ),
+        AuthTextField(
+          label: 'Confirm Password',
+          hintText: 'Confirm password',
+          controller: _confirmPasswordController,
+          obscureText: _obscureConfirmPassword,
+          suffixIcon: IconButton(
+            icon: Icon(
+              _obscureConfirmPassword ? Icons.visibility_off : Icons.visibility,
+              color: Colors.grey[600],
+            ),
+            onPressed: () {
+              setState(() {
+                _obscureConfirmPassword = !_obscureConfirmPassword;
+              });
+            },
+          ),
+        ),
+      ],
+      submitButton: AnimatedAuthButton(
+        text: 'SIGN UP',
+        isLoading: _isLoading,
+        onPressed: _onSignUp,
+      ),
+      footer: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            "Already have an account? ",
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Colors.white70,
                 ),
-              ],
+          ),
+          GestureDetector(
+            onTap: () {
+              Navigator.pushReplacement(
+                context,
+                SharedAxisPageRoute(
+                  page: const LoginScreen(),
+                  isForward: false,
+                ),
+              );
+            },
+            child: Text(
+              'Log In',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
             ),
           ),
         ],
