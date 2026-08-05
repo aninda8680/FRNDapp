@@ -331,7 +331,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
                     _fetchProfile();
                   }),
                   const Divider(color: _lightDivider, height: 1, indent: 56),
-                  _buildSettingRow(Icons.notifications_none_rounded, 'Announcement', () => Navigator.pushNamed(context, '/announcement')),
+                  _buildSettingRow(Icons.campaign, 'Announcements', () => Navigator.pushNamed(context, '/announcements')),
                   const Divider(color: _lightDivider, height: 1, indent: 56),
                   _buildSettingRow(Icons.help_outline_rounded, 'Help & Support', () => Navigator.pushNamed(context, '/help_support')),
                   const Divider(color: _lightDivider, height: 1, indent: 56),

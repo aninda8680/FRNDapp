@@ -26,6 +26,12 @@ class SettingsScreen extends StatelessWidget {
             ),
             const Divider(color: AppColors.lineBlack),
             ListTile(
+              title: const Text('Announcements'),
+              trailing: const Icon(Icons.arrow_forward_ios),
+              onTap: () => Navigator.pushNamed(context, '/announcements'),
+            ),
+            const Divider(color: AppColors.lineBlack),
+            ListTile(
               title: const Text('Help & Support'),
               trailing: const Icon(Icons.arrow_forward_ios),
               onTap: () => Navigator.pushNamed(context, '/help_support'),

@@ -17,6 +17,7 @@ import 'screens/utilities/terms_of_service_screen.dart';
 import 'screens/profile/edit_profile_screen.dart';
 import 'screens/profile/subscription_screen.dart';
 import 'screens/profile/profile_updated_screen.dart';
+import 'screens/utilities/announcements_screen.dart';
 
 class AppRoutes {
 
@@ -37,6 +38,7 @@ class AppRoutes {
   static const String myProfile = '/my_profile';
   static const String editProfile = '/edit_profile';
   static const String subscription = '/subscription';
+  static const String announcements = '/announcements';
   
   // Dev Routes
   static const String devProfileUpdated = '/dev_profile_updated';
@@ -60,6 +62,7 @@ class AppRoutes {
     termsOfService: (context) => const TermsOfServiceScreen(),
     editProfile: (context) => const EditProfileScreen(),
     subscription: (context) => const SubscriptionScreen(),
+    announcements: (context) => const AnnouncementsScreen(),
     
     // Dev Routes
     devProfileUpdated: (context) => ProfileUpdatedScreen(
