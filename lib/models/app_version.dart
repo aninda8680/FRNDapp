@@ -11,14 +11,27 @@ class AppVersion {
   /// Whether the app is currently in maintenance mode.
   final bool maintenance;
 
-  /// The URL to the app's store page.
+  /// The URL to the app's store page / direct APK download link.
   final String playStoreUrl;
+
+  /// SHA-256 hex digest of the APK at [playStoreUrl].
+  ///
+  /// If present, [AppUpdater] will verify the downloaded file against this
+  /// value before triggering installation. Null means no integrity check
+  /// (backwards-compatible with older Firestore documents).
+  ///
+  /// How to populate: after uploading the APK to GitHub Releases, run
+  ///   `sha256sum frnd-buzz.apk` (Linux/macOS) or
+  ///   `Get-FileHash frnd-buzz.apk -Algorithm SHA256` (Windows PowerShell)
+  /// and paste the lowercase hex digest into the Firestore `sha256` field.
+  final String? sha256;
 
   const AppVersion({
     required this.latestVersion,
     required this.minimumVersion,
     required this.maintenance,
     required this.playStoreUrl,
+    this.sha256,
   });
 
   /// Creates an [AppVersion] from a Firestore document data map.
@@ -38,6 +51,7 @@ class AppVersion {
       minimumVersion: data['minimumVersion'] as String? ?? '0.0.0',
       maintenance: data['maintenance'] as bool? ?? false,
       playStoreUrl: data['playStoreUrl'] as String? ?? '',
+      sha256: data['sha256'] as String?,
     );
   }
 
