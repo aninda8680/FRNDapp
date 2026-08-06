@@ -284,17 +284,11 @@ class AuthService {
       );
 
       if (response.statusCode == 200) {
-        final prefs = await SharedPreferences.getInstance();
-        
-        // Update the full cached profile with the new fields
-        if (userProfile != null) {
-          userProfile!.addAll(data);
-          userName = userProfile?['name'] as String?;
-          userGender = userProfile?['gender'] as String?;
-          
-          await prefs.setString('user_session_v1', jsonEncode(userProfile));
-          await prefs.setString('last_synced_at', DateTime.now().toIso8601String());
-        }
+        // Fetch the fresh full profile from the server so that server-computed
+        // fields like `profileCompletionPercentage` are included in the cache.
+        // This is critical: without it, the cached profile lacks the completion
+        // percentage and main.dart incorrectly routes back to /setup on next launch.
+        await getProfile();
 
         return true;
       }
@@ -346,16 +340,13 @@ class AuthService {
     }
   }
 
-  /// Checks if the profile has been fully set up (>= 75%).
   static bool isProfileComplete(Map<String, dynamic>? profile) {
     if (profile == null) return false;
     
-    // Use the profileCompletionPercentage returned from the backend.
-    // Fallback to profileCompletion just in case, default to 0 if missing.
-    final completion = profile['profileCompletionPercentage'] ?? profile['profileCompletion'];
-    final num percentage = (completion is num) ? completion : 0;
-    
-    return percentage >= 75;
+    // The user has clicked "ENTER WORLD" and submitted the form 
+    // if their basic details like 'name' are present.
+    final name = profile['name'];
+    return name != null && name.toString().trim().isNotEmpty;
   }
 
   /// Uploads a picture to the backend and returns the picture object { url, fileId }

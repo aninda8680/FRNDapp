@@ -225,6 +225,48 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
            _selectedSexualOrientation != null;
   }
 
+  /// Fine-grained completion from 0.0 to 1.0, updated live as the user fills
+  /// in individual fields. Each field below is worth a share of 100 points.
+  double get _completionProgress {
+    int score = 0;
+
+    // ── Step 1: Basic Info (30 pts total) ─────────────────────────────────────
+    if (_usernameController.text.trim().isNotEmpty) score += 5;
+    if (_nameController.text.trim().isNotEmpty) score += 5;
+    if (_ageController.text.trim().isNotEmpty) score += 5;
+    if (_selectedGender != null) score += 5;
+    final bioWords = _getWordCount(_bioController.text);
+    if (bioWords >= 5) score += 10;
+    else if (bioWords > 0) score += 5;
+
+    // ── Step 2: About You (20 pts total) ──────────────────────────────────────
+    if (_schoolController.text.trim().isNotEmpty) score += 5;
+    if (_courseController.text.trim().isNotEmpty) score += 5;
+    if (_heightController.text.trim().isNotEmpty) score += 5;
+    if (_religionController.text.trim().isNotEmpty) score += 5;
+
+    // ── Step 3: Photos (15 pts total) ─────────────────────────────────────────
+    final photoCount = _photoBytes.where((b) => b != null).length;
+    score += (photoCount * 4).clamp(0, 15); // 4 pts per photo, cap at 15
+
+    // ── Step 4: Interests (10 pts total) ──────────────────────────────────────
+    final interestCount = _selectedInterests.length + _selectedHobbies.length + _selectedSkills.length;
+    if (interestCount >= 5) score += 10;
+    else score += (interestCount * 2).clamp(0, 10);
+
+    // ── Step 5: Prompts (15 pts total) ────────────────────────────────────────
+    final answeredPrompts = _promptAnswers.values.where((a) => a.trim().isNotEmpty).length;
+    score += (answeredPrompts * 5).clamp(0, 15);
+
+    // ── Step 6: Preferences (10 pts total) ────────────────────────────────────
+    if (_selectedLookingFor != null) score += 5;
+    if (_selectedSexualOrientation != null) score += 5;
+
+    return (score / 100.0).clamp(0.0, 1.0);
+  }
+
+  int get _completionPercent => (_completionProgress * 100).round();
+
   @override
   void dispose() {
     _pageController.dispose();
@@ -264,8 +306,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
 
   @override
   Widget build(BuildContext context) {
-    double progress = (_currentIndex + 1) / 7.0;
-    String leftLabel = 'STEP ${_currentIndex + 1}';
+    double progress = _completionProgress;
+    String leftLabel = '$_completionPercent%';
+    String stepLabel = 'STEP ${_currentIndex + 1}/7';
     
     final titles = [
       'BASIC INFO',
@@ -368,7 +411,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                 child: SketchyProgressBar(
                   progress: progress,
                   leftLabel: leftLabel,
-                  rightLabel: rightLabels[_currentIndex],
+                  rightLabel: stepLabel,
                 ),
               ),
               const SizedBox(height: 32),

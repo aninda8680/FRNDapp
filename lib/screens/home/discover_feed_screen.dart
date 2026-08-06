@@ -13,6 +13,7 @@ import '../../utils/responsive_utils.dart';
 import '../../widgets/full_profile_sheet.dart';
 import '../chats/individual_chat_screen.dart';
 import '../profile/subscription_screen.dart';
+import '../../services/payment_service.dart';
 
 const _bgCream = Color(0xFFFDF4E5);
 const _burgundy = Color(0xFFA41534);
@@ -398,6 +399,11 @@ class _DiscoverFeedScreenState extends State<DiscoverFeedScreen> with TickerProv
   // we proactively fetch the next batch so it's ready by the time they finish the current cards.
   static const int PREFETCH_THRESHOLD = 3;
 
+  int _likesUsed = 0;
+  int _likesLimit = 15;
+  int _superlikesUsed = 0;
+  int _superlikesLimit = 3;
+
   final _netController = _NetBasketController();
   late final _DustbinController _dustbinController;
   final GlobalKey _dustbinKey = GlobalKey();
@@ -414,12 +420,33 @@ class _DiscoverFeedScreenState extends State<DiscoverFeedScreen> with TickerProv
   @override
   void initState() {
     super.initState();
+    _initLimits();
     _dustbinController = _DustbinController()..init(this);
     _detailsCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 480));
     _slideAnim = Tween<Offset>(begin: const Offset(0, 1), end: Offset.zero).animate(CurvedAnimation(parent: _detailsCtrl, curve: Curves.easeOutCubic));
     _fadeAnim = Tween<double>(begin: 0, end: 0.5).animate(CurvedAnimation(parent: _detailsCtrl, curve: Curves.easeOut));
     _cardScaleAnim = Tween<double>(begin: 1.0, end: 0.92).animate(CurvedAnimation(parent: _detailsCtrl, curve: Curves.easeOutCubic));
     _fetchFeed(reset: true);
+  }
+
+  void _initLimits() async {
+    final profile = AuthService.userProfile;
+    final tier = profile?['tier'] ?? 'free';
+    
+    setState(() {
+      _likesUsed = profile?['dailyLikesUsed'] ?? profile?['likesUsed'] ?? 0;
+      _superlikesUsed = profile?['dailySuperlikesUsed'] ?? profile?['superlikesUsed'] ?? 0;
+    });
+
+    final tiers = await PaymentService.getTiers();
+    final userTier = tiers[tier] ?? tiers['free'];
+    
+    if (mounted && userTier != null) {
+      setState(() {
+        _likesLimit = userTier.likesLimit;
+        _superlikesLimit = userTier.superlikesLimit;
+      });
+    }
   }
 
   @override
@@ -505,7 +532,15 @@ class _DiscoverFeedScreenState extends State<DiscoverFeedScreen> with TickerProv
     if (_detailsVisible) {
       _detailsCtrl.animateTo(0.0, duration: const Duration(milliseconds: 200), curve: Curves.easeIn);
     }
-    setState(() { _cardPhotoIndex = 0; _currentIndex++; });
+    setState(() { 
+      _cardPhotoIndex = 0; 
+      _currentIndex++; 
+      
+      if (action == 'like') _likesUsed++;
+      else if (action == 'superlike') _superlikesUsed++;
+      
+      debugPrint('==== DEBUG: onAction($action), _likesUsed: $_likesUsed, _superlikesUsed: $_superlikesUsed ====');
+    });
     
     // Fetch more profiles in the background if we're running low
     // Trigger fetch if the number of remaining cards is less than or equal to PREFETCH_THRESHOLD
@@ -531,6 +566,9 @@ class _DiscoverFeedScreenState extends State<DiscoverFeedScreen> with TickerProv
           // Revert the swipe since it failed due to quota
           setState(() {
             _currentIndex = (_currentIndex - 1).clamp(0, _profiles.length);
+            if (action == 'like') _likesUsed = (_likesUsed - 1).clamp(0, 9999);
+            else if (action == 'superlike') _superlikesUsed = (_superlikesUsed - 1).clamp(0, 9999);
+            debugPrint('==== DEBUG: REVERTED due to QUOTA. _likesUsed: $_likesUsed ====');
           });
           _showPaywallDialog(action == 'superlike' ? 'Out of Superlikes!' : 'Out of Likes!');
         }
@@ -662,6 +700,21 @@ class _DiscoverFeedScreenState extends State<DiscoverFeedScreen> with TickerProv
           ),
         ),
         centerTitle: true,
+        actions: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.star_rounded, color: Color(0xFFFACC15), size: 16),
+              const SizedBox(width: 4),
+              Text('$_superlikesUsed/$_superlikesLimit', style: const TextStyle(color: Color(0xFF1A1A1A), fontSize: 13, fontWeight: FontWeight.w700)),
+              const SizedBox(width: 12),
+              const Icon(Icons.favorite_rounded, color: _burgundy, size: 15),
+              const SizedBox(width: 4),
+              Text('$_likesUsed/$_likesLimit', style: const TextStyle(color: Color(0xFF1A1A1A), fontSize: 13, fontWeight: FontWeight.w700)),
+              const SizedBox(width: 16),
+            ]
+          )
+        ],
         bottom: PreferredSize(preferredSize: const Size.fromHeight(1.0), child: Container(height: 1.0, color: const Color(0x121A1A1A))),
       ),
       body: Container(
@@ -865,8 +918,10 @@ class _PhysicsSwipeCardState extends State<_PhysicsSwipeCard> with TickerProvide
     }
     if (_mode != _AnimMode.idle) return;
     final vel = d.velocity.pixelsPerSecond;
-    if (_drag.dy < -85 || vel.dy < -650) { _launchToss('like', vel.dx); return; }
-    if (_drag.dy > 85 || vel.dy > 650) { _launchDrop(vel.dx); return; }
+    // Swipe UP or RIGHT to Like
+    if (_drag.dy < -85 || vel.dy < -650 || _drag.dx > 100 || vel.dx > 650) { _launchToss('like', vel.dx); return; }
+    // Swipe DOWN or LEFT to Pass
+    if (_drag.dy > 85 || vel.dy > 650 || _drag.dx < -100 || vel.dx < -650) { _launchDrop(vel.dx); return; }
     _snapBack();
   }
 
@@ -880,7 +935,7 @@ class _PhysicsSwipeCardState extends State<_PhysicsSwipeCard> with TickerProvide
     final targetDy = -(_cardSize.height * 0.5) + 26.0;
     _arcP2 = Offset(0, targetDy);
     _arcP1 = Offset(_arcP0.dx + velocityX * 0.04, _arcP0.dy - (_cardSize.height * 0.40));
-    _ctrl.duration = action == 'superlike' ? const Duration(milliseconds: 650) : const Duration(milliseconds: 350);
+    _ctrl.duration = const Duration(milliseconds: 650);
     _ctrl.forward(from: 0.0);
   }
 
@@ -909,10 +964,10 @@ class _PhysicsSwipeCardState extends State<_PhysicsSwipeCard> with TickerProvide
 
     _arcP2 = Offset(targetDx, targetDy);
     _arcP1 = Offset(_arcP0.dx + velocityX * 0.04, _arcP0.dy + (_cardSize.height * 0.30));
-    _ctrl.duration = const Duration(milliseconds: 480);
+    _ctrl.duration = const Duration(milliseconds: 650);
     
     // Delay wobble and poof to sync with visual entry
-    Future.delayed(const Duration(milliseconds: 280), () {
+    Future.delayed(const Duration(milliseconds: 380), () {
       if (mounted) {
         widget.dustbinController.triggerDrop();
         HapticFeedback.mediumImpact();
@@ -963,7 +1018,7 @@ class _PhysicsSwipeCardState extends State<_PhysicsSwipeCard> with TickerProvide
           
           Positioned(top: 0, left: 0, right: 0, bottom: _cardSize.height * 0.45, child: Row(children: [Expanded(flex: 4, child: GestureDetector(behavior: HitTestBehavior.translucent, onTap: () { if (widget.currentPhotoIndex > 0) widget.onPhotoChange(widget.currentPhotoIndex - 1); })), const Spacer(flex: 2), Expanded(flex: 4, child: GestureDetector(behavior: HitTestBehavior.translucent, onTap: () { if (widget.currentPhotoIndex < widget.photoCount - 1) widget.onPhotoChange(widget.currentPhotoIndex + 1); }))])),
           
-          Positioned(bottom: context.bottomSafeArea + context.responsiveHeight(118), left: 20, right: 20, child: GestureDetector(onTap: widget.onShowDetails, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Positioned(bottom: context.responsiveHeight(126), left: 20, right: 20, child: GestureDetector(onTap: widget.onShowDetails, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
               Flexible(child: Text('${profile['name'] ?? ''}, ${profile['age'] ?? ''}', style: const TextStyle(color: Colors.white, fontSize: 29, fontWeight: FontWeight.w900, height: 1.0, letterSpacing: -0.5, shadows: [Shadow(color: Colors.black54, blurRadius: 8, offset: Offset(0,2))]))), 
               if (profile['identityStatus'] == 'verified') ...[
@@ -986,9 +1041,9 @@ class _PhysicsSwipeCardState extends State<_PhysicsSwipeCard> with TickerProvide
             ]),
           ]))),
           
-          Positioned(bottom: context.bottomSafeArea + context.responsiveHeight(84), left: 0, right: 0, child: Center(child: _AnimatedSwipeHint())),
+          Positioned(bottom: context.responsiveHeight(92), left: 0, right: 0, child: Center(child: _AnimatedSwipeHint())),
           
-          Positioned(bottom: context.bottomSafeArea + context.responsiveHeight(18), left: 0, right: 0, child: Center(
+          Positioned(bottom: context.responsiveHeight(26), left: 0, right: 0, child: Center(
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(

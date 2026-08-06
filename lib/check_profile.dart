@@ -1,0 +1,1 @@
+import 'dart:io'; import 'dart:convert'; import 'services/auth_service.dart'; import 'package:shared_preferences/shared_preferences.dart'; void main() async { final prefs = await SharedPreferences.getInstance(); print(prefs.getString('user_session_v1')); exit(0); }
