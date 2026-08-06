@@ -1,3 +1,4 @@
+import 'package:go_router/go_router.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../theme/app_colors.dart';
@@ -126,7 +127,7 @@ class _LoginSuccessScreenState extends State<LoginSuccessScreen> {
                   child: SketchyButton(
                     text: nextRoute == '/setup' ? 'CONTINUE' : 'ENTER WORLD',
                     onPressed: () {
-                      Navigator.pushNamedAndRemoveUntil(context, _nextRoute, (route) => false);
+                      context.go(_nextRoute);
                     },
                   ),
                 ),

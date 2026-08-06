@@ -1,3 +1,4 @@
+import 'package:go_router/go_router.dart';
 import 'package:flutter/material.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/app_image.dart';
@@ -16,7 +17,7 @@ class UserProfileScreen extends StatelessWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.more_horiz),
-            onPressed: () => Navigator.pushNamed(context, '/report_block'),
+            onPressed: () => context.push('/report_block'),
           ),
         ],
       ),

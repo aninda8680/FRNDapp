@@ -1,3 +1,4 @@
+import 'package:go_router/go_router.dart';
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
@@ -48,7 +49,7 @@ class _ProfileCreatedScreenState extends State<ProfileCreatedScreen> {
         // Show the 'Profile created' state for 3 seconds before auto-redirecting
         await Future.delayed(const Duration(seconds: 3));
         if (mounted) {
-          Navigator.pushNamedAndRemoveUntil(context, '/main', (route) => false);
+          context.go('/main');
         }
       }
     }

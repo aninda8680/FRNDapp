@@ -1,3 +1,4 @@
+import 'package:go_router/go_router.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../theme/app_colors.dart';
@@ -52,7 +53,7 @@ class OnboardingScreen extends StatelessWidget {
                   const Spacer(),
                   SketchyButton(
                     text: 'Create Account',
-                    onPressed: () => Navigator.pushNamed(context, '/signup'),
+                    onPressed: () => context.push('/signup'),
                   ),
                   const SizedBox(height: 12),
                   Row(
@@ -65,7 +66,7 @@ class OnboardingScreen extends StatelessWidget {
                             ),
                       ),
                       GestureDetector(
-                        onTap: () => Navigator.pushNamed(context, '/login'),
+                        onTap: () => context.push('/login'),
                         child: Text(
                           'Log In',
                           style: Theme.of(context).textTheme.bodyMedium?.copyWith(

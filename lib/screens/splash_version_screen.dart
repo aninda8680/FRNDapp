@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import '../services/version_service.dart';
 import '../widgets/force_update_dialog.dart';
@@ -138,24 +139,7 @@ class _SplashVersionScreenState extends State<SplashVersionScreen> {
 
   /// Replaces the splash — and every other route — with [MaintenanceScreen].
   void _navigateToMaintenance() {
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute<void>(
-        builder: (_) => MaintenanceScreen(
-          onRetry: () {
-            // Pop the maintenance screen and re-run the version check from a
-            // fresh SplashVersionScreen — placed back at the stack root.
-            Navigator.of(context).pushAndRemoveUntil(
-              MaterialPageRoute<void>(
-                builder: (_) =>
-                    SplashVersionScreen(targetRoute: widget.targetRoute),
-              ),
-              (route) => false,
-            );
-          },
-        ),
-      ),
-      (route) => false, // Remove every previous route including splash
-    );
+    context.go('/maintenance');
   }
 
   void _showForceUpdateDialog(
@@ -197,7 +181,7 @@ class _SplashVersionScreenState extends State<SplashVersionScreen> {
   /// Navigates to [targetRoute], replacing this screen so it is not reachable
   /// via back navigation.
   void _navigateToHome() {
-    Navigator.of(context).pushReplacementNamed(widget.targetRoute);
+    context.go(widget.targetRoute);
   }
 
 

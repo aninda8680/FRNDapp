@@ -1,3 +1,4 @@
+import 'package:go_router/go_router.dart';
 import 'package:flutter/material.dart';
 import '../../widgets/profile_card.dart';
 import '../../services/auth_service.dart';
@@ -104,7 +105,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
           ),
           SizedBox(height: context.responsiveHeight(16)),
           TextButton.icon(
-            onPressed: () => Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false),
+            onPressed: () => context.go('/login'),
             icon: const Icon(Icons.logout_rounded, size: 16, color: _mutedGray),
             label: const Text(
               'Log Out',
@@ -118,6 +119,10 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
 
   Widget _buildProfileContent(bool isMale, bool isFemale) {
     final name = _profileData?['name'] ?? _profileData?['username'] ?? 'User';
+    final rawUsername = _profileData?['username'];
+    final username = rawUsername != null && rawUsername.toString().isNotEmpty 
+        ? rawUsername 
+        : name.toLowerCase().replaceAll(' ', '');
     final age = _profileData?['age']?.toString() ?? '18';
     final school = _profileData?['school'] ?? 'No School';
     final course = _profileData?['course'] ?? 'No Course';
@@ -173,7 +178,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
                     backgroundColor: Colors.transparent,
                     insetPadding: const EdgeInsets.all(16),
                     child: ProfileCard(
-                      name: name,
+                      name: '@$username',
                       age: age,
                       school: school,
                       course: course,
@@ -231,7 +236,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            name,
+                            '@$username',
                             style: const TextStyle(
                               color: _bgCream,
                               fontSize: 22,
@@ -241,7 +246,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
                           ),
                           SizedBox(height: context.responsiveHeight(4)),
                           Text(
-                            '@${name.toLowerCase().replaceAll(' ', '')} • Member since 2026',
+                            '$name • Member since 2026',
                             style: TextStyle(
                               color: _bgCream.withOpacity(0.85),
                               fontSize: 12,
@@ -324,20 +329,20 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
               ),
               child: Column(
                 children: [
-                  _buildSettingRow(Icons.star_outline_rounded, 'Passes', () => Navigator.pushNamed(context, '/subscription')),
+                  _buildSettingRow(Icons.star_outline_rounded, 'Passes', () => context.push('/subscription')),
                   const Divider(color: _lightDivider, height: 1, indent: 56),
                   _buildSettingRow(Icons.person_outline_rounded, 'Edit Profile', () async {
-                    await Navigator.pushNamed(context, '/edit_profile');
+                    await context.push('/edit_profile');
                     _fetchProfile();
                   }),
                   const Divider(color: _lightDivider, height: 1, indent: 56),
-                  _buildSettingRow(Icons.campaign, 'Announcements', () => Navigator.pushNamed(context, '/announcements')),
+                  _buildSettingRow(Icons.campaign, 'Announcements', () => context.push('/announcements')),
                   const Divider(color: _lightDivider, height: 1, indent: 56),
-                  _buildSettingRow(Icons.help_outline_rounded, 'Help & Support', () => Navigator.pushNamed(context, '/help_support')),
+                  _buildSettingRow(Icons.help_outline_rounded, 'Help & Support', () => context.push('/help_support')),
                   const Divider(color: _lightDivider, height: 1, indent: 56),
-                  _buildSettingRow(Icons.privacy_tip_outlined, 'Privacy Policy', () => Navigator.pushNamed(context, '/privacy_policy')),
+                  _buildSettingRow(Icons.privacy_tip_outlined, 'Privacy Policy', () => context.push('/privacy_policy')),
                   const Divider(color: _lightDivider, height: 1, indent: 56),
-                  _buildSettingRow(Icons.article_outlined, 'Terms of Service', () => Navigator.pushNamed(context, '/terms_of_service')),
+                  _buildSettingRow(Icons.article_outlined, 'Terms of Service', () => context.push('/terms_of_service')),
                 ],
               ),
             ),
@@ -347,7 +352,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
             // Log out button
             Center(
               child: OutlinedButton.icon(
-                onPressed: () => Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false),
+                onPressed: () => context.go('/login'),
                 icon: Icon(Icons.logout_rounded, size: 18, color: _primaryBurgundy.withOpacity(0.8)),
                 label: Text(
                   'Log Out', 

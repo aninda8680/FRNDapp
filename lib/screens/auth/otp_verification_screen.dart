@@ -1,3 +1,4 @@
+import 'package:go_router/go_router.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../widgets/sketchy_button.dart';
@@ -43,7 +44,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
   // ── OTP verification ────────────────────────────────────────────────────────
   Future<void> _onVerify() async {
     if (DevConfig.bypassAuth) {
-      Navigator.pushReplacementNamed(context, '/setup');
+      context.replace('/setup');
       return;
     }
 

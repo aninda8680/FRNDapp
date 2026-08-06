@@ -1,3 +1,4 @@
+import 'package:go_router/go_router.dart';
 import 'package:flutter/material.dart';
 import '../../theme/app_colors.dart';
 import '../../services/auth_service.dart';
@@ -16,37 +17,37 @@ class SettingsScreen extends StatelessWidget {
             ListTile(
               title: const Text('Edit Profile'),
               trailing: const Icon(Icons.arrow_forward_ios),
-              onTap: () => Navigator.pushNamed(context, '/edit_profile'),
+              onTap: () => context.push('/edit_profile'),
             ),
             const Divider(color: AppColors.lineBlack),
             ListTile(
               title: const Text('Notifications'),
               trailing: const Icon(Icons.arrow_forward_ios),
-              onTap: () => Navigator.pushNamed(context, '/notifications'),
+              onTap: () => context.push('/notifications'),
             ),
             const Divider(color: AppColors.lineBlack),
             ListTile(
               title: const Text('Announcements'),
               trailing: const Icon(Icons.arrow_forward_ios),
-              onTap: () => Navigator.pushNamed(context, '/announcements'),
+              onTap: () => context.push('/announcements'),
             ),
             const Divider(color: AppColors.lineBlack),
             ListTile(
               title: const Text('Help & Support'),
               trailing: const Icon(Icons.arrow_forward_ios),
-              onTap: () => Navigator.pushNamed(context, '/help_support'),
+              onTap: () => context.push('/help_support'),
             ),
             const Divider(color: AppColors.lineBlack),
             ListTile(
               title: const Text('Privacy Policy'),
               trailing: const Icon(Icons.arrow_forward_ios),
-              onTap: () => Navigator.pushNamed(context, '/privacy_policy'),
+              onTap: () => context.push('/privacy_policy'),
             ),
             const Divider(color: AppColors.lineBlack),
             ListTile(
               title: const Text('Terms of Service'),
               trailing: const Icon(Icons.arrow_forward_ios),
-              onTap: () => Navigator.pushNamed(context, '/terms_of_service'),
+              onTap: () => context.push('/terms_of_service'),
             ),
             const Divider(color: AppColors.lineBlack),
             ListTile(
@@ -54,7 +55,7 @@ class SettingsScreen extends StatelessWidget {
               onTap: () async {
                 await AuthService.logout();
                 if (context.mounted) {
-                  Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+                  context.go('/login');
                 }
               },
             ),

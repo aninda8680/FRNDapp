@@ -7,6 +7,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'chat_db.dart';
 import '../config/dev_config.dart';
+import 'fcm_token_manager.dart';
 
 enum AuthResult {
   /// Existing user, correct password — go straight to profile setup.
@@ -86,6 +87,9 @@ class AuthService {
 
   /// Logout the user by clearing the session and all local cache.
   static Future<void> logout() async {
+    if (userId != null) {
+      await FcmTokenManager.invalidateToken(userId!);
+    }
     _cookie = null;
     userId = null;
     userName = null;

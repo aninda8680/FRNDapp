@@ -16,6 +16,16 @@ import 'services/app_updater.dart';
 import 'screens/splash_version_screen.dart';
 
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'router/app_router.dart';
+import 'services/fcm_token_manager.dart';
+
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp();
+  debugPrint("Handling a background message: ${message.messageId}");
+}
 
 void main() async {
   WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
@@ -75,17 +85,25 @@ void main() async {
     systemNavigationBarIconBrightness: Brightness.light,
   ));
 
-  runApp(FrndApp(initialRouteString: initialRouteString));
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+  runApp(
+    ProviderScope(
+      overrides: [
+        initialRouteProvider.overrideWithValue(initialRouteString),
+      ],
+      child: const FrndApp(),
+    ),
+  );
   FlutterNativeSplash.remove();
 }
 
 
-class FrndApp extends StatefulWidget {
-  final String initialRouteString;
-  const FrndApp({super.key, required this.initialRouteString});
+class FrndApp extends ConsumerStatefulWidget {
+  const FrndApp({super.key});
 
   @override
-  State<FrndApp> createState() => _FrndAppState();
+  ConsumerState<FrndApp> createState() => _FrndAppState();
 }
 
 /// [AppLifecycleObserver] triggers a deferred APK install when the app returns
@@ -103,11 +121,50 @@ class FrndApp extends StatefulWidget {
 /// [BlockingUpdateScreen] somehow isn't on the stack (e.g. first-launch edge
 /// case), we log a debug warning. No double-install risk because
 /// [BlockingUpdateScreen._installTriggered] gates the call.
-class _FrndAppState extends State<FrndApp> with WidgetsBindingObserver {
+class _FrndAppState extends ConsumerState<FrndApp> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    
+    // Setup FCM
+    _setupFCM();
+  }
+
+  Future<void> _setupFCM() async {
+    // Wait for initial render if needed, or initialize directly
+    await FcmTokenManager.initNotifications(ref);
+    await _setupInteractedMessage();
+  }
+
+  Future<void> _setupInteractedMessage() async {
+    // 1. Terminated (Cold Start)
+    RemoteMessage? initialMessage = await FirebaseMessaging.instance.getInitialMessage();
+    if (initialMessage != null) {
+      _handleDeepLink(initialMessage.data);
+    }
+
+    // 2. Background (App in memory, user taps notification)
+    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+      _handleDeepLink(message.data);
+    });
+  }
+
+  void _handleDeepLink(Map<String, dynamic> data) {
+    final type = data['type'];
+    final router = ref.read(appRouterProvider);
+    if (type == 'chat') {
+      final chatId = data['chatId'];
+      if (chatId != null) {
+        router.go('/chat/$chatId');
+      }
+    } else if (type == 'profile') {
+      final userId = data['userId'];
+      if (userId != null) {
+        // Assuming there is a /profile route in the future
+        // router.go('/profile/$userId');
+      }
+    }
   }
 
   @override
@@ -135,12 +192,12 @@ class _FrndAppState extends State<FrndApp> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    final router = ref.watch(appRouterProvider);
+
+    return MaterialApp.router(
       title: 'FRND MVP',
       theme: AppTheme.theme,
-      home: SplashVersionScreen(
-          targetRoute: DevConfig.initialRouteOverride ?? widget.initialRouteString),
-      routes: AppRoutes.routes,
+      routerConfig: router,
       debugShowCheckedModeBanner: false,
       builder: (context, child) {
         final data = MediaQuery.of(context);

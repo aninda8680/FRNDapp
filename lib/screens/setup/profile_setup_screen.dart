@@ -1,3 +1,4 @@
+import 'package:go_router/go_router.dart';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -291,7 +292,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         curve: Curves.easeInOut,
       );
     } else {
-      Navigator.pushNamedAndRemoveUntil(context, '/main', (route) => false);
+      context.go('/main');
     }
   }
 
@@ -342,7 +343,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
           if (Navigator.canPop(context)) {
             Navigator.pop(context);
           } else {
-            Navigator.pushReplacementNamed(context, '/login');
+            context.replace('/login');
           }
         }
       },
@@ -358,7 +359,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                 if (Navigator.canPop(context)) {
                   Navigator.pop(context);
                 } else {
-                  Navigator.pushReplacementNamed(context, '/login');
+                  context.replace('/login');
                 }
               }
             },

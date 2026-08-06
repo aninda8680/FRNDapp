@@ -1,3 +1,4 @@
+import 'package:go_router/go_router.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_colors.dart';
@@ -141,7 +142,7 @@ class QuotaUpgradeDialog extends StatelessWidget {
               text: 'UPGRADE TO GOLD PASS ✦',
               onPressed: () {
                 Navigator.pop(context);
-                Navigator.pushNamed(context, '/subscription');
+                context.push('/subscription');
               },
             ),
             const SizedBox(height: 12),

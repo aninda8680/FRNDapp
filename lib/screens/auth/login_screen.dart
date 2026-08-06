@@ -1,3 +1,4 @@
+import 'package:go_router/go_router.dart';
 import 'package:flutter/material.dart';
 import '../../utils/route_transitions.dart';
 import 'signup_screen.dart';
@@ -49,7 +50,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _onLogin() async {
     // ── Dev bypass ────────────────────────────────────────────────────────────
     if (DevConfig.bypassAuth) {
-      Navigator.pushNamed(context, '/otp');
+      context.push('/otp');
       return;
     }
 
@@ -94,13 +95,13 @@ class _LoginScreenState extends State<LoginScreen> {
         _showSnackBar('No such mail exists. Redirecting to Sign Up...');
         Future.delayed(const Duration(seconds: 1), () {
           if (mounted) {
-            Navigator.pushReplacementNamed(context, '/signup');
+            context.replace('/signup');
           }
         });
         break;
 
       case AuthResult.needsOtp:
-        Navigator.pushReplacementNamed(context, '/otp');
+        context.replace('/otp');
         break;
 
       case AuthResult.failure:

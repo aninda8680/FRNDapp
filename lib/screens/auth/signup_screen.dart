@@ -1,3 +1,4 @@
+import 'package:go_router/go_router.dart';
 import 'package:flutter/material.dart';
 import '../../utils/route_transitions.dart';
 import 'login_screen.dart';
@@ -51,7 +52,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   Future<void> _onSignUp() async {
     // ── Dev bypass ────────────────────────────────────────────────────────────
     if (DevConfig.bypassAuth) {
-      Navigator.pushNamed(context, '/otp');
+      context.push('/otp');
       return;
     }
 
@@ -91,7 +92,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
     switch (result) {
       case AuthResult.needsOtp:
-        Navigator.pushReplacementNamed(context, '/otp');
+        context.replace('/otp');
         break;
 
       case AuthResult.success:
@@ -112,7 +113,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
         _showSnackBar('An account with this email already exists. Redirecting to login...');
         Future.delayed(const Duration(seconds: 1), () {
           if (mounted) {
-            Navigator.pushReplacementNamed(context, '/login');
+            context.replace('/login');
           }
         });
         break;
