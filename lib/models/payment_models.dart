@@ -1,24 +1,22 @@
+/// Describes a subscription tier's entitlements and pricing.
+/// Used for display in the Subscription screen and local fallback defaults.
 class PaymentTier {
   final String tier;
   final String name;
   final int priceINR;
-  final int pricePaise;
   final int validityDays;
   final int likesLimit;
   final int superlikesLimit;
   final int profileBoost;
-  final bool isAutopay;
 
   const PaymentTier({
     required this.tier,
     required this.name,
     required this.priceINR,
-    required this.pricePaise,
     required this.validityDays,
     required this.likesLimit,
     required this.superlikesLimit,
     required this.profileBoost,
-    required this.isAutopay,
   });
 
   factory PaymentTier.fromJson(Map<String, dynamic> json) {
@@ -26,60 +24,21 @@ class PaymentTier {
       tier: json['tier'] ?? 'free',
       name: json['name'] ?? 'Free Tier',
       priceINR: (json['priceINR'] ?? 0) as int,
-      pricePaise: (json['pricePaise'] ?? 0) as int,
-      validityDays: (json['validityDays'] ?? 30) as int,
+      validityDays: (json['validityDays'] ?? 28) as int,
       likesLimit: (json['likesLimit'] ?? 15) as int,
       superlikesLimit: (json['superlikesLimit'] ?? 3) as int,
       profileBoost: (json['profileBoost'] ?? 1) as int,
-      isAutopay: json['isAutopay'] ?? false,
     );
   }
 }
 
-class SubscriptionOrder {
-  final String subscriptionId;
-  final String planId;
-  final int amount;
-  final int amountINR;
-  final String currency;
-  final String keyId;
-  final String tier;
-  final String tierName;
-  final int validityDays;
-  final bool isAutopay;
-
-  const SubscriptionOrder({
-    required this.subscriptionId,
-    required this.planId,
-    required this.amount,
-    required this.amountINR,
-    required this.currency,
-    required this.keyId,
-    required this.tier,
-    required this.tierName,
-    required this.validityDays,
-    required this.isAutopay,
-  });
-
-  factory SubscriptionOrder.fromJson(Map<String, dynamic> json) {
-    return SubscriptionOrder(
-      subscriptionId: json['subscriptionId'] ?? json['orderId'] ?? '',
-      planId: json['planId'] ?? '',
-      amount: (json['amount'] ?? 0) as int,
-      amountINR: (json['amountINR'] ?? (json['amount'] != null ? json['amount'] ~/ 100 : 0)) as int,
-      currency: json['currency'] ?? 'INR',
-      keyId: json['keyId'] ?? '',
-      tier: json['tier'] ?? 'silver',
-      tierName: json['tierName'] ?? 'Silver Pass',
-      validityDays: (json['validityDays'] ?? 30) as int,
-      isAutopay: json['isAutopay'] ?? true,
-    );
-  }
-}
-
+/// Current subscription status fetched from the backend.
 class SubscriptionStatus {
   final String tier;
   final bool isPremium;
+
+  /// For Play Billing subscribers this is 'active' or 'none'.
+  /// For grandfathered Razorpay subscribers it may be 'cancelled' or 'halted'.
   final String autopayStatus;
   final DateTime? subscriptionExpiresAt;
   final int validityDaysRemaining;
@@ -104,9 +63,12 @@ class SubscriptionStatus {
     final expiresAt = expiresAtStr != null ? DateTime.tryParse(expiresAtStr) : null;
     final int rawRemainingDays = (json['validityDaysRemaining'] ?? 0) as int;
 
-    // Evaluate client-side expiration fallback
-    final bool isExpired = (expiresAt != null && DateTime.now().isAfter(expiresAt)) ||
-        (json['tier'] != null && json['tier'] != 'free' && rawRemainingDays <= 0);
+    // Client-side expiration guard — server is authoritative.
+    final bool isExpired =
+        (expiresAt != null && DateTime.now().isAfter(expiresAt)) ||
+            (json['tier'] != null &&
+                json['tier'] != 'free' &&
+                rawRemainingDays <= 0);
 
     final String effectiveTier = isExpired ? 'free' : (json['tier'] ?? 'free');
     final bool effectiveIsPremium = isExpired ? false : (json['isPremium'] ?? false);
@@ -123,22 +85,4 @@ class SubscriptionStatus {
       profileBoost: isExpired ? 1 : ((limits['profileBoost'] ?? 1) as int),
     );
   }
-}
-
-enum PaymentResultStatus { success, failed, cancelled }
-
-class PaymentResult {
-  final PaymentResultStatus status;
-  final String message;
-  final String? subscriptionId;
-  final String? paymentId;
-  final String? signature;
-
-  const PaymentResult({
-    required this.status,
-    required this.message,
-    this.subscriptionId,
-    this.paymentId,
-    this.signature,
-  });
 }

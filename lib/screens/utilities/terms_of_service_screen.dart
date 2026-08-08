@@ -159,7 +159,7 @@ class TermsOfServiceScreen extends StatelessWidget {
 
                 _buildSectionTitle('03. 24-Hour Refund & Financial Policy', icon: Icons.payments_outlined),
                 _buildSubTitle('Unconditional 24-Hour Cooling-Off Period'),
-                _buildText('We stand against financial traps. If you activate a Silver Pass or Gold Pass and determine within the first 24 hours that the service does not meet your expectations, you are entitled to request an immediate, unconditional 100% full refund—no questions asked. Refunds process in 5 to 7 days via Razorpay.'),
+                _buildText('We stand against financial traps. If you activate a Silver Pass or Gold Pass and determine within the first 24 hours that the service does not meet your expectations, you may request a refund through Google Play. Refunds for in-app purchases are governed by Google Play\'s refund policy and processed by Google.'),
                 _buildSubTitle('When Refunds ARE Granted (100% Guaranteed Reversal)'),
                 _buildBulletPoint('Within the 24-Hour Grace Period: Any subscription refund requested within the initial 24 hours of checkout is automatically verified.'),
                 _buildBulletPoint('Technical Double-Billing Anomalies: Duplicate debits due to network glitches are fully refunded within 5 to 7 business days.'),
@@ -174,9 +174,9 @@ class TermsOfServiceScreen extends StatelessWidget {
                 _buildSubTitle('No Mid-Month Pro-Rating'),
                 _buildText('When a 30-day cycle starts, compute and exposure allowances are provisioned upfront upon settlement. Fractional refunds cannot be calculated mid-cycle. When canceled, benefits remain fully active until the final minute of Day 30.'),
                 _buildSubTitle('3-Step Instant Autopay Termination'),
-                _buildBulletPoint('01. Open Profile Settings.'),
-                _buildBulletPoint('02. Select Manage Subscription (Active Silver/Gold Pass & Autopay Mandate).'),
-                _buildBulletPoint('03. Select Cancel Autopay. Razorpay immediately revokes recurring debit mandates.'),
+                _buildBulletPoint('01. Open the Google Play Store app on your device.'),
+                _buildBulletPoint('02. Go to Menu → Subscriptions and select FRND Buzz.'),
+                _buildBulletPoint('03. Tap Cancel Subscription. Google Play immediately stops future renewal charges.'),
 
                 _buildSectionTitle('05. Offline Safety & Liability Bounds', icon: Icons.health_and_safety_outlined),
                 _buildText('While FRND assumes absolute operational accountability for applying rigorous software encryption and rapid moderation within our software bounds, we cannot exercise direct supervision over off-platform interactions or physical real-world campus encounters.'),
@@ -196,11 +196,11 @@ class TermsOfServiceScreen extends StatelessWidget {
 
                 const _FaqTile(
                   question: 'How does the 24-hour refund policy work if I change my mind after purchasing?',
-                  answer: 'We honor an unconditional 24-hour refund window starting from the exact timestamp of your purchase. You can request an immediate refund via app settings or our support desk. Razorpay will reverse the transaction directly to your source bank account or UPI wallet within 5 to 7 business days.',
+                  answer: 'Google Play allows refund requests for recent in-app purchases. You can request a refund via Google Play\'s self-service portal (play.google.com/store/account/subscriptions) or contact our support team and we will assist with the refund process. Refund processing times are determined by Google Play policy.',
                 ),
                 const _FaqTile(
                   question: 'If I cancel my Autopay subscription mid-cycle, what happens to my privileges?',
-                  answer: 'Your Silver or Gold Pass benefits remain completely active and uninterrupted until Day 30 at 11:59 PM. Canceling Autopay simply ensures your card or UPI will not be automatically debited for the subsequent monthly cycle.',
+                  answer: 'Your Silver or Gold Pass benefits remain completely active and uninterrupted until the end of your current 28-day billing period. Cancelling via Google Play simply stops the next renewal charge.',
                 ),
                 const _FaqTile(
                   question: 'Why don\'t you offer prorated partial refunds if I stop using the app after week one?',

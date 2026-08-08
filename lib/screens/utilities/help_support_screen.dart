@@ -27,19 +27,19 @@ class _HelpSupportScreenState extends State<HelpSupportScreen> {
       'category': 'Refunds',
       'question': 'How does the 24-hour refund policy work?',
       'answer':
-          'We honor an unconditional 24-hour refund window starting from your purchase timestamp. Request a refund via app settings or support desk, and Razorpay will process a 100% reversal to your original payment method within 5–7 business days.',
+          'All premium subscriptions are billed via Google Play Billing. To request a refund for a recent purchase, visit play.google.com/store/account/subscriptions or contact our support team. Refund eligibility is governed by Google Play\'s refund policy.',
     },
     {
       'category': 'Subscriptions',
       'question': 'How do I cancel my Silver or Gold Pass Autopay subscription?',
       'answer':
-          'Go to Profile Settings > Manage Subscription > Cancel Autopay. Razorpay immediately cancels future recurring charges. Your pass benefits remain active until the end of your 30-day billing cycle.',
+          'Open the Google Play Store → Menu → Subscriptions → select FRND Buzz → tap Cancel Subscription. Google Play immediately stops future renewal charges. Your pass benefits remain active until the end of your current 28-day billing cycle.',
     },
     {
       'category': 'Subscriptions',
-      'question': 'What happens when I cancel Autopay mid-cycle?',
+      'question': 'What happens when I cancel mid-cycle?',
       'answer':
-          'Your pass benefits stay active until 11:59 PM on Day 30. Canceling Autopay simply ensures your UPI or card will not be debited for the subsequent monthly cycle.',
+          'Your pass benefits stay active until the end of your current 28-day billing period. Cancelling via Google Play simply stops the next auto-renewal charge.',
     },
     {
       'category': 'Verification',

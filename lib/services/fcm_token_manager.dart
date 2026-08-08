@@ -83,7 +83,7 @@ class FcmTokenManager {
         final url = Uri.parse('${AuthService.baseUrl}/fcm-token');
         await http.delete(
           url,
-          headers: {'Cookie': 'token=${AuthService.cookie ?? ""}', 'Content-Type': 'application/json'},
+          headers: {'cookie': AuthService.token ?? "", 'Content-Type': 'application/json'},
           body: json.encode({'token': token})
         );
       }
@@ -98,7 +98,7 @@ class FcmTokenManager {
       final url = Uri.parse('${AuthService.baseUrl}/fcm-token');
       await http.post(
         url,
-        headers: {'Cookie': 'token=${AuthService.cookie ?? ""}', 'Content-Type': 'application/json'},
+        headers: {'cookie': AuthService.token ?? "", 'Content-Type': 'application/json'},
         body: json.encode({'token': token})
       );
     } catch (e) {

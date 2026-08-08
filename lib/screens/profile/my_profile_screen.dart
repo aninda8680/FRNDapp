@@ -236,7 +236,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            '@$username',
+                            name,
                             style: const TextStyle(
                               color: _bgCream,
                               fontSize: 22,
@@ -246,7 +246,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
                           ),
                           SizedBox(height: context.responsiveHeight(4)),
                           Text(
-                            '$name • Member since 2026',
+                            '@$username • Member since 2026',
                             style: TextStyle(
                               color: _bgCream.withOpacity(0.85),
                               fontSize: 12,

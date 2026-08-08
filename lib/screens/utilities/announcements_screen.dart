@@ -81,6 +81,7 @@ class _AnnouncementCard extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.only(bottom: 16.0),
       elevation: 2,
+      color: AppColors.textColor2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -91,7 +92,7 @@ class _AnnouncementCard extends StatelessWidget {
               children: [
                 const Icon(
                   Icons.campaign,
-                  color: AppColors.textColor1,
+                  color: AppColors.cream,
                   size: 24,
                 ),
                 const SizedBox(width: 8),
@@ -101,6 +102,7 @@ class _AnnouncementCard extends StatelessWidget {
                     style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
+                      color: AppColors.cream,
                     ),
                   ),
                 ),
@@ -112,6 +114,7 @@ class _AnnouncementCard extends StatelessWidget {
               style: const TextStyle(
                 fontSize: 15,
                 height: 1.4,
+                color: Colors.white,
               ),
             ),
             const SizedBox(height: 16),
@@ -119,7 +122,7 @@ class _AnnouncementCard extends StatelessWidget {
               formattedDate,
               style: TextStyle(
                 fontSize: 12,
-                color: Colors.grey[600],
+                color: Colors.white70,
                 fontWeight: FontWeight.w500,
               ),
             ),

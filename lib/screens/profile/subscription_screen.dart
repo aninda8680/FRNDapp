@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:razorpay_flutter/razorpay_flutter.dart';
+import 'package:in_app_purchase/in_app_purchase.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/sketchy_button.dart';
 import '../../widgets/sketchy_container.dart';
 import '../../services/payment_service.dart';
+import '../../services/play_billing_service.dart';
 import '../../models/payment_models.dart';
 import '../../utils/responsive_utils.dart';
 
@@ -16,52 +19,31 @@ class SubscriptionScreen extends StatefulWidget {
 }
 
 class _SubscriptionScreenState extends State<SubscriptionScreen> {
-  late Razorpay _razorpay;
   bool _isLoading = false;
-  String _selectedTierKey = 'gold'; // Default selection
-  Map<String, PaymentTier> _tiers = {
-    'silver': const PaymentTier(
-      tier: 'silver',
-      name: 'Silver Pass Autopay',
-      priceINR: 39,
-      pricePaise: 3900,
-      validityDays: 28,
-      likesLimit: 25,
-      superlikesLimit: 6,
-      profileBoost: 3,
-      isAutopay: true,
-    ),
-    'gold': const PaymentTier(
-      tier: 'gold',
-      name: 'Gold Pass Autopay',
-      priceINR: 49,
-      pricePaise: 4900,
-      validityDays: 28,
-      likesLimit: 50,
-      superlikesLimit: 12,
-      profileBoost: 6,
-      isAutopay: true,
-    ),
-  };
+  String _selectedTierKey = 'gold';
+
+  /// Active subscription status (from backend, authoritative).
   SubscriptionStatus? _userStatus;
+
+  /// Product details loaded from Play Console.
+  Map<String, PaymentTier> _tiers = PaymentService.kDefaultTiers;
+
+  // Tracks the currently active product ID (for proration on upgrade/downgrade).
+  String? _activeProductId;
 
   @override
   void initState() {
     super.initState();
-    _razorpay = Razorpay();
-    _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handlePaymentSuccess);
-    _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _handlePaymentError);
-    _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleExternalWallet);
-    _loadDataBackground();
+    _loadData();
+    // Listen to purchase results and update UI accordingly.
+    PlayBillingService.instance.onPurchaseResult.listen(_handlePurchaseResult);
   }
 
-  @override
-  void dispose() {
-    _razorpay.clear();
-    super.dispose();
-  }
+  Future<void> _loadData() async {
+    // Load Play Console products (for prices).
+    await PlayBillingService.instance.loadProducts();
 
-  Future<void> _loadDataBackground() async {
+    // Load tier info + user status from backend.
     try {
       final fetchedTiers = await PaymentService.getTiers();
       SubscriptionStatus? status;
@@ -81,148 +63,81 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
 
       if (mounted) {
         setState(() {
-          if (fetchedTiers.isNotEmpty) {
-            _tiers = fetchedTiers;
-          }
-          if (status != null) {
-            _userStatus = status;
+          if (fetchedTiers.isNotEmpty) _tiers = fetchedTiers;
+          _userStatus = status;
+          // Map active tier to Play product ID.
+          if (status != null && status.tier == 'silver') {
+            _activeProductId = kSilverPassId;
+          } else if (status != null && status.tier == 'gold') {
+            _activeProductId = kGoldPassId;
           }
         });
       }
     } catch (_) {
-      // Keep existing local defaults silently
+      // Keep defaults silently.
     }
   }
 
-  void _openCheckout(PaymentTier tier) {
-    _processPayment(tier.tier);
+  void _handlePurchaseResult(PlayPurchaseResult result) {
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+
+    switch (result.status) {
+      case PlayPurchaseStatus.success:
+        _showSuccessDialog(result.message);
+        _loadData(); // Refresh status from backend.
+
+      case PlayPurchaseStatus.pending:
+        _showInfoDialog(
+          '⏳ Purchase Pending',
+          result.message,
+        );
+
+      case PlayPurchaseStatus.cancelled:
+        // Silent — user dismissed the sheet. No dialog needed.
+        break;
+
+      case PlayPurchaseStatus.failed:
+        _showFailureDialog(result.message);
+
+      case PlayPurchaseStatus.unavailable:
+        _showFailureDialog(result.message);
+    }
   }
 
-  Future<void> _processPayment(String tierKey) async {
+  Future<void> _startPurchase(String productId) async {
     setState(() => _isLoading = true);
 
-    try {
-      // 1. App requests order creation from backend
-      final order = await PaymentService.createSubscription(tierKey);
+    // If the user already has an active subscription, initiate a proration
+    // replacement (upgrade/downgrade) rather than a separate new purchase.
+    final String? oldProductId =
+        (_activeProductId != null && _activeProductId != productId)
+            ? _activeProductId
+            : null;
 
-      // 2. Open official Razorpay Checkout UI
-      final options = {
-        'key': order.keyId,
-        'amount': order.amount,
-        'name': 'FRND Premium',
-        'description': order.tierName,
-        'subscription_id': order.subscriptionId,
-        'currency': order.currency,
-        'prefill': {'contact': '', 'email': ''},
-        'theme': {'color': '#0A0A0A'}
-      };
-
-      _razorpay.open(options);
-    } catch (e) {
-      if (mounted) {
-        setState(() => _isLoading = false);
-        _showFailureDialog(e.toString().replaceAll('Exception: ', ''));
-      }
-    }
-  }
-
-  Future<void> _handlePaymentSuccess(PaymentSuccessResponse response) async {
-    try {
-      setState(() => _isLoading = true);
-
-      // Razorpay Flutter plugin stores the raw response map in `data`. For subscriptions,
-      // it returns `razorpay_subscription_id` instead of `razorpay_order_id`.
-      final String subId =
-          response.data?['razorpay_subscription_id'] ?? response.orderId ?? '';
-
-      // 3. Send signature and IDs to backend for verification
-      final verifiedStatus = await PaymentService.verifySubscription(
-        subscriptionId: subId,
-        paymentId: response.paymentId!,
-        signature: response.signature!,
-      );
-
-      if (mounted) {
-        setState(() => _isLoading = false);
-        _showSuccessDialog(
-            '🎉 Pass activated! (${verifiedStatus.validityDaysRemaining} days remaining)');
-        _loadDataBackground(); // Refresh UI silently
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _isLoading = false);
-        _showFailureDialog(e.toString().replaceAll('Exception: ', ''));
-      }
-    }
-  }
-
-  void _handlePaymentError(PaymentFailureResponse response) {
-    if (mounted) {
-      setState(() => _isLoading = false);
-      _showFailureDialog('Payment failed or was cancelled. Please try again.');
-    }
-  }
-
-  void _handleExternalWallet(ExternalWalletResponse response) {
-    if (mounted) {
-      setState(() => _isLoading = false);
-      _showFailureDialog('External wallets not supported for Autopay.');
-    }
-  }
-
-  Future<void> _handleCancelSubscription() async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.cream,
-        actionsAlignment: MainAxisAlignment.center,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: AppColors.textColor1, width: 2),
-        ),
-        title: Text(
-          'CANCEL AUTOPAY?',
-          style: GoogleFonts.spaceMono(fontWeight: FontWeight.bold),
-        ),
-        content: const Text(
-          'Are you sure you want to cancel recurring payments? Your benefits remain active until your current 28-day billing period ends.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('KEEP AUTOPAY',
-                style: TextStyle(color: AppColors.textColor1)),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.textColor1,
-              foregroundColor: AppColors.cream,
-            ),
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('CANCEL AUTOPAY'),
-          ),
-        ],
-      ),
+    await PlayBillingService.instance.purchaseTier(
+      productId: productId,
+      currentProductId: oldProductId,
     );
+    // Result arrives async via onPurchaseResult → _handlePurchaseResult.
+  }
 
-    if (confirm == true) {
-      try {
-        setState(() => _isLoading = true);
-        await PaymentService.cancelSubscription();
-        if (mounted) {
-          setState(() => _isLoading = false);
-          _showSuccessDialog(
-              'Autopay cancelled. Pass benefits stay active until period expires.');
-          _loadDataBackground();
-        }
-      } catch (e) {
-        if (mounted) {
-          setState(() => _isLoading = false);
-          _showFailureDialog(e.toString());
-        }
-      }
+  Future<void> _openManageSubscriptions() async {
+    final uri = PaymentService.getPlayManageSubscriptionsUri(
+      productId: _activeProductId,
+    );
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Could not open Google Play. Please manage your subscription there.'),
+        ),
+      );
     }
   }
+
+  // ─── Dialogs ──────────────────────────────────────────────────────────────
 
   void _showSuccessDialog(String message) {
     showDialog(
@@ -240,8 +155,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             const SizedBox(width: 8),
             Text(
               'PASS UNLOCKED! ✦',
-              style: GoogleFonts.spaceMono(
-                  fontWeight: FontWeight.bold, fontSize: 16),
+              style: GoogleFonts.spaceMono(fontWeight: FontWeight.bold, fontSize: 16),
             ),
           ],
         ),
@@ -272,42 +186,55 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             const Icon(Icons.error_outline, color: AppColors.textColor1, size: 28),
             const SizedBox(width: 8),
             Text(
-              'PAYMENT ERROR',
-              style: GoogleFonts.spaceMono(
-                  fontWeight: FontWeight.bold, fontSize: 16),
+              'PURCHASE ERROR',
+              style: GoogleFonts.spaceMono(fontWeight: FontWeight.bold, fontSize: 16),
             ),
           ],
         ),
         content: Text(message),
         actions: [
           SketchyButton(
-            text: 'RETRY PAYMENT',
+            text: 'CLOSE',
             showSparkles: false,
-            onPressed: () {
-              Navigator.pop(context);
-              final tier = _tiers[_selectedTierKey];
-              if (tier != null) _openCheckout(tier);
-            },
+            onPressed: () => Navigator.pop(context),
           ),
         ],
       ),
     );
   }
 
+  void _showInfoDialog(String title, String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.cream,
+        actionsAlignment: MainAxisAlignment.center,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: AppColors.textColor1, width: 2.5),
+        ),
+        title: Text(
+          title,
+          style: GoogleFonts.spaceMono(fontWeight: FontWeight.bold, fontSize: 15),
+        ),
+        content: Text(message),
+        actions: [
+          SketchyButton(
+            text: 'OK',
+            showSparkles: false,
+            onPressed: () => Navigator.pop(context),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─── Build ────────────────────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
-    final selectedTier = _tiers[_selectedTierKey] ??
-        const PaymentTier(
-          tier: 'gold',
-          name: 'Gold Pass Autopay',
-          priceINR: 49,
-          pricePaise: 4900,
-          validityDays: 28,
-          likesLimit: 50,
-          superlikesLimit: 12,
-          profileBoost: 6,
-          isAutopay: true,
-        );
+    final selectedTier = _tiers[_selectedTierKey] ?? _tiers['gold']!;
+    final playProducts = PlayBillingService.instance.products;
 
     return Scaffold(
       backgroundColor: AppColors.cream,
@@ -348,45 +275,63 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
 
                   // Section Title
                   Center(
-                    child: Column(
-                      children: [
-                        Text(
-                          '✦ SELECT YOUR PASS ✦',
-                          style: GoogleFonts.spaceMono(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                            letterSpacing: 1.2,
-                            color: AppColors.textColor1,
-                          ),
-                        ),
-                      ],
+                    child: Text(
+                      '✦ SELECT YOUR PASS ✦',
+                      style: GoogleFonts.spaceMono(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        letterSpacing: 1.2,
+                        color: AppColors.textColor1,
+                      ),
                     ),
                   ),
                   SizedBox(height: context.responsiveHeight(20)),
 
                   // Tier Selector Cards (Silver vs Gold)
-                  _buildTierSelectorRow(),
+                  _buildTierSelectorRow(playProducts),
                   SizedBox(height: context.responsiveHeight(24)),
 
-                  // Feature Matrix Table
+                  // Feature Comparison Matrix
                   _buildComparisonMatrix(),
                   SizedBox(height: context.responsiveHeight(28)),
 
-                  // Action CTA Button
+                  // CTA — subscribe via Google Play
                   SketchyButton(
-                    text:
-                        'CLAIM ${selectedTier.tier.toUpperCase()} PASS — ₹${selectedTier.priceINR}',
-                    onPressed: () => _openCheckout(selectedTier),
+                    text: 'SUBSCRIBE VIA GOOGLE PLAY ✦',
+                    onPressed: _isLoading
+                        ? () {}
+                        : () => _startPurchase(
+                              _selectedTierKey == 'silver'
+                                  ? kSilverPassId
+                                  : kGoldPassId,
+                            ),
                   ),
                   SizedBox(height: context.responsiveHeight(12)),
 
-                  // Autopay Notice
+                  // Billing notice
                   Center(
                     child: Text(
-                      'Razorpay Autopay renews every 28 days. Cancel anytime.',
+                      'Billed via Google Play. Renews every 28 days.\nCancel anytime from Google Play.',
                       style: GoogleFonts.spaceMono(
                           fontSize: 10, color: AppColors.textColor1),
                       textAlign: TextAlign.center,
+                    ),
+                  ),
+                  SizedBox(height: context.responsiveHeight(8)),
+
+                  // Play Billing badge
+                  Center(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.security, size: 14, color: AppColors.textColor1),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Secured by Google Play Billing',
+                          style: GoogleFonts.spaceMono(
+                              fontSize: 10, color: AppColors.textColor1),
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -397,7 +342,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                 color: Colors.black.withValues(alpha: 0.3),
                 child: const Center(
                   child: CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(AppColors.textColor1),
+                    valueColor:
+                        AlwaysStoppedAnimation<Color>(AppColors.textColor1),
                   ),
                 ),
               ),
@@ -411,7 +357,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     final isPremium = _userStatus?.isPremium ?? false;
     final currentTierName = (_userStatus?.tier ?? 'free').toUpperCase();
     final remainingDays = _userStatus?.validityDaysRemaining ?? 0;
-    final autopayStatus = _userStatus?.autopayStatus ?? 'none';
 
     return SketchyContainer(
       padding: const EdgeInsets.all(16),
@@ -440,7 +385,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                 ],
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
                   color: isPremium ? AppColors.cream : AppColors.textColor1,
                   borderRadius: BorderRadius.circular(10),
@@ -463,22 +409,22 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
               children: [
                 Text(
                   'Validity: $remainingDays Days Remaining',
-                  style:
-                      GoogleFonts.spaceMono(fontSize: 12, color: AppColors.cream),
+                  style: GoogleFonts.spaceMono(
+                      fontSize: 12, color: AppColors.cream),
                 ),
-                if (autopayStatus == 'active')
-                  GestureDetector(
-                    onTap: _handleCancelSubscription,
-                    child: Text(
-                      'CANCEL AUTOPAY',
-                      style: GoogleFonts.spaceMono(
-                        fontSize: 11,
-                        color: AppColors.cream,
-                        decoration: TextDecoration.underline,
-                        fontWeight: FontWeight.bold,
-                      ),
+                // Cancellation is now handled via Google Play.
+                GestureDetector(
+                  onTap: _openManageSubscriptions,
+                  child: Text(
+                    'MANAGE IN PLAY',
+                    style: GoogleFonts.spaceMono(
+                      fontSize: 11,
+                      color: AppColors.cream,
+                      decoration: TextDecoration.underline,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
+                ),
               ],
             ),
           ],
@@ -487,32 +433,13 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     );
   }
 
-  Widget _buildTierSelectorRow() {
-    final silver = _tiers['silver'] ??
-        const PaymentTier(
-          tier: 'silver',
-          name: 'Silver Pass',
-          priceINR: 39,
-          pricePaise: 3900,
-          validityDays: 28,
-          likesLimit: 25,
-          superlikesLimit: 6,
-          profileBoost: 3,
-          isAutopay: true,
-        );
+  Widget _buildTierSelectorRow(Map<String, ProductDetails> playProducts) {
+    final silver = _tiers['silver'] ?? _tiers['gold']!;
+    final gold = _tiers['gold'] ?? silver;
 
-    final gold = _tiers['gold'] ??
-        const PaymentTier(
-          tier: 'gold',
-          name: 'Gold Pass',
-          priceINR: 49,
-          pricePaise: 4900,
-          validityDays: 28,
-          likesLimit: 50,
-          superlikesLimit: 12,
-          profileBoost: 6,
-          isAutopay: true,
-        );
+    // Use Play Console price string if available (authoritative), else fallback.
+    final silverPrice = playProducts[kSilverPassId]?.price ?? '₹${silver.priceINR}';
+    final goldPrice = playProducts[kGoldPassId]?.price ?? '₹${gold.priceINR}';
 
     return Row(
       children: [
@@ -544,7 +471,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   ),
                   SizedBox(height: context.responsiveHeight(6)),
                   Text(
-                    '₹${silver.priceINR} / 28 Days',
+                    '$silverPrice / 28 Days',
                     style: GoogleFonts.spaceMono(
                       fontSize: 13,
                       fontWeight: FontWeight.w900,
@@ -620,7 +547,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   ),
                   SizedBox(height: context.responsiveHeight(4)),
                   Text(
-                    '₹${gold.priceINR} / 28 Days',
+                    '$goldPrice / 28 Days',
                     style: GoogleFonts.spaceMono(
                       fontSize: 13,
                       fontWeight: FontWeight.w900,
@@ -672,15 +599,19 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
           _buildMatrixRow('Likes / Day', '15', '25', '50'),
           _buildMatrixRow('Superlikes / Day', '3', '6', '12'),
           _buildMatrixRow('Feed Boost', '1x Standard', '3x Higher', '6x Maximum'),
-          _buildMatrixRow('Autopay Price', '₹0', '₹39 / mo', '₹49 / mo'),
+          _buildMatrixRow('Price', '₹0', '₹39 / mo', '₹49 / mo'),
         ],
       ),
     );
   }
 
-  Widget _buildMatrixRow(String feature, String free, String silver,
-      String gold,
-      {bool isHeader = false}) {
+  Widget _buildMatrixRow(
+    String feature,
+    String free,
+    String silver,
+    String gold, {
+    bool isHeader = false,
+  }) {
     final style = GoogleFonts.spaceMono(
       fontSize: isHeader ? 11 : 10,
       fontWeight: isHeader ? FontWeight.bold : FontWeight.normal,
@@ -691,22 +622,16 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       padding: const EdgeInsets.symmetric(vertical: 6.0),
       child: Row(
         children: [
+          Expanded(flex: 4, child: Text(feature, style: style)),
           Expanded(
-            flex: 4,
-            child: Text(feature, style: style),
-          ),
+              flex: 2,
+              child: Text(free, textAlign: TextAlign.center, style: style)),
           Expanded(
-            flex: 2,
-            child: Text(free, textAlign: TextAlign.center, style: style),
-          ),
+              flex: 2,
+              child: Text(silver, textAlign: TextAlign.center, style: style)),
           Expanded(
-            flex: 2,
-            child: Text(silver, textAlign: TextAlign.center, style: style),
-          ),
-          Expanded(
-            flex: 2,
-            child: Text(gold, textAlign: TextAlign.center, style: style),
-          ),
+              flex: 2,
+              child: Text(gold, textAlign: TextAlign.center, style: style)),
         ],
       ),
     );

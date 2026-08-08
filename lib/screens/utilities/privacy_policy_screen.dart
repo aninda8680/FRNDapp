@@ -151,9 +151,9 @@ class PrivacyPolicyScreen extends StatelessWidget {
                 _buildBulletPoint('Account creation, last login timestamps, and user preferences'),
 
                 _buildSubTitle('Payment Information:'),
-                _buildBulletPoint('Payment transaction IDs (via Razorpay)'),
-                _buildBulletPoint('Payment status and subscription details (Silver Passes)'),
-                _buildBulletPoint('Billing information processed by Razorpay'),
+                _buildBulletPoint('Payment transaction IDs (via Google Play Billing)'),
+                _buildBulletPoint('Payment status and subscription details (Silver and Gold Passes)'),
+                _buildBulletPoint('Billing information processed by Google Play'),
                 _buildBulletPoint('Payment timestamps and amounts'),
 
                 _buildSubTitle('Usage Information:'),
@@ -164,7 +164,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
 
                 _buildSectionTitle('How We Use Your Information', icon: Icons.insights_outlined),
                 _buildBulletPoint('To provide and maintain our campus socializing and matching services'),
-                _buildBulletPoint('To process payments and manage premium subscriptions via Razorpay'),
+                _buildBulletPoint('To process payments and manage premium subscriptions via Google Play Billing'),
                 _buildBulletPoint('To manage your account, daily swipe quotas, and subscription status'),
                 _buildBulletPoint('To communicate with you about your account, matches, and service updates'),
                 _buildBulletPoint('To verify student identity and ensure a safe community environment'),
@@ -173,14 +173,14 @@ class PrivacyPolicyScreen extends StatelessWidget {
                 _buildBulletPoint('To analyze usage patterns for service optimization and better match recommendations'),
 
                 _buildSectionTitle('Payment Processing', icon: Icons.payment_outlined),
-                _buildText('We use Razorpay as our payment processor. Razorpay is PCI DSS compliant and follows industry best practices for handling payment information.'),
+                _buildText('All premium subscription payments are processed exclusively through Google Play Billing. Google Play is PCI DSS compliant and follows industry best practices for secure payment handling.'),
                 
                 _buildSubTitle('Payment Data Handling:'),
                 _buildBulletPoint('We do not store your complete payment card or bank details'),
-                _buildBulletPoint('Razorpay securely processes all payment information and autopay mandates'),
-                _buildBulletPoint('We only store transaction IDs, subscription status, and payment logs'),
+                _buildBulletPoint('Google Play securely processes all payment information and manages subscription renewals'),
+                _buildBulletPoint('We only store purchase tokens, subscription status, and payment logs'),
                 _buildBulletPoint('All payment data is encrypted in transit and at rest'),
-                _buildBulletPoint('Refunds are processed through Razorpay\'s secure system'),
+                _buildBulletPoint('Refunds are handled through Google Play\'s standard refund process'),
 
                 _buildSectionTitle('Data Security & Privacy', icon: Icons.security_outlined),
                 _buildText('We implement comprehensive security measures to protect your personal information and ensure the privacy of your interactions on Frnd.'),
@@ -215,7 +215,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
 
                 _buildSubTitle('Data Sharing:'),
                 _buildBulletPoint('We do not sell personal information to third parties'),
-                _buildBulletPoint('Payment data shared only with Razorpay for processing'),
+                _buildBulletPoint('Payment data shared only with Google Play for processing'),
                 _buildBulletPoint('Legal compliance or safety investigations may require data disclosure'),
                 _buildBulletPoint('Service providers bound by strict confidentiality agreements'),
 

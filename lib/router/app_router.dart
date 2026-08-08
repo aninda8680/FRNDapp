@@ -17,7 +17,6 @@ import '../screens/utilities/settings_screen.dart';
 import '../screens/utilities/help_support_screen.dart';
 import '../screens/utilities/privacy_policy_screen.dart';
 import '../screens/utilities/terms_of_service_screen.dart';
-import '../screens/splash_version_screen.dart';
 import '../widgets/maintenance_screen.dart';
 import '../screens/profile/edit_profile_screen.dart';
 import '../screens/profile/subscription_screen.dart';
@@ -30,17 +29,13 @@ final initialRouteProvider = Provider<String>((ref) => AppRoutes.onboarding);
 final appRouterProvider = Provider<GoRouter>((ref) {
   final initialRoute = ref.watch(initialRouteProvider);
   return GoRouter(
-    initialLocation: '/splash',
+    initialLocation: initialRoute,
     routes: [
-      GoRoute(
-        path: '/splash',
-        builder: (context, state) => SplashVersionScreen(targetRoute: initialRoute),
-      ),
       GoRoute(
         path: '/maintenance',
         builder: (context, state) => MaintenanceScreen(
           onRetry: () {
-            context.go('/splash');
+            context.go(initialRoute);
           },
         ),
       ),
