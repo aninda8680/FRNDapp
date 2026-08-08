@@ -53,7 +53,9 @@ void main() async {
     final cachedProfile = AuthService.userProfile;
     if (cachedProfile != null) {
       AuthService.getProfile(); // background refresh
-      if (AuthService.isProfileComplete(cachedProfile)) {
+      if (!AuthService.isEmailVerified(cachedProfile)) {
+        initialRouteString = AppRoutes.otp;
+      } else if (AuthService.isProfileComplete(cachedProfile)) {
         DiscoverService.prefetchFeed();
         initialRouteString = AppRoutes.main;
       } else {
@@ -65,7 +67,9 @@ void main() async {
         await AuthService.logout();
         initialRouteString = AppRoutes.onboarding;
       } else {
-        if (AuthService.isProfileComplete(fetchedProfile)) {
+        if (!AuthService.isEmailVerified(fetchedProfile)) {
+          initialRouteString = AppRoutes.otp;
+        } else if (AuthService.isProfileComplete(fetchedProfile)) {
           DiscoverService.prefetchFeed();
           initialRouteString = AppRoutes.main;
         } else {

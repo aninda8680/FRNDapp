@@ -105,7 +105,12 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
           ),
           SizedBox(height: context.responsiveHeight(16)),
           TextButton.icon(
-            onPressed: () => context.go('/login'),
+            onPressed: () async {
+              await AuthService.logout();
+              if (context.mounted) {
+                context.go('/login');
+              }
+            },
             icon: const Icon(Icons.logout_rounded, size: 16, color: _mutedGray),
             label: const Text(
               'Log Out',
@@ -352,7 +357,12 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
             // Log out button
             Center(
               child: OutlinedButton.icon(
-                onPressed: () => context.go('/login'),
+                onPressed: () async {
+                  await AuthService.logout();
+                  if (context.mounted) {
+                    context.go('/login');
+                  }
+                },
                 icon: Icon(Icons.logout_rounded, size: 18, color: _primaryBurgundy.withOpacity(0.8)),
                 label: Text(
                   'Log Out', 

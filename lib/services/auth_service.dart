@@ -344,13 +344,18 @@ class AuthService {
     }
   }
 
+  static bool isEmailVerified(Map<String, dynamic>? profile) {
+    if (profile == null) return false;
+    return profile['emailVerified'] == true;
+  }
+
   static bool isProfileComplete(Map<String, dynamic>? profile) {
     if (profile == null) return false;
     
-    // The user has clicked "ENTER WORLD" and submitted the form 
-    // if their basic details like 'name' are present.
-    final name = profile['name'];
-    return name != null && name.toString().trim().isNotEmpty;
+    // The user has submitted the form if a field like 'gender' is present,
+    // since 'name' is auto-populated by the backend on signup.
+    final gender = profile['gender'];
+    return gender != null && gender.toString().trim().isNotEmpty;
   }
 
   /// Uploads a picture to the backend and returns the picture object { url, fileId }
