@@ -334,6 +334,28 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                       ],
                     ),
                   ),
+                  SizedBox(height: context.responsiveHeight(16)),
+                  
+                  // Restore Purchases Button
+                  Center(
+                    child: TextButton(
+                      onPressed: () {
+                        PlayBillingService.instance.restorePurchases();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Restoring purchases...')),
+                        );
+                      },
+                      child: Text(
+                        'RESTORE PURCHASES',
+                        style: GoogleFonts.spaceMono(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textColor1,
+                          decoration: TextDecoration.underline,
+                        ),
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),

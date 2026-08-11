@@ -68,7 +68,7 @@ class _AuthTextFieldState extends State<AuthTextField>
         Text(
           widget.label.toUpperCase(),
           style: GoogleFonts.inter(
-            color: const Color(0xFF4A4A4A), // Muted charcoal/grey
+            color: Colors.white70,
             fontSize: 11,
             fontWeight: FontWeight.w600,
             letterSpacing: 1.2,
@@ -98,7 +98,10 @@ class _AuthTextFieldState extends State<AuthTextField>
                         ),
                     suffixIcon: widget.suffixIcon,
                   ),
-                  style: Theme.of(context).textTheme.bodyLarge,
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    color: const Color(0xFF800000), // Red text
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
               Positioned(

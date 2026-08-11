@@ -8,8 +8,8 @@ import 'package:http/http.dart' as http;
 import 'auth_service.dart';
 
 /// Product IDs — must exactly match Play Console product IDs.
-const String kSilverPassId = 'frnd_silver_pass';
-const String kGoldPassId = 'frnd_gold_pass';
+const String kSilverPassId = 'frnd_silver_plan';
+const String kGoldPassId = 'frnd_gold_plan';
 const Set<String> kProductIds = {kSilverPassId, kGoldPassId};
 
 /// Result of a Play Billing purchase attempt.
@@ -114,6 +114,10 @@ class PlayBillingService {
       debugPrint('[PlayBilling] queryProductDetails error: ${response.error}');
     }
 
+    if (response.notFoundIDs.isNotEmpty) {
+      debugPrint('[PlayBilling] IDs not found in Play Console: ${response.notFoundIDs}');
+    }
+
     _products = {
       for (final p in response.productDetails) p.id: p,
     };
@@ -123,7 +127,7 @@ class PlayBillingService {
 
   /// Initiate a purchase for a tier.
   ///
-  /// [productId]    — `frnd_silver_pass` or `frnd_gold_pass`
+  /// [productId]    — `frnd_silver_plan` or `frnd_gold_plan`
   /// [currentProductId] — set when user already has an active subscription
   ///                      (triggers proration upgrade/downgrade flow via Play Billing).
   Future<void> purchaseTier({

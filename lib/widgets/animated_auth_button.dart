@@ -84,7 +84,7 @@ class _AnimatedAuthButtonState extends State<AnimatedAuthButton>
           width: double.infinity,
           padding: const EdgeInsets.symmetric(vertical: 16),
           decoration: BoxDecoration(
-            color: const Color(0xFF800000), // Burgundy
+            color: Colors.transparent,
             borderRadius: BorderRadius.circular(12),
           ),
           child: Center(

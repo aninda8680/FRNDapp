@@ -6,6 +6,7 @@ import '../routes.dart';
 import '../screens/auth/onboarding_screen.dart';
 import '../screens/auth/login_screen.dart';
 import '../screens/auth/signup_screen.dart';
+import '../screens/auth/auth_screen.dart';
 import '../screens/auth/otp_verification_screen.dart';
 import '../screens/setup/profile_setup_screen.dart';
 import '../screens/setup/profile_created_screen.dart';
@@ -45,11 +46,19 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: AppRoutes.login,
-        builder: (context, state) => const LoginScreen(),
+        pageBuilder: (context, state) => _buildAestheticTransition(
+          context: context,
+          state: state,
+          child: const AuthScreen(startOnSignUp: false),
+        ),
       ),
       GoRoute(
         path: AppRoutes.signup,
-        builder: (context, state) => const SignUpScreen(),
+        pageBuilder: (context, state) => _buildAestheticTransition(
+          context: context,
+          state: state,
+          child: const AuthScreen(startOnSignUp: true),
+        ),
       ),
       GoRoute(
         path: AppRoutes.otp,
@@ -130,3 +139,77 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     ],
   );
 });
+
+CustomTransitionPage<void> _buildAestheticTransition({
+  required BuildContext context,
+  required GoRouterState state,
+  required Widget child,
+}) {
+  return CustomTransitionPage<void>(
+    key: state.pageKey,
+    child: child,
+    transitionDuration: const Duration(milliseconds: 700),
+    reverseTransitionDuration: const Duration(milliseconds: 700),
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      // A smooth and elegant curve
+      const curve = Curves.fastLinearToSlowEaseIn;
+      
+      final slideTween = Tween(begin: const Offset(0.0, 0.1), end: Offset.zero)
+          .chain(CurveTween(curve: curve));
+      final fadeTween = Tween(begin: 0.0, end: 1.0)
+          .chain(CurveTween(curve: curve));
+      final scaleTween = Tween(begin: 0.96, end: 1.0)
+          .chain(CurveTween(curve: curve));
+
+      return FadeTransition(
+        opacity: animation.drive(fadeTween),
+        child: ScaleTransition(
+          scale: animation.drive(scaleTween),
+          child: SlideTransition(
+            position: animation.drive(slideTween),
+            child: child,
+          ),
+        ),
+      );
+    },
+  );
+}
+
+CustomTransitionPage<void> _buildAuthTransition({
+  required BuildContext context,
+  required GoRouterState state,
+  required Widget child,
+}) {
+  return CustomTransitionPage<void>(
+    key: state.pageKey,
+    child: child,
+    transitionDuration: const Duration(milliseconds: 600),
+    reverseTransitionDuration: const Duration(milliseconds: 600),
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      final slideIn = Tween<Offset>(
+        begin: const Offset(0.2, 0.0),
+        end: Offset.zero,
+      ).animate(
+        CurvedAnimation(
+          parent: animation,
+          curve: Curves.fastLinearToSlowEaseIn,
+        ),
+      );
+
+      final fadeIn = Tween<double>(begin: 0.0, end: 1.0).animate(
+        CurvedAnimation(
+          parent: animation,
+          curve: const Interval(0.6, 1.0, curve: Curves.easeIn),
+        ),
+      );
+
+      return FadeTransition(
+        opacity: fadeIn,
+        child: SlideTransition(
+          position: slideIn,
+          child: child,
+        ),
+      );
+    },
+  );
+}
