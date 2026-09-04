@@ -29,11 +29,13 @@ android {
 
     signingConfigs {
         create("release") {
-            keyAlias = keystoreProperties["keyAlias"] as String? ?: error("keyAlias missing in key.properties")
-            keyPassword = keystoreProperties["keyPassword"] as String? ?: error("keyPassword missing in key.properties")
-            storeFile = keystoreProperties["storeFile"]?.let { file(it as String) }
-                ?: error("storeFile missing in key.properties")
-            storePassword = keystoreProperties["storePassword"] as String? ?: error("storePassword missing in key.properties")
+            if (keystorePropertiesFile.exists()) {
+                keyAlias = keystoreProperties["keyAlias"] as String? ?: error("keyAlias missing in key.properties")
+                keyPassword = keystoreProperties["keyPassword"] as String? ?: error("keyPassword missing in key.properties")
+                storeFile = keystoreProperties["storeFile"]?.let { file(it as String) }
+                    ?: error("storeFile missing in key.properties")
+                storePassword = keystoreProperties["storePassword"] as String? ?: error("storePassword missing in key.properties")
+            }
         }
     }
 
@@ -50,7 +52,11 @@ android {
         release {
             // Use the release keystore defined above for all distribution builds.
             // NEVER revert this to signingConfigs.getByName("debug").
-            signingConfig = signingConfigs.getByName("release")
+            signingConfig = if (keystorePropertiesFile.exists()) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
             isMinifyEnabled = false
             isShrinkResources = false
         }
