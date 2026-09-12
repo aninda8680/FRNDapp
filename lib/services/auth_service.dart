@@ -351,9 +351,14 @@ class AuthService {
 
   static bool isProfileComplete(Map<String, dynamic>? profile) {
     if (profile == null) return false;
-    
-    // The user has submitted the form if a field like 'gender' is present,
-    // since 'name' is auto-populated by the backend on signup.
+
+    // Primary check: hasEnteredWorld is set to true by _createProfile()
+    // after the user completes onboarding and taps "ENTER WORLD".
+    // This is the authoritative signal that profile setup is done.
+    if (profile['hasEnteredWorld'] == true) return true;
+
+    // Fallback: for accounts created before hasEnteredWorld was tracked,
+    // treat gender being set as a sufficient signal (same as previous logic).
     final gender = profile['gender'];
     return gender != null && gender.toString().trim().isNotEmpty;
   }

@@ -1513,14 +1513,13 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       "prompts": promptsList,
       "lookingFor": _selectedLookingFor ?? 'dating',
       "sexualOrientation": _selectedSexualOrientation ?? 'straight',
+      "hasEnteredWorld": true, // marks onboarding as complete — used by isProfileComplete()
       "tags": {
         "smoke": _smoke,
         "drink": _drink,
         "pets": _pets,
       },
-      "pictures": uploadedPictures.isNotEmpty 
-          ? uploadedPictures 
-          : [ { "url": "https://dummyimage.com/600x800", "fileId": "dummy" } ]
+      "pictures": uploadedPictures.isNotEmpty ? uploadedPictures : [],
     };
     
     return await AuthService.updateProfile(data);
