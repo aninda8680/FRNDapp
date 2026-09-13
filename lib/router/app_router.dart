@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../routes.dart';
+import '../services/auth_service.dart';
 import '../screens/auth/onboarding_screen.dart';
 import '../screens/auth/login_screen.dart';
 import '../screens/auth/signup_screen.dart';
@@ -31,6 +32,51 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   final initialRoute = ref.watch(initialRouteProvider);
   return GoRouter(
     initialLocation: initialRoute,
+    redirect: (context, state) {
+      final location = state.matchedLocation;
+      final isAuth = AuthService.token != null;
+
+      // Routes anyone (including logged-out users) may visit.
+      const public = [
+        AppRoutes.onboarding,
+        AppRoutes.login,
+        AppRoutes.signup,
+        AppRoutes.privacyPolicy,
+        AppRoutes.termsOfService,
+        AppRoutes.helpSupport,
+        '/maintenance',
+      ];
+
+      // Anything else requires a session — send deep links to onboarding.
+      if (!isAuth && !public.contains(location)) {
+        return AppRoutes.onboarding;
+      }
+      if (!isAuth) return null;
+
+      // Profile not loaded yet (e.g. right after signup, before the first
+      // getProfile call). Screen-level logic resolves routing in that case.
+      final profile = AuthService.userProfile;
+      if (profile == null) return null;
+
+      final verified = AuthService.isEmailVerified(profile);
+      final complete = AuthService.isProfileComplete(profile);
+
+      if (!verified) {
+        // Unverified users may only be on OTP (or public pages).
+        if (location == AppRoutes.otp || public.contains(location)) {
+          return null;
+        }
+        return AppRoutes.otp;
+      }
+
+      if (location == AppRoutes.onboarding ||
+          location == AppRoutes.login ||
+          location == AppRoutes.signup ||
+          location == AppRoutes.otp) {
+        return complete ? AppRoutes.main : AppRoutes.profileSetup;
+      }
+      return null;
+    },
     routes: [
       GoRoute(
         path: '/maintenance',
@@ -153,7 +199,7 @@ CustomTransitionPage<void> _buildAestheticTransition({
     transitionsBuilder: (context, animation, secondaryAnimation, child) {
       // A smooth and elegant curve
       const curve = Curves.fastLinearToSlowEaseIn;
-      
+
       final slideTween = Tween(begin: const Offset(0.0, 0.1), end: Offset.zero)
           .chain(CurveTween(curve: curve));
       final fadeTween = Tween(begin: 0.0, end: 1.0)

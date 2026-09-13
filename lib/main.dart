@@ -39,6 +39,8 @@ void main() async {
 
   await Hive.initFlutter();
   await Firebase.initializeApp();
+  final token = await FirebaseMessaging.instance.getToken();
+  print('FCM TOKEN: $token');
   await AuthService.init();
   OutboxService.start();
 
@@ -126,7 +128,9 @@ class _FrndAppState extends ConsumerState<FrndApp> {
     // 1. Terminated (Cold Start)
     RemoteMessage? initialMessage = await FirebaseMessaging.instance.getInitialMessage();
     if (initialMessage != null) {
-      _handleDeepLink(initialMessage.data);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _handleDeepLink(initialMessage.data);
+      });
     }
 
     // 2. Background (App in memory, user taps notification)
@@ -138,17 +142,31 @@ class _FrndAppState extends ConsumerState<FrndApp> {
   void _handleDeepLink(Map<String, dynamic> data) {
     final type = data['type'];
     final router = ref.read(appRouterProvider);
-    if (type == 'chat') {
-      final chatId = data['chatId'];
-      if (chatId != null) {
-        router.go('/chat/$chatId');
-      }
-    } else if (type == 'profile') {
-      final userId = data['userId'];
-      if (userId != null) {
-        // Assuming there is a /profile route in the future
-        // router.go('/profile/$userId');
-      }
+    
+    switch (type) {
+      case 'chat':
+      case 'match':
+        final chatId = data['chatId'];
+        if (chatId != null && chatId.isNotEmpty) {
+          router.go('/chat/$chatId');
+        }
+        break;
+      case 'like':
+      case 'superlike':
+      case 'upvote':
+        // Fallback to notifications screen until dedicated screens exist
+        router.go(AppRoutes.notifications);
+        break;
+      case 'announcement':
+        router.go(AppRoutes.announcements);
+        break;
+      case 'profile':
+        final userId = data['userId'];
+        if (userId != null && userId.isNotEmpty) {
+          // Assuming there is a /profile route in the future
+          // router.go('/profile/$userId');
+        }
+        break;
     }
   }
 

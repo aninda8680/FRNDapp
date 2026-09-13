@@ -55,7 +55,7 @@ class SettingsScreen extends StatelessWidget {
               onTap: () async {
                 await AuthService.logout();
                 if (context.mounted) {
-                  context.go('/login');
+                  context.go('/onboarding');
                 }
               },
             ),

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:go_router/go_router.dart';
 import '../../services/matches_service.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'individual_chat_screen.dart';
 
 class ChatListScreen extends StatefulWidget {
   const ChatListScreen({super.key});
@@ -47,23 +47,23 @@ class _ChatListRefreshState extends State<ChatListScreen> {
       setState(() => _isLoading = true);
     }
     final matches = await MatchesService.getMatches();
-    
+
     // Sort matches by time descending (newest first)
     matches.sort((a, b) {
       final aTimeStr = a['lastMessageTime'] as String? ?? a['matchedAt'] as String?;
       final bTimeStr = b['lastMessageTime'] as String? ?? b['matchedAt'] as String?;
-      
+
       if (aTimeStr == null && bTimeStr == null) return 0;
       if (aTimeStr == null) return 1;
       if (bTimeStr == null) return -1;
-      
+
       final aTime = DateTime.tryParse(aTimeStr);
       final bTime = DateTime.tryParse(bTimeStr);
-      
+
       if (aTime == null && bTime == null) return 0;
       if (aTime == null) return 1;
       if (bTime == null) return -1;
-      
+
       return bTime.compareTo(aTime);
     });
 
@@ -103,6 +103,14 @@ class _ChatListRefreshState extends State<ChatListScreen> {
     return 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=800';
   }
 
+  /// Opens a conversation through the GoRoute (/chat/:id) so deep links,
+  /// FCM taps, and manual taps all resolve to the same page.
+  void _openChat(Map<String, dynamic> match, Map<String, dynamic> partner) {
+    final conversationId = match['conversationId'];
+    if (conversationId == null) return;
+    context.push('/chat/$conversationId', extra: partner);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -112,8 +120,8 @@ class _ChatListRefreshState extends State<ChatListScreen> {
       appBar: AppBar(
         automaticallyImplyLeading: false,
         toolbarHeight: 48,
-        backgroundColor: Colors.transparent, 
-        elevation: 0, 
+        backgroundColor: Colors.transparent,
+        elevation: 0,
         surfaceTintColor: Colors.transparent,
         systemOverlayStyle: SystemUiOverlayStyle.dark,
         title: const Text(
@@ -236,7 +244,7 @@ class _ChatListRefreshState extends State<ChatListScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const SizedBox(height: 24),
-                
+
                 // Search Bar
                 Container(
                   decoration: BoxDecoration(
@@ -397,11 +405,11 @@ class _ChatListRefreshState extends State<ChatListScreen> {
           final partner = match['partner'] ?? {};
           final name = partner['name'] ?? 'Campus Match';
           final photoUrl = _getPartnerPhoto(partner);
-          
+
           final lastMessage = match['lastMessage'] as String?;
           final timeStr = match['lastMessageTime'] as String? ?? match['matchedAt'] as String?;
           final isUnread = match['unreadCount'] != null && match['unreadCount'] > 0;
-          
+
           String timeText = '';
           if (timeStr != null) {
             final dt = DateTime.tryParse(timeStr)?.toLocal();
@@ -422,18 +430,7 @@ class _ChatListRefreshState extends State<ChatListScreen> {
           final previewText = lastMessage ?? 'Matched! Say hi 👋';
 
           return InkWell(
-            onTap: () {
-              if (match['conversationId'] == null) return;
-              
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => IndividualChatScreen(
-                    conversationId: match['conversationId'],
-                    partner: partner,
-                  ),
-                ),
-              );
-            },
+            onTap: () => _openChat(match, partner),
             highlightColor: _inkBlack.withOpacity(0.03),
             splashColor: _inkBlack.withOpacity(0.05),
             child: Padding(
@@ -462,7 +459,7 @@ class _ChatListRefreshState extends State<ChatListScreen> {
                     ),
                   ),
                   const SizedBox(width: 16),
-                  
+
                   // Texts
                   Expanded(
                     child: Column(
@@ -492,7 +489,7 @@ class _ChatListRefreshState extends State<ChatListScreen> {
                       ],
                     ),
                   ),
-                  
+
                   // Unread indicator / Timestamp
                   const SizedBox(width: 12),
                   Column(

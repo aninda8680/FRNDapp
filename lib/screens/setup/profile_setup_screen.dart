@@ -390,11 +390,15 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                       child: Text('NEXT', style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: AppColors.textColor2, fontSize: 14)),
                     );
                   } else {
-                    return Center(
-                      child: Padding(
-                        padding: const EdgeInsets.only(right: 16.0),
-                        child: Text('$answeredCount/3', style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: AppColors.textColor2, fontSize: 14)),
-                      ),
+                    return Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text('$answeredCount/3', style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: AppColors.textColor2, fontSize: 14)),
+                        TextButton(
+                          onPressed: _nextStep,
+                          child: Text('SKIP', style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: AppColors.textColor2, fontSize: 14)),
+                        ),
+                      ],
                     );
                   }
                 },

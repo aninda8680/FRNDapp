@@ -101,7 +101,7 @@ class _AuthFormScreenState extends State<AuthFormScreen> {
                         // Footer
                         widget.footer,
                         
-                        const SizedBox(height: 60), // Consistent bottom padding
+                        const SizedBox(height: 140), // Increased bottom padding to move text up
                       ],
                     ),
                   ),

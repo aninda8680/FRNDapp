@@ -5,6 +5,7 @@ import '../../services/auth_service.dart';
 import '../../widgets/app_image.dart';
 import '../../utils/responsive_utils.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 const Color _bgCream = Color(0xFFF5EFE0);
 const Color _primaryBurgundy = Color(0xFF6B1B35);
@@ -334,7 +335,31 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
               ),
               child: Column(
                 children: [
-                  _buildSettingRow(Icons.star_outline_rounded, 'Passes', () => context.push('/subscription')),
+                  _buildSettingRow(
+                    Icons.star_outline_rounded, 
+                    'Passes', 
+                    null,
+                    badge: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: _primaryBurgundy.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: _primaryBurgundy.withOpacity(0.3)),
+                      ),
+                      child: const Text(
+                        'COMING SOON',
+                        style: TextStyle(
+                          color: _primaryBurgundy,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ).animate(onPlay: (controller) => controller.repeat())
+                     .shimmer(duration: 1500.ms, color: _primaryBurgundy.withOpacity(0.3))
+                     .animate(onPlay: (controller) => controller.repeat(reverse: true))
+                     .scale(begin: const Offset(1, 1), end: const Offset(1.05, 1.05), duration: 800.ms),
+                  ),
                   const Divider(color: _lightDivider, height: 1, indent: 56),
                   _buildSettingRow(Icons.person_outline_rounded, 'Edit Profile', () async {
                     await context.push('/edit_profile');
@@ -416,7 +441,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
     );
   }
 
-  Widget _buildSettingRow(IconData icon, String title, VoidCallback onTap) {
+  Widget _buildSettingRow(IconData icon, String title, VoidCallback? onTap, {Widget? badge}) {
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -426,19 +451,28 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
           child: Row(
             children: [
-              Icon(icon, color: _primaryBurgundy, size: 22),
+              Icon(icon, color: onTap == null ? _mutedGray : _primaryBurgundy, size: 22),
               const SizedBox(width: 16),
               Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(
-                    color: _textBlack,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
-                  ),
+                child: Row(
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        color: onTap == null ? _mutedGray : _textBlack,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    if (badge != null) ...[
+                      const Spacer(),
+                      badge,
+                    ],
+                  ],
                 ),
               ),
-              const Icon(Icons.chevron_right_rounded, color: _mutedGray, size: 18),
+              if (onTap != null)
+                const Icon(Icons.chevron_right_rounded, color: _mutedGray, size: 18),
             ],
           ),
         ),

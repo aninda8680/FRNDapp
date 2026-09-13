@@ -61,16 +61,20 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
     if (!mounted) return;
 
     if (success) {
+      // Re-verified accounts with a complete profile (e.g. returning users
+      // asked to re-verify) must land on /main, not /setup. The helper
+      // fetches the fresh profile (now emailVerified: true) to decide.
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
           builder: (_) => LoginSuccessScreen(
-            processFuture: Future.value('/setup'),
+            processFuture: AuthService.nextRouteAfterAuth(),
           ),
         ),
       );
     } else {
-      _showSnackBar('Incorrect code. Please try again.');
+      _showSnackBar(AuthService.lastError ??
+          'Incorrect code. Please try again.');
     }
   }
 
@@ -96,7 +100,8 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
       _startCooldown();
       _showSnackBar('A new code has been sent to your email.');
     } else {
-      _showSnackBar('Could not resend code. Please try again later.');
+      _showSnackBar(AuthService.lastError ??
+          'Could not resend code. Please try again later.');
     }
   }
 

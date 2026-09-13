@@ -89,14 +89,13 @@ class _AuthScreenState extends State<AuthScreen> {
     if (!mounted) return;
     switch (result) {
       case AuthResult.success:
+        // nextRouteAfterAuth enforces the full gating chain:
+        // unverified → /otp, incomplete profile → /setup, else /main.
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
             builder: (_) => LoginSuccessScreen(
-              processFuture: () async {
-                final profile = await AuthService.getProfile();
-                return AuthService.isProfileComplete(profile) ? '/main' : '/setup';
-              }(),
+              processFuture: AuthService.nextRouteAfterAuth(),
             ),
           ),
         );
@@ -115,7 +114,8 @@ class _AuthScreenState extends State<AuthScreen> {
         context.replace('/otp');
         break;
       case AuthResult.failure:
-        _showSnackBar('Could not log in. Please check your credentials or try again.');
+        _showSnackBar(AuthService.lastError ??
+            'Could not log in. Please check your credentials or try again.');
         break;
     }
   }
@@ -154,14 +154,13 @@ class _AuthScreenState extends State<AuthScreen> {
         context.replace('/otp');
         break;
       case AuthResult.success:
+        // Existing account signed straight in (or OTP-exempt email):
+        // route through the same verified/profile gating as login.
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
             builder: (_) => LoginSuccessScreen(
-              processFuture: () async {
-                final profile = await AuthService.getProfile();
-                return AuthService.isProfileComplete(profile) ? '/main' : '/setup';
-              }(),
+              processFuture: AuthService.nextRouteAfterAuth(),
             ),
           ),
         );
@@ -174,7 +173,7 @@ class _AuthScreenState extends State<AuthScreen> {
         break;
       case AuthResult.userNotFound:
       case AuthResult.failure:
-        _showSnackBar('Sign up failed. Please try again.');
+        _showSnackBar(AuthService.lastError ?? 'Sign up failed. Please try again.');
         break;
     }
   }
@@ -433,7 +432,7 @@ class _AuthFormContent extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 60),
+                  const SizedBox(height: 120), // Adjusted to position text perfectly
                 ],
               ),
             ),

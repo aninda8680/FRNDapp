@@ -73,14 +73,13 @@ class _LoginScreenState extends State<LoginScreen> {
 
     switch (result) {
       case AuthResult.success:
+        // nextRouteAfterAuth enforces the full gating chain:
+        // unverified → /otp, incomplete profile → /setup, else /main.
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
             builder: (_) => LoginSuccessScreen(
-              processFuture: () async {
-                final profile = await AuthService.getProfile();
-                return AuthService.isProfileComplete(profile) ? '/main' : '/setup';
-              }(),
+              processFuture: AuthService.nextRouteAfterAuth(),
             ),
           ),
         );
@@ -105,7 +104,8 @@ class _LoginScreenState extends State<LoginScreen> {
         break;
 
       case AuthResult.failure:
-        _showSnackBar('Could not log in. Please check your credentials or try again.');
+        _showSnackBar(AuthService.lastError ??
+            'Could not log in. Please check your credentials or try again.');
         break;
     }
   }

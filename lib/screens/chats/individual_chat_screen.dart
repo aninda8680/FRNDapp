@@ -6,6 +6,7 @@ import '../../services/chat_service.dart';
 import '../../services/chat_db.dart';
 import '../../services/auth_service.dart';
 import '../../services/outbox_service.dart';
+import '../../services/matches_service.dart';
 
 /// Number of items from the top of the reversed list that triggers a
 /// "load older messages" fetch — WhatsApp-style pre-fetch before the
@@ -47,6 +48,7 @@ class _IndividualChatScreenState extends State<IndividualChatScreen>
   int _nextPage = 2;             // Next server page to fetch for "load older"
   String? _myUserId;
   bool _canSend = false;
+  Map<String, dynamic>? _resolvedPartner;
 
   static const _uuid = Uuid();
 
@@ -55,11 +57,30 @@ class _IndividualChatScreenState extends State<IndividualChatScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _myUserId = AuthService.userId;
+    _resolvedPartner = widget.partner.isNotEmpty ? widget.partner : null;
+    if (_resolvedPartner == null) {
+      _resolvePartnerFromMatches();
+    }
     _msgCtrl.addListener(_onInputChanged);
     _scrollCtrl.addListener(_onScroll);
     _setupServiceListeners();
     _connectAndJoin();
     _initMessages();
+  }
+
+  Future<void> _resolvePartnerFromMatches() async {
+    final matches = await MatchesService.getMatches();
+    if (!mounted) return;
+    try {
+      final match = matches.firstWhere(
+        (m) => m['conversationId'] == widget.conversationId,
+      );
+      setState(() {
+        _resolvedPartner = match['partner'];
+      });
+    } catch (e) {
+      debugPrint("Failed to resolve partner from matches: $e");
+    }
   }
 
   @override
@@ -403,7 +424,8 @@ class _IndividualChatScreenState extends State<IndividualChatScreen>
   // ── Helpers ───────────────────────────────────────────────────────────────
 
   String _getPartnerPhoto() {
-    final pics = widget.partner['pictures'];
+    if (_resolvedPartner == null) return '';
+    final pics = _resolvedPartner!['pictures'];
     if (pics is List && pics.isNotEmpty) {
       final pic = pics[0];
       if (pic is Map && pic['url'] != null) return pic['url'] as String;
@@ -433,9 +455,9 @@ class _IndividualChatScreenState extends State<IndividualChatScreen>
 
   @override
   Widget build(BuildContext context) {
-    final name = widget.partner['name'] ?? 'Match';
+    final name = _resolvedPartner?['name'] ?? 'Loading...';
     final photoUrl = _getPartnerPhoto();
-    final isOnline = widget.partner['isOnline'] == true;
+    final isOnline = _resolvedPartner?['isOnline'] == true;
 
     return Scaffold(
       backgroundColor: _cream,

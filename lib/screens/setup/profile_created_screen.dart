@@ -29,9 +29,16 @@ class _ProfileCreatedScreenState extends State<ProfileCreatedScreen> {
   }
 
   Future<void> _handleCreate() async {
-    // Wait for the endpoint to finish creating the profile
-    final success = await widget.saveFuture;
-    
+    // Wait for the endpoint to finish creating the profile. A thrown error
+    // (e.g. a dropped connection surfacing as an exception) counts as a
+    // failure instead of crashing the screen.
+    bool success = false;
+    try {
+      success = await widget.saveFuture;
+    } catch (_) {
+      success = false;
+    }
+
     if (mounted) {
       setState(() {
         _isDone = true;
@@ -57,61 +64,79 @@ class _ProfileCreatedScreenState extends State<ProfileCreatedScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.textColor2, // Crimson background
-      body: SafeArea(
-        bottom: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(24.0, 24.0, 24.0, 0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Spacer(),
+    // Block the system back button: popping mid-save would strand the user,
+    // and popping after success could double-submit the profile creation.
+    // On failure the TRY AGAIN button below pops back to the preview step.
+    return PopScope(
+      canPop: false,
+      child: Scaffold(
+        backgroundColor: AppColors.textColor2, // Crimson background
+        body: SafeArea(
+          bottom: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24.0, 24.0, 24.0, 0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Spacer(),
 
-              Center(
-                child: ProfileBuildingIndicator(
-                  isDone: _isDone,
-                  isSuccess: _isSuccess,
-                ),
-              ),
-
-              const SizedBox(height: 56),
-
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 400),
-                child: Text(
-                  _headline,
-                  key: ValueKey(_headline),
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.spaceGrotesk(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.cream,
-                    letterSpacing: -0.4,
+                Center(
+                  child: ProfileBuildingIndicator(
+                    isDone: _isDone,
+                    isSuccess: _isSuccess,
                   ),
                 ),
-              ),
 
-              const SizedBox(height: 14),
+                const SizedBox(height: 56),
 
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 400),
-                child: Text(
-                  _subtitle,
-                  key: ValueKey(_subtitle),
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.inter(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w400,
-                    height: 1.5,
-                    color: AppColors.cream.withOpacity(0.8),
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 400),
+                  child: Text(
+                    _headline,
+                    key: ValueKey(_headline),
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.cream,
+                      letterSpacing: -0.4,
+                    ),
                   ),
                 ),
-              ),
 
-              const Spacer(),
-            ],
+                const SizedBox(height: 14),
+
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 400),
+                  child: Text(
+                    _subtitle,
+                    key: ValueKey(_subtitle),
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.inter(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w400,
+                      height: 1.5,
+                      color: AppColors.cream.withOpacity(0.8),
+                    ),
+                  ),
+                ),
+
+                const Spacer(),
+
+                // Failure previously left the user on a dead screen with no
+                // action. Pop back to the preview step so they can retry.
+                if (_isDone && !_isSuccess)
+                  // Pops back to the preview step so the user can retry.
+                  Padding(
+                    padding: EdgeInsets.only(bottom: math.max(60.0, MediaQuery.of(context).padding.bottom + 32.0)),
+                    child: SketchyButton(
+                      text: 'TRY AGAIN',
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                  ),
+              ],
+            ),
           ),
         ),
       ),
@@ -197,8 +222,8 @@ class _ProfileBuildingIndicatorState extends State<ProfileBuildingIndicator>
 }
 
 class ProfileBuildingPainter extends CustomPainter {
-  final double spinValue; 
-  final double successValue; 
+  final double spinValue;
+  final double successValue;
   final bool isSuccess;
   final bool isDone;
 
@@ -260,25 +285,25 @@ class ProfileBuildingPainter extends CustomPainter {
     if (isDone && isSuccess && successValue > 0) {
       final badgeCenter = Offset(center.dx + radius * 0.5, center.dy + radius * 0.5);
       final badgeScale = successValue.clamp(0.0, 1.0);
-      
+
       final badgePaint = Paint()
         ..color = AppColors.cream
         ..style = PaintingStyle.fill;
-        
+
       canvas.drawCircle(badgeCenter, 14 * badgeScale, badgePaint);
-      
+
       // Draw checkmark inside badge
       final checkPaint = Paint()
         ..color = AppColors.textColor2 // Cut out / background color
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2.0
         ..strokeCap = StrokeCap.round;
-        
+
       final path = Path()
         ..moveTo(badgeCenter.dx - 5 * badgeScale, badgeCenter.dy)
         ..lineTo(badgeCenter.dx - 1 * badgeScale, badgeCenter.dy + 4 * badgeScale)
         ..lineTo(badgeCenter.dx + 6 * badgeScale, badgeCenter.dy - 4 * badgeScale);
-        
+
       canvas.drawPath(path, checkPaint);
     }
   }

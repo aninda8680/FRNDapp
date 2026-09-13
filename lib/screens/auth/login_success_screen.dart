@@ -37,17 +37,17 @@ class _LoginSuccessScreenState extends State<LoginSuccessScreen> {
         widget.processFuture,
         Future.delayed(const Duration(seconds: 3)),
       ]);
-      
+
       final nextRoute = results[0] as String;
-      
+
       if (mounted) {
         setState(() {
           _isDone = true;
           _isSuccess = true;
           _nextRoute = nextRoute;
           _headline = nextRoute == '/setup' ? 'Verification complete' : 'Welcome back';
-          _subtitle = nextRoute == '/setup' 
-              ? 'Let\'s set up your profile.' 
+          _subtitle = nextRoute == '/setup'
+              ? 'Let\'s set up your profile.'
               : 'Step in — your story continues.';
           _showEnterWorld = true;
         });
@@ -64,74 +64,102 @@ class _LoginSuccessScreenState extends State<LoginSuccessScreen> {
     }
   }
 
+  /// Re-runs the auth resolution (e.g. after a network blip) instead of
+  /// leaving the user stranded on a dead error screen.
+  void _retry() {
+    setState(() {
+      _headline = 'Authenticating';
+      _subtitle = 'Unlocking your world...';
+      _isDone = false;
+      _isSuccess = false;
+    });
+    _handleProcess();
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.textColor2, // Crimson background like setup
-      body: SafeArea(
-        bottom: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(24.0, 24.0, 24.0, 0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Spacer(),
+    // Pushed via Navigator on top of the go_router stack: block the system
+    // back button so users can't pop back into a half-finished auth form.
+    return PopScope(
+      canPop: false,
+      child: Scaffold(
+        backgroundColor: AppColors.textColor2, // Crimson background like setup
+        body: SafeArea(
+          bottom: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24.0, 24.0, 24.0, 0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Spacer(),
 
-              Center(
-                child: ProfileBuildingIndicator(
-                  isDone: _isDone,
-                  isSuccess: _isSuccess,
-                ),
-              ),
-
-              const SizedBox(height: 56),
-
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 400),
-                child: Text(
-                  _headline,
-                  key: ValueKey(_headline),
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.spaceGrotesk(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.cream,
-                    letterSpacing: -0.4,
+                Center(
+                  child: ProfileBuildingIndicator(
+                    isDone: _isDone,
+                    isSuccess: _isSuccess,
                   ),
                 ),
-              ),
 
-              const SizedBox(height: 14),
+                const SizedBox(height: 56),
 
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 400),
-                child: Text(
-                  _subtitle,
-                  key: ValueKey(_subtitle),
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.inter(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w400,
-                    height: 1.5,
-                    color: AppColors.cream.withOpacity(0.8),
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 400),
+                  child: Text(
+                    _headline,
+                    key: ValueKey(_headline),
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.cream,
+                      letterSpacing: -0.4,
+                    ),
                   ),
                 ),
-              ),
 
-              const Spacer(),
+                const SizedBox(height: 14),
 
-              if (_showEnterWorld)
-                Padding(
-                  padding: EdgeInsets.only(bottom: math.max(60.0, MediaQuery.of(context).padding.bottom + 32.0)),
-                  child: SketchyButton(
-                    text: nextRoute == '/setup' ? 'CONTINUE' : 'ENTER WORLD',
-                    onPressed: () {
-                      context.go(_nextRoute);
-                    },
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 400),
+                  child: Text(
+                    _subtitle,
+                    key: ValueKey(_subtitle),
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.inter(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w400,
+                      height: 1.5,
+                      color: AppColors.cream.withOpacity(0.8),
+                    ),
                   ),
                 ),
-            ],
+
+                const Spacer(),
+
+                if (_showEnterWorld)
+                  Padding(
+                    padding: EdgeInsets.only(bottom: math.max(60.0, MediaQuery.of(context).padding.bottom + 32.0)),
+                    child: SketchyButton(
+                      text: nextRoute == '/setup' ? 'CONTINUE' : 'ENTER WORLD',
+                      onPressed: () {
+                        context.go(_nextRoute);
+                      },
+                    ),
+                  ),
+
+                // Failure state previously had no action — the screen was a
+                // dead end. Offer a retry that re-runs the whole resolution.
+                if (_isDone && !_isSuccess)
+                  Padding(
+                    padding: EdgeInsets.only(bottom: math.max(60.0, MediaQuery.of(context).padding.bottom + 32.0)),
+                    child: SketchyButton(
+                      text: 'TRY AGAIN',
+                      onPressed: _retry,
+                    ),
+                  ),
+              ],
+            ),
           ),
         ),
       ),

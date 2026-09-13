@@ -96,14 +96,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
         break;
 
       case AuthResult.success:
+        // Existing account signed straight in (or OTP-exempt email):
+        // route through the same verified/profile gating as login.
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
             builder: (_) => LoginSuccessScreen(
-              processFuture: () async {
-                final profile = await AuthService.getProfile();
-                return AuthService.isProfileComplete(profile) ? '/main' : '/setup';
-              }(),
+              processFuture: AuthService.nextRouteAfterAuth(),
             ),
           ),
         );
@@ -117,10 +116,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
           }
         });
         break;
-        
+
       case AuthResult.userNotFound:
       case AuthResult.failure:
-        _showSnackBar('Sign up failed. Please try again.');
+        _showSnackBar(AuthService.lastError ?? 'Sign up failed. Please try again.');
         break;
     }
   }

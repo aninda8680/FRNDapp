@@ -28,15 +28,15 @@ enum AuthResult {
 
 class AuthService {
   static const String baseUrl = 'https://frnd-api-n3hv.onrender.com/api/auth';
-  
+
   static const _secureStorage = FlutterSecureStorage();
 
   // Store the session cookie (JWT token from the HTTP-only cookie header)
   static String? _cookie;
-  
+
   /// The logged-in user's MongoDB _id, populated after getProfile() succeeds
   static String? userId;
-  
+
   /// Cached basic profile info
   static String? userName;
   static String? userGender;
@@ -47,13 +47,41 @@ class AuthService {
   /// JWT token or auth cookie getter
   static String? get token => _cookie;
 
+  /// Human-readable message from the last failed auth call, when the server
+  /// provided one (e.g. account banned/suspended). Screens show this instead
+  /// of a generic message so failures are never mislabelled.
+  static String? lastError;
+
+  /// Pulls the `error`/`message` string out of a JSON response body.
+  static String? _serverMessage(String body) {
+    try {
+      final decoded = jsonDecode(body);
+      if (decoded is Map<String, dynamic>) {
+        final err = decoded['error'] ?? decoded['message'];
+        if (err is String && err.trim().isNotEmpty) return err.trim();
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// True when the server body indicates the email is already registered.
+  /// Used to decide whether falling back from signup to login is valid —
+  /// validation errors (short password, underage, bad input) must NOT
+  /// trigger a spurious login attempt.
+  static bool _isEmailTaken(String body) {
+    final lower = body.toLowerCase();
+    return lower.contains('already registered') ||
+        lower.contains('already taken') ||
+        lower.contains('already exists');
+  }
+
   /// Initialize the auth service by loading the stored cookie.
   static Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
-    
+
     // Securely read the token
     _cookie = await _secureStorage.read(key: 'auth_cookie');
-    
+
     if (_cookie == null || _cookie!.isEmpty) {
       _cookie = null;
       userProfile = null;
@@ -61,12 +89,13 @@ class AuthService {
       userGender = null;
       return;
     }
-    
+
     // Read cached user schema
     final userStr = prefs.getString('user_session_v1');
     if (userStr != null) {
       try {
         userProfile = jsonDecode(userStr) as Map<String, dynamic>;
+        userId = userProfile?['_id'] as String?;
         userName = userProfile?['name'] as String?;
         userGender = userProfile?['gender'] as String?;
       } catch (e) {
@@ -87,6 +116,12 @@ class AuthService {
 
   /// Logout the user by clearing the session and all local cache.
   static Future<void> logout() async {
+    try {
+      if (_cookie != null) {
+        await http.post(Uri.parse('$baseUrl/logout'), headers: _getHeaders());
+      }
+    } catch (_) {} // best-effort server logout
+
     if (userId != null) {
       await FcmTokenManager.invalidateToken(userId!);
     }
@@ -95,6 +130,7 @@ class AuthService {
     userName = null;
     userGender = null;
     userProfile = null;
+    lastError = null;
     await _secureStorage.deleteAll();
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
@@ -103,6 +139,7 @@ class AuthService {
 
   /// Dedicated Login endpoint for existing users.
   static Future<AuthResult> loginOnly(String email, String password) async {
+    lastError = null;
     try {
       final loginRes = await http.post(
         Uri.parse('$baseUrl/login'),
@@ -117,16 +154,23 @@ class AuthService {
         return AuthResult.success;
       }
 
+      lastError = _serverMessage(loginRes.body);
       final bodyStr = loginRes.body.toLowerCase();
       if (loginRes.statusCode == 404 ||
           bodyStr.contains('user not found') ||
-          bodyStr.contains('not found') ||
           bodyStr.contains('does not exist') ||
           bodyStr.contains('no user')) {
         return AuthResult.userNotFound;
       }
 
       if (loginRes.statusCode == 401 || loginRes.statusCode == 403) {
+        // A ban/suspension notice is not a wrong password — surface it as a
+        // failure so the UI shows the server's message instead of a lie.
+        if (loginRes.statusCode == 403 ||
+            bodyStr.contains('ban') ||
+            bodyStr.contains('suspend')) {
+          return AuthResult.failure;
+        }
         return AuthResult.wrongPassword;
       }
 
@@ -139,6 +183,7 @@ class AuthService {
 
   /// Dedicated Signup endpoint for new users.
   static Future<AuthResult> signupOnly(String email, String password) async {
+    lastError = null;
     try {
       final signupRes = await http.post(
         Uri.parse('$baseUrl/signup'),
@@ -150,14 +195,31 @@ class AuthService {
 
       if (signupRes.statusCode == 201) {
         _updateCookie(signupRes);
+        // Non-college emails skip OTP per the API contract (otpSent: false,
+        // email already verified) — those users go straight through.
+        try {
+          final decoded = jsonDecode(signupRes.body);
+          if (decoded is Map<String, dynamic>) {
+            if (decoded['otpSent'] == false) return AuthResult.success;
+            final user = decoded['user'];
+            if (user is Map<String, dynamic> &&
+                user['emailVerified'] == true) {
+              return AuthResult.success;
+            }
+          }
+        } catch (_) {}
         return AuthResult.needsOtp;
       }
 
-      if (signupRes.statusCode == 400 || signupRes.statusCode == 409) {
-        // User already exists, try logging in
-        return signupOrLogin(email, password);
+      if ((signupRes.statusCode == 400 || signupRes.statusCode == 409) &&
+          _isEmailTaken(signupRes.body)) {
+        // User already exists — fall through to login.
+        return loginOnly(email, password);
       }
 
+      // Validation failure (short password, underage, bad input, …):
+      // report it instead of firing a misleading login attempt.
+      lastError = _serverMessage(signupRes.body);
       return AuthResult.failure;
     } catch (e) {
       print('[Auth] Error during signup: $e');
@@ -167,6 +229,7 @@ class AuthService {
 
   /// Combined signup or login fallback.
   static Future<AuthResult> signupOrLogin(String email, String password) async {
+    lastError = null;
     try {
       // ── Step 1: Try signup (new-user path) ─────────────────────────────────
       final signupRes = await http.post(
@@ -184,6 +247,13 @@ class AuthService {
       }
 
       // ── Step 2: Signup failed → email exists → try login ───────────────────
+      // Only fall through when the server says the email is taken. A 400 for
+      // any other reason (validation) must not trigger a login attempt.
+      if (!_isEmailTaken(signupRes.body)) {
+        lastError = _serverMessage(signupRes.body);
+        return AuthResult.failure;
+      }
+
       final loginRes = await http.post(
         Uri.parse('$baseUrl/login'),
         headers: {'Content-Type': 'application/json'},
@@ -197,6 +267,7 @@ class AuthService {
         return AuthResult.success;
       }
 
+      lastError = _serverMessage(loginRes.body);
       if (loginRes.statusCode == 401 || loginRes.statusCode == 403) {
         return AuthResult.wrongPassword;
       }
@@ -221,8 +292,10 @@ class AuthService {
       print('[Auth] Verify OTP → ${response.statusCode}: ${response.body}');
 
       if (response.statusCode == 200) {
+        lastError = null;
         return true;
       }
+      lastError = _serverMessage(response.body);
       return false;
     } catch (e) {
       print('[Auth] Error verifying OTP: $e');
@@ -241,7 +314,12 @@ class AuthService {
       );
 
       print('[Auth] Resend OTP → ${response.statusCode}: ${response.body}');
-      return response.statusCode == 200;
+      if (response.statusCode == 200) {
+        lastError = null;
+        return true;
+      }
+      lastError = _serverMessage(response.body);
+      return false;
     } catch (e) {
       print('[Auth] Error resending OTP: $e');
       return false;
@@ -329,7 +407,7 @@ class AuthService {
           userProfile = user;
           userName = user['name'] as String?;
           userGender = user['gender'] as String?;
-          
+
           final prefs = await SharedPreferences.getInstance();
           await prefs.setString('user_session_v1', jsonEncode(user));
           await prefs.setString('last_synced_at', DateTime.now().toIso8601String());
@@ -406,5 +484,15 @@ class AuthService {
       print('Error uploading picture: $e');
       return null;
     }
+  }
+
+  /// Shared post-auth routing: unverified users must verify first, users
+  /// with an incomplete profile finish setup, everyone else goes to main.
+  /// Returns the route string the caller should navigate to.
+  static Future<String> nextRouteAfterAuth() async {
+    final profile = await AuthService.getProfile();
+    if (profile == null) return '/onboarding';
+    if (!AuthService.isEmailVerified(profile)) return '/otp';
+    return AuthService.isProfileComplete(profile) ? '/main' : '/setup';
   }
 }

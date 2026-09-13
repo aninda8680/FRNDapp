@@ -6,6 +6,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import 'auth_service.dart';
+import '../router/app_router.dart';
+import '../routes.dart';
 
 final likesBadgeProvider = StateProvider<int>((ref) => 0);
 
@@ -21,7 +23,6 @@ class FcmTokenManager {
     // 2. Register Token
     if (AuthService.userId != null) {
       await registerDeviceToken(AuthService.userId!);
-      await _messaging.subscribeToTopic('global_announcements');
     }
 
     // Explicitly print token for testing purposes as requested
@@ -37,7 +38,19 @@ class FcmTokenManager {
     const InitializationSettings initializationSettings =
         InitializationSettings(android: initializationSettingsAndroid);
         
-    await _localNotificationsPlugin.initialize(settings: initializationSettings);
+    await _localNotificationsPlugin.initialize(
+      settings: initializationSettings,
+      onDidReceiveNotificationResponse: (NotificationResponse details) {
+        if (details.payload != null) {
+          try {
+            final data = json.decode(details.payload!);
+            _routeFromData(data, ref);
+          } catch (e) {
+            debugPrint("Failed to parse local notification payload: $e");
+          }
+        }
+      },
+    );
 
     // 4. Foreground Message Listener
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
@@ -66,6 +79,7 @@ class FcmTokenManager {
       String? token = await _messaging.getToken();
       if (token != null) {
         await _sendTokenToBackend(userId, token);
+        await _messaging.subscribeToTopic('global_announcements');
       }
       _messaging.onTokenRefresh.listen((newToken) {
         _sendTokenToBackend(userId, newToken);
@@ -135,10 +149,34 @@ class FcmTokenManager {
         NotificationDetails(android: androidPlatformChannelSpecifics);
 
     await _localNotificationsPlugin.show(
-      id: notification.hashCode,
+      id: message.messageId?.hashCode ?? notification.hashCode,
       title: notification.title,
       body: notification.body,
       notificationDetails: platformChannelSpecifics,
+      payload: json.encode(message.data),
     );
+  }
+
+  static void _routeFromData(Map<String, dynamic> data, WidgetRef ref) {
+    final type = data['type'];
+    final router = ref.read(appRouterProvider);
+    
+    switch (type) {
+      case 'chat':
+      case 'match':
+        final chatId = data['chatId'];
+        if (chatId != null && chatId.toString().isNotEmpty) {
+          router.go('/chat/$chatId');
+        }
+        break;
+      case 'like':
+      case 'superlike':
+      case 'upvote':
+        router.go(AppRoutes.notifications);
+        break;
+      case 'announcement':
+        router.go(AppRoutes.announcements);
+        break;
+    }
   }
 }

@@ -11,8 +11,9 @@ import '../../services/auth_service.dart';
 import '../../services/discover_service.dart';
 import '../../utils/responsive_utils.dart';
 import '../../widgets/full_profile_sheet.dart';
-import '../chats/individual_chat_screen.dart';
+
 import '../profile/subscription_screen.dart';
+import 'package:go_router/go_router.dart';
 import '../../services/payment_service.dart';
 
 const _bgCream = Color(0xFFFDF4E5);
@@ -577,6 +578,9 @@ class _DiscoverFeedScreenState extends State<DiscoverFeedScreen> with TickerProv
   }
 
   void _showMatchDialog(Map<String, dynamic> partner, String conversationId) {
+    // State context: the dialog's own context is deactivated by pop() before
+    // we navigate, so navigation must use the parent context captured here.
+    final parentContext = context;
     final name = partner['name'] ?? 'Match';
     final photoUrl = _getPhoto(partner);
     showDialog(
@@ -602,7 +606,7 @@ class _DiscoverFeedScreenState extends State<DiscoverFeedScreen> with TickerProv
               child: ElevatedButton(
                 onPressed: () {
                   Navigator.pop(context);
-                  Navigator.of(context).push(MaterialPageRoute(builder: (_) => IndividualChatScreen(conversationId: conversationId, partner: partner)));
+                  parentContext.push('/chat/$conversationId', extra: partner);
                 },
                 style: ElevatedButton.styleFrom(backgroundColor: _burgundy, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(23)), elevation: 0),
                 child: const Text('SEND A MESSAGE', style: TextStyle(fontFamily: 'monospace', fontSize: 12, fontWeight: FontWeight.w900, letterSpacing: 1)),
