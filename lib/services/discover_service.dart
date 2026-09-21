@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:hive/hive.dart';
 import 'auth_service.dart'; // To get the cookie token
 
 class DiscoverService {
@@ -11,38 +10,15 @@ class DiscoverService {
         if (AuthService.token != null) 'cookie': AuthService.token!,
       };
 
-  /// Prefetch the discover feed in the background.
-  static Future<void> prefetchFeed() async {
-    try {
-      final url = Uri.parse('$baseUrl/discover?page=1&limit=10');
-      final response = await http.get(url, headers: _headers);
-      if (response.statusCode == 200) {
-        final box = await Hive.openBox('discoverCache');
-        await box.put('profiles', response.body);
-      }
-    } catch (e) {
-      print('Error prefetching discover feed: $e');
-    }
-  }
-
   /// Fetch the discover feed profiles
-  static Future<List<Map<String, dynamic>>> getFeed({int page = 1, int limit = 10}) async {
+  static Future<List<Map<String, dynamic>>> getFeed({int limit = 10, List<String> excludeIds = const []}) async {
     try {
-      if (page == 1) {
-        final box = await Hive.openBox('discoverCache');
-        final cachedStr = box.get('profiles') as String?;
-        if (cachedStr != null) {
-          // Return cached instantly, then refresh silently
-          _refreshInBackground(limit);
-          final data = json.decode(cachedStr);
-          if (data['profiles'] != null) {
-            final List<dynamic> profiles = data['profiles'];
-            return profiles.map((e) => e as Map<String, dynamic>).toList();
-          }
-        }
+      final queryParams = ['limit=$limit'];
+      if (excludeIds.isNotEmpty) {
+        queryParams.add('excludeIds=${excludeIds.join(',')}');
       }
-
-      final url = Uri.parse('$baseUrl/discover?page=$page&limit=$limit');
+      
+      final url = Uri.parse('$baseUrl/discover?${queryParams.join('&')}');
       print('Fetching discover feed from: $url');
       print('Headers being sent: $_headers');
       
@@ -50,11 +26,12 @@ class DiscoverService {
       print('Discover API Status Code: ${response.statusCode}');
 
       if (response.statusCode == 200) {
-        if (page == 1) {
-          final box = await Hive.openBox('discoverCache');
-          await box.put('profiles', response.body);
-        }
         final data = json.decode(response.body);
+        
+        if (data['limitReached'] == true) {
+          throw Exception('DAILY_LIMIT_REACHED');
+        }
+
         if (data['profiles'] != null) {
           final List<dynamic> profiles = data['profiles'];
           return profiles.map((e) => e as Map<String, dynamic>).toList();
@@ -64,19 +41,6 @@ class DiscoverService {
     } catch (e) {
       print('Error fetching discover feed: $e');
       return [];
-    }
-  }
-
-  static void _refreshInBackground(int limit) async {
-    try {
-      final url = Uri.parse('$baseUrl/discover?page=1&limit=$limit');
-      final response = await http.get(url, headers: _headers);
-      if (response.statusCode == 200) {
-        final box = await Hive.openBox('discoverCache');
-        await box.put('profiles', response.body);
-      }
-    } catch (e) {
-      print('Background refresh failed: $e');
     }
   }
 
@@ -123,9 +87,16 @@ class DiscoverService {
     try {
       final url = Uri.parse('$baseUrl/pass/$targetId');
       final response = await http.post(url, headers: _headers);
-      return response.statusCode == 200;
+      if (response.statusCode == 200) {
+        return true;
+      } else if (response.statusCode == 403 || response.statusCode == 429) {
+        final data = json.decode(response.body);
+        throw Exception('QUOTA_EXCEEDED: ${data['message'] ?? 'Daily limit reached'}');
+      }
+      return false;
     } catch (e) {
       print('Error passing profile: $e');
+      if (e.toString().contains('QUOTA_EXCEEDED')) rethrow;
       return false;
     }
   }

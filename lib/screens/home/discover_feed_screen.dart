@@ -390,10 +390,10 @@ class DiscoverFeedScreen extends StatefulWidget {
 class _DiscoverFeedScreenState extends State<DiscoverFeedScreen> with TickerProviderStateMixin {
   List<Map<String, dynamic>> _profiles = [];
   int _currentIndex = 0;
-  int _page = 1;
   bool _isLoading = true;
   bool _hasMore = true;
   bool _isFetchingNextBatch = false;
+  bool _dailyLimitReached = false;
   int _cardPhotoIndex = 0;
 
   // Threshold logic: when the user reaches this many cards from the end of the queue,
@@ -480,15 +480,15 @@ class _DiscoverFeedScreenState extends State<DiscoverFeedScreen> with TickerProv
 
     if (reset) {
       setState(() => _isLoading = true);
-      _page = 1; 
       _hasMore = true; 
     } else {
       _isFetchingNextBatch = true;
     }
     
     try {
+      final List<String> currentIds = reset ? [] : _profiles.map((p) => p['_id'].toString()).toList();
       // Fetch batch of 10 profiles
-      final profiles = await DiscoverService.getFeed(page: _page, limit: 10);
+      final profiles = await DiscoverService.getFeed(limit: 10, excludeIds: currentIds);
       
       if (mounted) {
         _precacheImages(profiles);
@@ -504,11 +504,18 @@ class _DiscoverFeedScreenState extends State<DiscoverFeedScreen> with TickerProv
           if (profiles.isEmpty) {
             _hasMore = false;
           }
-          _page++;
         });
       }
     } catch (e) {
       debugPrint('Fetch feed error: $e');
+      if (e.toString().contains('DAILY_LIMIT_REACHED')) {
+        if (mounted) {
+          setState(() {
+            _dailyLimitReached = true;
+            _hasMore = false;
+          });
+        }
+      }
       // Subtle failure handling: _hasMore remains true, user can try swiping again
       // to re-trigger the fetch, and it doesn't block already-loaded cards.
     } finally {
@@ -540,6 +547,13 @@ class _DiscoverFeedScreenState extends State<DiscoverFeedScreen> with TickerProv
       if (action == 'like') _likesUsed++;
       else if (action == 'superlike') _superlikesUsed++;
       
+      // Memory Optimization: Prevent the in-memory array from growing infinitely
+      // Remove already-swiped cards if the buffer gets too large.
+      if (_currentIndex > 20) {
+        _profiles.removeRange(0, 10);
+        _currentIndex -= 10;
+      }
+      
       debugPrint('==== DEBUG: onAction($action), _likesUsed: $_likesUsed, _superlikesUsed: $_superlikesUsed ====');
     });
     
@@ -567,8 +581,8 @@ class _DiscoverFeedScreenState extends State<DiscoverFeedScreen> with TickerProv
           // Revert the swipe since it failed due to quota
           setState(() {
             _currentIndex = (_currentIndex - 1).clamp(0, _profiles.length);
-            if (action == 'like') _likesUsed = (_likesUsed - 1).clamp(0, 9999);
-            else if (action == 'superlike') _superlikesUsed = (_superlikesUsed - 1).clamp(0, 9999);
+            if (action == 'like') _likesUsed = (_likesUsed - 1).clamp(0, _likesLimit);
+            else if (action == 'superlike') _superlikesUsed = (_superlikesUsed - 1).clamp(0, _superlikesLimit);
             debugPrint('==== DEBUG: REVERTED due to QUOTA. _likesUsed: $_likesUsed ====');
           });
           _showPaywallDialog(action == 'superlike' ? 'Out of Superlikes!' : 'Out of Likes!');
@@ -757,6 +771,25 @@ class _DiscoverFeedScreenState extends State<DiscoverFeedScreen> with TickerProv
   }
 
   Widget _buildEmptyState() {
+    if (_dailyLimitReached) {
+      return Center(
+        child: Padding(padding: const EdgeInsets.all(32),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Container(width: 72, height: 72, decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withOpacity(0.12)), child: const Icon(Icons.lock_clock_rounded, color: Colors.amber, size: 36)),
+            SizedBox(height: context.responsiveHeight(20)),
+            const Text('Daily Limit Reached', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: _bgCream)),
+            SizedBox(height: context.responsiveHeight(8)),
+            const Text("You've viewed your 15 profiles for today!\nCome back tomorrow or Upgrade to Premium.", textAlign: TextAlign.center, style: TextStyle(color: Colors.white70, fontSize: 13, height: 1.5)),
+            SizedBox(height: context.responsiveHeight(24)),
+            ElevatedButton.icon(
+              onPressed: () {}, icon: const Icon(Icons.star_rounded, color: Colors.white,), label: const Text('GET PREMIUM PASS'),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.amber[600], foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40)), textStyle: const TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.2, fontSize: 11)),
+            ),
+          ]),
+        ),
+      );
+    }
+
     return Center(
       child: Padding(padding: const EdgeInsets.all(32),
         child: Column(mainAxisSize: MainAxisSize.min, children: [

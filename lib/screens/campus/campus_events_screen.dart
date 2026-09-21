@@ -294,7 +294,7 @@ class _CampusEventsScreenState extends State<CampusEventsScreen> {
         ],
       ),
       floatingActionButton: Padding(
-        padding: const EdgeInsets.only(bottom: 110, right: 8),
+        padding: EdgeInsets.only(bottom: 80 + MediaQuery.of(context).padding.bottom, right: 8),
         child: FloatingActionButton(
           onPressed: _showComposeSheet,
           backgroundColor: burgundy,

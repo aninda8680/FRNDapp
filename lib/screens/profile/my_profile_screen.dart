@@ -1,11 +1,13 @@
 import 'package:go_router/go_router.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../widgets/profile_card.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/app_image.dart';
 import '../../utils/responsive_utils.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import '../../services/announcement_service.dart';
 
 const Color _bgCream = Color(0xFFF5EFE0);
 const Color _primaryBurgundy = Color(0xFF6B1B35);
@@ -24,12 +26,23 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
   bool _isLoading = true;
   Map<String, dynamic>? _profileData;
   String _appVersion = '';
+  int _unreadAnnouncementsCount = 0;
 
   @override
   void initState() {
     super.initState();
     _fetchProfile();
     _fetchVersion();
+    _fetchUnreadAnnouncementsCount();
+  }
+
+  Future<void> _fetchUnreadAnnouncementsCount() async {
+    final count = await AnnouncementService.getUnreadCount();
+    if (mounted) {
+      setState(() {
+        _unreadAnnouncementsCount = count;
+      });
+    }
   }
 
   Future<void> _fetchVersion() async {
@@ -69,17 +82,22 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
     final isMale = gender == 'male' || gender == 'm';
     final isFemale = gender == 'female' || gender == 'f';
 
-    return Scaffold(
-      backgroundColor: _bgCream,
-      body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(_primaryBurgundy),
-              ),
-            )
-          : _profileData == null
-              ? _buildErrorState()
-              : _buildProfileContent(isMale, isFemale),
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.dark.copyWith(
+        statusBarColor: Colors.transparent, // Ensure the background is transparent
+      ),
+      child: Scaffold(
+        backgroundColor: _bgCream,
+        body: _isLoading
+            ? const Center(
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(_primaryBurgundy),
+                ),
+              )
+            : _profileData == null
+                ? _buildErrorState()
+                : _buildProfileContent(isMale, isFemale),
+      ),
     );
   }
 
@@ -157,19 +175,64 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Header
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 16.0),
-              child: Center(
-                child: Text(
-                  'MY PROFILE',
-                  style: TextStyle(
-                    color: _textBlack,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 2.0,
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8.0),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  const Align(
+                    alignment: Alignment.center,
+                    child: Text(
+                      'MY PROFILE',
+                      style: TextStyle(
+                        color: _textBlack,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 2.0,
+                      ),
+                    ),
                   ),
-                ),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: IconButton(
+                      icon: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          const Icon(Icons.campaign_rounded, color: _primaryBurgundy, size: 28),
+                          if (_unreadAnnouncementsCount > 0)
+                            Positioned(
+                              right: -2,
+                              top: -4,
+                              child: Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: const BoxDecoration(
+                                  color: Colors.red,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Text(
+                                  '$_unreadAnnouncementsCount',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                      onPressed: () async {
+                        await context.push('/announcements');
+                        if (mounted) {
+                          setState(() {
+                            _unreadAnnouncementsCount = 0;
+                          });
+                        }
+                        _fetchUnreadAnnouncementsCount();
+                      },
+                    ),
+                  ),
+                ],
               ),
             ),
             Container(color: _lightDivider, height: 1.0),
@@ -259,43 +322,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
                               fontWeight: FontWeight.w400,
                             ),
                           ),
-                          SizedBox(height: context.responsiveHeight(8)),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: badgeColors,
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                stops: const [0.0, 0.5, 1.0],
-                              ),
-                              borderRadius: BorderRadius.circular(8),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.2),
-                                  blurRadius: 6,
-                                  offset: const Offset(0, 3),
-                                ),
-                              ],
-                              border: Border.all(color: Colors.white.withOpacity(0.6), width: 1),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.workspace_premium_rounded, size: 12, color: badgeTextColor),
-                                const SizedBox(width: 4),
-                                Text(
-                                  '$tier PASS',
-                                  style: TextStyle(
-                                    color: badgeTextColor,
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.w800,
-                                    letterSpacing: 1.5,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
+
                         ],
                       ),
                     ),
@@ -365,8 +392,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
                     await context.push('/edit_profile');
                     _fetchProfile();
                   }),
-                  const Divider(color: _lightDivider, height: 1, indent: 56),
-                  _buildSettingRow(Icons.campaign, 'Announcements', () => context.push('/announcements')),
+
                   const Divider(color: _lightDivider, height: 1, indent: 56),
                   _buildSettingRow(Icons.help_outline_rounded, 'Help & Support', () => context.push('/help_support')),
                   const Divider(color: _lightDivider, height: 1, indent: 56),
@@ -402,6 +428,48 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
               ),
             ),
             
+            SizedBox(height: context.responsiveHeight(12)),
+            
+            // Delete Account button
+            Center(
+              child: TextButton(
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      title: const Text('Delete Account'),
+                      content: const Text('Are you sure you want to permanently delete your account? This action cannot be undone.'),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          child: const Text('Cancel', style: TextStyle(color: Colors.black87)),
+                        ),
+                        TextButton(
+                          onPressed: () async {
+                            Navigator.pop(ctx);
+                            final success = await AuthService.deleteAccount();
+                            if (success && context.mounted) {
+                              context.go('/login');
+                            } else if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Failed to delete account. Please try again.')),
+                              );
+                            }
+                          },
+                          child: const Text('Delete', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+                child: const Text(
+                  'Delete Account',
+                  style: TextStyle(color: Colors.red, fontSize: 12, fontWeight: FontWeight.w500),
+                ),
+              ),
+            ),
+            
             SizedBox(height: context.responsiveHeight(16)),
             
             // App Version
@@ -418,21 +486,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
                 ),
               ),
             
-            Expanded(
-              child: Align(
-                alignment: Alignment.bottomCenter,
-                child: (isMale || isFemale)
-                    ? IgnorePointer(
-                        child: Image.asset(
-                          isMale ? 'assets/images/boycat.png' : 'assets/images/girlcat.png',
-                          height: 220,
-                          fit: BoxFit.contain,
-                          alignment: Alignment.bottomCenter,
-                        ),
-                      )
-                    : const SizedBox(),
-              ),
-            ),
+
             
             SizedBox(height: context.responsiveHeight(100)), // Extra space for floating nav bar
           ],

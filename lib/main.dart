@@ -148,6 +148,7 @@ class _FrndAppState extends ConsumerState<FrndApp> {
       case 'match':
         final chatId = data['chatId'];
         if (chatId != null && chatId.isNotEmpty) {
+          FcmTokenManager.cancelChatNotification(chatId);
           router.go('/chat/$chatId');
         }
         break;

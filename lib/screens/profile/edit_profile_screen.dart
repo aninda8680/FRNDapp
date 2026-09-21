@@ -52,6 +52,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final Set<String> _activePromptIds = {};
   final Map<String, FocusNode> _promptFocusNodes = {};
   final Set<String> _expandedSegments = {};
+  String? _expandedSection;
 
   final List<String> _availableHobbies = [
     'Gaming', 'Anime', 'Coding', 'Hiking', 'Music', 'Art', 'Coffee', 'Movies',
@@ -413,20 +414,22 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('EDIT PROFILE'),
+        title: const Text('EDIT PROFILE', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         backgroundColor: AppColors.textColor2,
         foregroundColor: AppColors.white,
       ),
       bottomNavigationBar: !_isLoading
-          ? Container(
-              decoration: BoxDecoration(
-                color: AppColors.cream,
-                border: Border(top: BorderSide(color: AppColors.textColor2.withOpacity(0.2), width: 1)),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
-              child: SketchyButton(
-                text: 'SAVE CHANGES',
-                onPressed: _saveChanges,
+          ? SafeArea(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: AppColors.cream,
+                  border: Border(top: BorderSide(color: AppColors.textColor2.withOpacity(0.2), width: 1)),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+                child: SketchyButton(
+                  text: 'SAVE CHANGES',
+                  onPressed: _isSaving ? null : _saveChanges,
+                ),
               ),
             )
           : null,
@@ -442,434 +445,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  _buildMainSectionHeading(context, 'PROFILE PHOTOS'),
-                  SizedBox(height: context.responsiveHeight(16)),
-                  GridView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      crossAxisSpacing: 16,
-                      mainAxisSpacing: 16,
-                      childAspectRatio: 0.8,
-                    ),
-                    itemCount: 4,
-                    itemBuilder: (context, index) {
-                      final angles = [-0.02, 0.04, 0.03, -0.05];
-                      return Transform.rotate(
-                        angle: angles[index],
-                        child: ProfilePhotoPicker(
-                          initialImagePath: _photoPaths[index],
-                          initialProcessedBytes: _photoBytes[index],
-                          onPhotosSet: (paths, bytesList) {
-                            setState(() {
-                              int imgIdx = 0;
-                              for (int j = 0; j < 4 && imgIdx < paths.length; j++) {
-                                int slot = (index + j) % 4;
-                                _photoPaths[slot] = paths[imgIdx];
-                                _photoBytes[slot] = bytesList[imgIdx];
-                                imgIdx++;
-                              }
-                            });
-                          },
-                          allowBackgroundRemoval: true,
-                          showChooseAnotherButton: false,
-                          isBorderless: false,
-                          width: double.infinity,
-                          height: double.infinity,
-                        ),
-                      );
-                    },
-                  ),
-                  SizedBox(height: context.responsiveHeight(32)),
-                  
-                  _buildMainSectionHeading(context, 'BASIC INFO'),
-                  SizedBox(height: context.responsiveHeight(8)),
-                  _buildTextField('USERNAME', _usernameController),
-                  _buildTextField('NAME', _nameController),
-                  _buildTextField('AGE', _ageController, keyboardType: TextInputType.number),
-                  
-                  _buildSectionHeading(context, 'GENDER'),
-                  SizedBox(height: context.responsiveHeight(16)),
-                  Wrap(
-                    spacing: 12,
-                    runSpacing: 12,
-                    children: ['male', 'female', 'non-binary'].map((e) {
-                      final isSelected = _selectedGender == e;
-                      return GestureDetector(
-                        onTap: () => setState(() => _selectedGender = e),
-                        child: SketchyContainer(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          borderRadius: 999,
-                          backgroundColor: isSelected ? AppColors.textColor2 : AppColors.cream,
-                          child: Text(e.toUpperCase(), style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                            color: isSelected ? AppColors.cream : AppColors.textColor2,
-                            fontWeight: FontWeight.bold,
-                          )),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                  SizedBox(height: context.responsiveHeight(28)),
-
-                  _buildMainSectionHeading(context, 'ABOUT YOU'),
-                  SizedBox(height: context.responsiveHeight(8)),
-                  _buildTextField('BIO', _bioController, maxLines: 3),
-                  
-                  // College selection section
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 6.0),
-                        child: Text(
-                          'COLLEGE',
-                          style: GoogleFonts.inter(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textColor2,
-                          ),
-                        ),
-                      ),
-                      Wrap(
-                        spacing: 12,
-                        runSpacing: 12,
-                        children: ['Adamas University', 'Other'].map((option) {
-                          final isSelected = _selectedCollegeOption == option;
-                          return GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                _selectedCollegeOption = option;
-                                if (option == 'Adamas University') {
-                                  _schoolController.text = 'Adamas University';
-                                } else {
-                                  _schoolController.clear();
-                                }
-                              });
-                            },
-                            child: SketchyContainer(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                              borderRadius: 999,
-                              backgroundColor: isSelected ? AppColors.textColor2 : AppColors.cream,
-                              child: Text(
-                                option.toUpperCase(),
-                                style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                                      color: isSelected ? AppColors.cream : AppColors.textColor2,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                      if (_selectedCollegeOption == 'Other') ...[
-                        const SizedBox(height: 12),
-                        SketchyContainer(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                          child: TextField(
-                            controller: _schoolController,
-                            decoration: InputDecoration(
-                              isDense: true,
-                              border: InputBorder.none,
-                              hintText: 'Enter your college name',
-                              hintStyle: TextStyle(color: AppColors.textColor1.withOpacity(0.5)),
-                            ),
-                          ),
-                        ),
-                      ],
-                      SizedBox(height: context.responsiveHeight(16)),
-                    ],
-                  ),
-
-                  // Course selection section
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 6.0),
-                        child: Text(
-                          'COURSE',
-                          style: GoogleFonts.inter(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textColor2,
-                          ),
-                        ),
-                      ),
-                      SketchyContainer(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<String>(
-                            value: kAvailableCourses.contains(_selectedCourseOption)
-                                ? _selectedCourseOption
-                                : (_selectedCourseOption == null ? null : 'Other'),
-                            hint: Text(
-                              'Select your course',
-                              style: TextStyle(color: AppColors.textColor1.withOpacity(0.5)),
-                            ),
-                            isExpanded: true,
-                            dropdownColor: AppColors.cream,
-                            icon: const Icon(Icons.keyboard_arrow_down, color: AppColors.textColor2),
-                            items: kAvailableCourses.map((String course) {
-                              return DropdownMenuItem<String>(
-                                value: course,
-                                child: Text(
-                                  course,
-                                  style: GoogleFonts.inter(
-                                    color: AppColors.textColor2,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              );
-                            }).toList(),
-                            onChanged: (String? newValue) {
-                              if (newValue == null) return;
-                              setState(() {
-                                _selectedCourseOption = newValue;
-                                if (newValue != 'Other') {
-                                  _courseController.text = newValue;
-                                } else {
-                                  _courseController.clear();
-                                }
-                              });
-                            },
-                          ),
-                        ),
-                      ),
-                      if (_selectedCourseOption == 'Other') ...[
-                        const SizedBox(height: 12),
-                        SketchyContainer(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                          child: TextField(
-                            controller: _courseController,
-                            decoration: InputDecoration(
-                              isDense: true,
-                              border: InputBorder.none,
-                              hintText: 'Enter your course name',
-                              hintStyle: TextStyle(color: AppColors.textColor1.withOpacity(0.5)),
-                            ),
-                          ),
-                        ),
-                      ],
-                      SizedBox(height: context.responsiveHeight(16)),
-                    ],
-                  ),
-                  // Height selection section
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Text(
-                            'HEIGHT',
-                            style: GoogleFonts.inter(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.textColor2,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          if (_heightController.text.isNotEmpty)
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: AppColors.textColor2.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Text(
-                                '~${_heightController.text} cm',
-                                style: GoogleFonts.inter(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.textColor2,
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          // Feet Dropdown
-                          Expanded(
-                            child: SketchyContainer(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                              child: DropdownButtonHideUnderline(
-                                child: DropdownButton<int>(
-                                  value: _selectedFeet,
-                                  isExpanded: true,
-                                  dropdownColor: AppColors.cream,
-                                  icon: const Icon(Icons.keyboard_arrow_down, color: AppColors.textColor2),
-                                  items: [4, 5, 6, 7].map((int ft) {
-                                    return DropdownMenuItem<int>(
-                                      value: ft,
-                                      child: Text(
-                                        '$ft ft',
-                                        style: GoogleFonts.inter(
-                                          color: AppColors.textColor2,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    );
-                                  }).toList(),
-                                  onChanged: (int? newFt) {
-                                    if (newFt == null) return;
-                                    setState(() {
-                                      _selectedFeet = newFt;
-                                      _updateHeightCm();
-                                    });
-                                  },
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          // Inches Dropdown
-                          Expanded(
-                            child: SketchyContainer(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                              child: DropdownButtonHideUnderline(
-                                child: DropdownButton<int>(
-                                  value: _selectedInches,
-                                  isExpanded: true,
-                                  dropdownColor: AppColors.cream,
-                                  icon: const Icon(Icons.keyboard_arrow_down, color: AppColors.textColor2),
-                                  items: List.generate(12, (index) => index).map((int inch) {
-                                    return DropdownMenuItem<int>(
-                                      value: inch,
-                                      child: Text(
-                                        '$inch in',
-                                        style: GoogleFonts.inter(
-                                          color: AppColors.textColor2,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    );
-                                  }).toList(),
-                                  onChanged: (int? newInch) {
-                                    if (newInch == null) return;
-                                    setState(() {
-                                      _selectedInches = newInch;
-                                      _updateHeightCm();
-                                    });
-                                  },
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: context.responsiveHeight(24)),
-                    ],
-                  ),
-                  // Religion selection section
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 6.0),
-                        child: Text(
-                          'RELIGION',
-                          style: GoogleFonts.inter(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textColor2,
-                          ),
-                        ),
-                      ),
-                      SketchyContainer(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<String>(
-                            value: kAvailableReligions.contains(_selectedReligionOption)
-                                ? _selectedReligionOption
-                                : null,
-                            hint: Text(
-                              'Select your religion / belief',
-                              style: TextStyle(color: AppColors.textColor1.withOpacity(0.5)),
-                            ),
-                            isExpanded: true,
-                            dropdownColor: AppColors.cream,
-                            icon: const Icon(Icons.keyboard_arrow_down, color: AppColors.textColor2),
-                            items: kAvailableReligions.map((String religion) {
-                              return DropdownMenuItem<String>(
-                                value: religion,
-                                child: Text(
-                                  religion,
-                                  style: GoogleFonts.inter(
-                                    color: AppColors.textColor2,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              );
-                            }).toList(),
-                            onChanged: (String? newValue) {
-                              if (newValue == null) return;
-                              setState(() {
-                                _selectedReligionOption = newValue;
-                                _religionController.text = newValue;
-                              });
-                            },
-                          ),
-                        ),
-                      ),
-                      SizedBox(height: context.responsiveHeight(24)),
-                    ],
-                  ),
-                  
-                  _buildMainSectionHeading(context, 'INTERESTS'),
-                  SizedBox(height: context.responsiveHeight(16)),
-                  _buildInterestsSection(),
-
-                  _buildMainSectionHeading(context, 'PROMPTS'),
-                  SizedBox(height: context.responsiveHeight(16)),
-                  _buildPromptsSection(),
-
-                  _buildMainSectionHeading(context, 'TAGS'),
-                  SizedBox(height: context.responsiveHeight(16)),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      _buildTagToggle('Smoke', _smoke, (v) => setState(() => _smoke = v)),
-                      _buildTagToggle('Drink', _drink, (v) => setState(() => _drink = v)),
-                      _buildTagToggle('Pets', _pets, (v) => setState(() => _pets = v)),
-                    ],
-                  ),
-                  SizedBox(height: context.responsiveHeight(16)),
-
-                  _buildMainSectionHeading(context, 'LOOKING FOR'),
-                  SizedBox(height: context.responsiveHeight(16)),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: () => setState(() => _selectedLookingFor = 'dating'),
-                          child: SketchyContainer(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            backgroundColor: _selectedLookingFor == 'dating' ? AppColors.textColor2 : AppColors.cream,
-                            child: Center(child: Text('DATING', style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: _selectedLookingFor == 'dating' ? AppColors.cream : AppColors.textColor2,
-                            ))),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: () => setState(() => _selectedLookingFor = 'friends'),
-                          child: SketchyContainer(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            backgroundColor: _selectedLookingFor == 'friends' ? AppColors.textColor2 : AppColors.cream,
-                            child: Center(child: Text('FRIENDS ONLY', style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: _selectedLookingFor == 'friends' ? AppColors.cream : AppColors.textColor2,
-                            ))),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                  _buildProfilePhotosSection(),
+                  _buildBasicInfoSection(),
+                  _buildAboutYouSection(),
+                  _buildInterestsSectionWrapper(),
+                  _buildPromptsSectionWrapper(),
+                  _buildLifestyleSection(),
+                  _buildLookingForSection(),
                   SizedBox(height: context.responsiveHeight(48)),
                 ],
               ),
@@ -878,6 +460,615 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
   }
 
+  String _capitalize(String s) => s.isNotEmpty ? '${s[0].toUpperCase()}${s.substring(1)}' : '';
+
+  Widget _buildExpandableSection({
+    required String sectionId,
+    required String title,
+    required String summary,
+    required IconData icon,
+    required Widget child,
+  }) {
+    final isExpanded = _expandedSection == sectionId;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: SketchyContainer(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () {
+                setState(() {
+                  _expandedSection = isExpanded ? null : sectionId;
+                });
+              },
+              child: Row(
+                children: [
+                  Icon(icon, color: AppColors.textColor2),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(title, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold, color: AppColors.textColor2)),
+                        if (!isExpanded && summary.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Text(summary, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textColor1)),
+                        ]
+                      ],
+                    ),
+                  ),
+                  AnimatedRotation(
+                    turns: isExpanded ? 0.5 : 0,
+                    duration: const Duration(milliseconds: 250),
+                    child: const Icon(Icons.keyboard_arrow_down, color: AppColors.textColor2),
+                  ),
+                ],
+              ),
+            ),
+            AnimatedCrossFade(
+              firstChild: const SizedBox(width: double.infinity, height: 0),
+              secondChild: Padding(
+                padding: const EdgeInsets.only(top: 16.0),
+                child: child,
+              ),
+              crossFadeState: isExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+              duration: const Duration(milliseconds: 300),
+              alignment: Alignment.topCenter,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProfilePhotosSection() {
+    int count = _photoPaths.where((p) => p != null && p!.isNotEmpty).length;
+    String summary = count > 0 ? '$count photos added' : 'No photos added';
+
+    return _buildExpandableSection(
+      sectionId: 'profile_photos',
+      title: 'Profile Photos',
+      summary: summary,
+      icon: Icons.camera_alt_outlined,
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(child: _buildPhotoSlot(0)),
+              const SizedBox(width: 12),
+              Expanded(child: _buildPhotoSlot(1)),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(child: _buildPhotoSlot(2)),
+              const SizedBox(width: 12),
+              Expanded(child: _buildPhotoSlot(3)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPhotoSlot(int index) {
+    return AspectRatio(
+      aspectRatio: 1,
+      child: ProfilePhotoPicker(
+        initialImagePath: _photoPaths[index],
+        initialProcessedBytes: _photoBytes[index],
+        onPhotosSet: (paths, bytesList) {
+          setState(() {
+            int imgIdx = 0;
+            for (int j = 0; j < 4 && imgIdx < paths.length; j++) {
+              int slot = (index + j) % 4;
+              _photoPaths[slot] = paths[imgIdx];
+              _photoBytes[slot] = bytesList[imgIdx];
+              imgIdx++;
+            }
+          });
+        },
+        allowBackgroundRemoval: true,
+        showChooseAnotherButton: false,
+        isBorderless: false,
+        width: double.infinity,
+        height: double.infinity,
+      ),
+    );
+  }
+
+  Widget _buildBasicInfoSection() {
+    String summary = [
+      _nameController.text.trim().isNotEmpty ? _nameController.text.trim() : 'Name not set',
+      _ageController.text.trim().isNotEmpty ? _ageController.text.trim() : 'Age not set',
+      _selectedGender != null ? _capitalize(_selectedGender!) : 'Gender not set'
+    ].join(' • ');
+
+    return _buildExpandableSection(
+      sectionId: 'basic_info',
+      title: 'Basic Info',
+      summary: summary,
+      icon: Icons.person_outline,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildTextField('USERNAME', _usernameController),
+          _buildTextField('NAME', _nameController),
+          _buildTextField('AGE', _ageController, keyboardType: TextInputType.number),
+          _buildSectionHeading(context, 'GENDER'),
+          SizedBox(height: context.responsiveHeight(16)),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: ['male', 'female', 'non-binary'].map((e) {
+              final isSelected = _selectedGender == e;
+              return GestureDetector(
+                onTap: () => setState(() => _selectedGender = e),
+                child: SketchyContainer(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  borderRadius: 999,
+                  backgroundColor: isSelected ? AppColors.textColor2 : AppColors.cream,
+                  child: Text(e.toUpperCase(), style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    color: isSelected ? AppColors.cream : AppColors.textColor2,
+                    fontWeight: FontWeight.bold,
+                  )),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAboutYouSection() {
+    List<String> summaryParts = [];
+    final bioWords = _getWordCount(_bioController.text);
+    if (bioWords > 0) summaryParts.add('Bio ($bioWords words)');
+    if (_schoolController.text.isNotEmpty) summaryParts.add(_schoolController.text);
+    if (_courseController.text.isNotEmpty) summaryParts.add(_courseController.text);
+    if (_heightController.text.isNotEmpty) summaryParts.add('${_heightController.text} cm');
+    
+    final summary = summaryParts.isEmpty ? 'Not added yet' : summaryParts.join(' • ');
+
+    return _buildExpandableSection(
+      sectionId: 'about_you',
+      title: 'About You',
+      summary: summary,
+      icon: Icons.info_outline,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildTextField('BIO', _bioController, maxLines: 3),
+          
+          // College selection section
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6.0),
+                child: Text(
+                  'COLLEGE',
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textColor2,
+                  ),
+                ),
+              ),
+              Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: ['Adamas University', 'Other'].map((option) {
+                  final isSelected = _selectedCollegeOption == option;
+                  return GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _selectedCollegeOption = option;
+                        if (option == 'Adamas University') {
+                          _schoolController.text = 'Adamas University';
+                        } else {
+                          _schoolController.clear();
+                        }
+                      });
+                    },
+                    child: SketchyContainer(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      borderRadius: 999,
+                      backgroundColor: isSelected ? AppColors.textColor2 : AppColors.cream,
+                      child: Text(
+                        option.toUpperCase(),
+                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                              color: isSelected ? AppColors.cream : AppColors.textColor2,
+                              fontWeight: FontWeight.bold,
+                            ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+              if (_selectedCollegeOption == 'Other') ...[
+                const SizedBox(height: 12),
+                SketchyContainer(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  child: TextField(
+                    controller: _schoolController,
+                    decoration: InputDecoration(
+                      isDense: true,
+                      border: InputBorder.none,
+                      hintText: 'Enter your college name',
+                      hintStyle: TextStyle(color: AppColors.textColor1.withOpacity(0.5)),
+                    ),
+                  ),
+                ),
+              ],
+              SizedBox(height: context.responsiveHeight(16)),
+            ],
+          ),
+
+          // Course selection section
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6.0),
+                child: Text(
+                  'COURSE',
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textColor2,
+                  ),
+                ),
+              ),
+              SketchyContainer(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: kAvailableCourses.contains(_selectedCourseOption)
+                        ? _selectedCourseOption
+                        : (_selectedCourseOption == null ? null : 'Other'),
+                    hint: Text(
+                      'Select your course',
+                      style: TextStyle(color: AppColors.textColor1.withOpacity(0.5)),
+                    ),
+                    isExpanded: true,
+                    dropdownColor: AppColors.cream,
+                    icon: const Icon(Icons.keyboard_arrow_down, color: AppColors.textColor2),
+                    items: kAvailableCourses.map((String course) {
+                      return DropdownMenuItem<String>(
+                        value: course,
+                        child: Text(
+                          course,
+                          style: GoogleFonts.inter(
+                            color: AppColors.textColor2,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                    onChanged: (String? newValue) {
+                      if (newValue == null) return;
+                      setState(() {
+                        _selectedCourseOption = newValue;
+                        if (newValue != 'Other') {
+                          _courseController.text = newValue;
+                        } else {
+                          _courseController.clear();
+                        }
+                      });
+                    },
+                  ),
+                ),
+              ),
+              if (_selectedCourseOption == 'Other') ...[
+                const SizedBox(height: 12),
+                SketchyContainer(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  child: TextField(
+                    controller: _courseController,
+                    decoration: InputDecoration(
+                      isDense: true,
+                      border: InputBorder.none,
+                      hintText: 'Enter your course name',
+                      hintStyle: TextStyle(color: AppColors.textColor1.withOpacity(0.5)),
+                    ),
+                  ),
+                ),
+              ],
+              SizedBox(height: context.responsiveHeight(16)),
+            ],
+          ),
+          
+          // Height selection section
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Text(
+                    'HEIGHT',
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textColor2,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  if (_heightController.text.isNotEmpty)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppColors.textColor2.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        '~${_heightController.text} cm',
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textColor2,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  // Feet Dropdown
+                  Expanded(
+                    child: SketchyContainer(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<int>(
+                          value: _selectedFeet,
+                          isExpanded: true,
+                          dropdownColor: AppColors.cream,
+                          icon: const Icon(Icons.keyboard_arrow_down, color: AppColors.textColor2),
+                          items: [4, 5, 6, 7].map((int ft) {
+                            return DropdownMenuItem<int>(
+                              value: ft,
+                              child: Text(
+                                '$ft ft',
+                                style: GoogleFonts.inter(
+                                  color: AppColors.textColor2,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: (int? newFt) {
+                            if (newFt == null) return;
+                            setState(() {
+                              _selectedFeet = newFt;
+                              _updateHeightCm();
+                            });
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  // Inches Dropdown
+                  Expanded(
+                    child: SketchyContainer(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<int>(
+                          value: _selectedInches,
+                          isExpanded: true,
+                          dropdownColor: AppColors.cream,
+                          icon: const Icon(Icons.keyboard_arrow_down, color: AppColors.textColor2),
+                          items: List.generate(12, (index) => index).map((int inch) {
+                            return DropdownMenuItem<int>(
+                              value: inch,
+                              child: Text(
+                                '$inch in',
+                                style: GoogleFonts.inter(
+                                  color: AppColors.textColor2,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: (int? newInch) {
+                            if (newInch == null) return;
+                            setState(() {
+                              _selectedInches = newInch;
+                              _updateHeightCm();
+                            });
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: context.responsiveHeight(24)),
+            ],
+          ),
+          
+          // Religion selection section
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6.0),
+                child: Text(
+                  'RELIGION',
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textColor2,
+                  ),
+                ),
+              ),
+              SketchyContainer(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: kAvailableReligions.contains(_selectedReligionOption)
+                        ? _selectedReligionOption
+                        : null,
+                    hint: Text(
+                      'Select your religion / belief',
+                      style: TextStyle(color: AppColors.textColor1.withOpacity(0.5)),
+                    ),
+                    isExpanded: true,
+                    dropdownColor: AppColors.cream,
+                    icon: const Icon(Icons.keyboard_arrow_down, color: AppColors.textColor2),
+                    items: kAvailableReligions.map((String religion) {
+                      return DropdownMenuItem<String>(
+                        value: religion,
+                        child: Text(
+                          religion,
+                          style: GoogleFonts.inter(
+                            color: AppColors.textColor2,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                    onChanged: (String? newValue) {
+                      if (newValue == null) return;
+                      setState(() {
+                        _selectedReligionOption = newValue;
+                        _religionController.text = newValue;
+                      });
+                    },
+                  ),
+                ),
+              ),
+              SizedBox(height: context.responsiveHeight(16)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInterestsSectionWrapper() {
+    final count = _selectedInterests.length + _selectedHobbies.length + _selectedSkills.length;
+    final summary = count > 0 ? '$count selected' : 'Not added yet';
+
+    return _buildExpandableSection(
+      sectionId: 'interests',
+      title: 'Interests',
+      summary: summary,
+      icon: Icons.star_outline,
+      child: _buildInterestsSection(),
+    );
+  }
+
+  Widget _buildPromptsSectionWrapper() {
+    final count = _promptAnswers.values.where((v) => v.trim().isNotEmpty).length;
+    final summary = count > 0 ? '$count prompts answered' : 'Not added yet';
+
+    return _buildExpandableSection(
+      sectionId: 'prompts',
+      title: 'Prompts',
+      summary: summary,
+      icon: Icons.chat_bubble_outline,
+      child: _buildPromptsSection(),
+    );
+  }
+
+  Widget _buildLifestyleSection() {
+    String summary = [
+      'Smoke ${_smoke ? '✓' : '✕'}',
+      'Drink ${_drink ? '✓' : '✕'}',
+      'Pets ${_pets ? '✓' : '✕'}',
+    ].join(' • ');
+
+    return _buildExpandableSection(
+      sectionId: 'lifestyle',
+      title: 'Lifestyle',
+      summary: summary,
+      icon: Icons.local_bar_outlined,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _buildTagToggle('Smoke', _smoke, (v) => setState(() => _smoke = v)),
+          _buildTagToggle('Drink', _drink, (v) => setState(() => _drink = v)),
+          _buildTagToggle('Pets', _pets, (v) => setState(() => _pets = v)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLookingForSection() {
+    String summary = _selectedLookingFor != null ? _capitalize(_selectedLookingFor!) : 'Not added yet';
+    
+    return _buildExpandableSection(
+      sectionId: 'looking_for',
+      title: 'Looking For',
+      summary: summary,
+      icon: Icons.search,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => setState(() => _selectedLookingFor = 'dating'),
+                  child: SketchyContainer(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    backgroundColor: _selectedLookingFor == 'dating' ? AppColors.textColor2 : AppColors.cream,
+                    child: Center(child: Text('DATING', style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: _selectedLookingFor == 'dating' ? AppColors.cream : AppColors.textColor2,
+                    ))),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => setState(() => _selectedLookingFor = 'friends'),
+                  child: SketchyContainer(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    backgroundColor: _selectedLookingFor == 'friends' ? AppColors.textColor2 : AppColors.cream,
+                    child: Center(child: Text('FRIENDS ONLY', style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: _selectedLookingFor == 'friends' ? AppColors.cream : AppColors.textColor2,
+                    ))),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: context.responsiveHeight(24)),
+          _buildSectionHeading(context, 'SEXUAL ORIENTATION'),
+          SizedBox(height: context.responsiveHeight(16)),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: ['straight', 'gay', 'lesbian', 'bisexual', 'asexual', 'pansexual', 'queer'].map((e) {
+              final isSelected = _selectedSexualOrientation == e;
+              return GestureDetector(
+                onTap: () => setState(() => _selectedSexualOrientation = e),
+                child: SketchyContainer(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  borderRadius: 999,
+                  backgroundColor: isSelected ? AppColors.textColor2 : AppColors.cream,
+                  child: Text(_capitalize(e), style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    color: isSelected ? AppColors.cream : AppColors.textColor2,
+                    fontWeight: FontWeight.bold,
+                  )),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
   Widget _buildInterestsSection() {
     if (_isLoadingConfig) return const SizedBox.shrink();
 
@@ -1234,37 +1425,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           ),
           SizedBox(height: context.responsiveHeight(8)),
           Text(label, style: Theme.of(context).textTheme.labelMedium),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMainSectionHeading(BuildContext context, String title) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 32, bottom: 16),
-      child: Row(
-        children: [
-          Expanded(
-            child: Container(
-              height: 2,
-              color: AppColors.textColor2.withOpacity(0.3),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Text(title,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: AppColors.textColor2,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 2.0,
-              )),
-          ),
-          Expanded(
-            child: Container(
-              height: 2,
-              color: AppColors.textColor2.withOpacity(0.3),
-            ),
-          ),
         ],
       ),
     );

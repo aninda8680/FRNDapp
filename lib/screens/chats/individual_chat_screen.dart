@@ -7,6 +7,7 @@ import '../../services/chat_db.dart';
 import '../../services/auth_service.dart';
 import '../../services/outbox_service.dart';
 import '../../services/matches_service.dart';
+import '../../services/fcm_token_manager.dart';
 
 /// Number of items from the top of the reversed list that triggers a
 /// "load older messages" fetch — WhatsApp-style pre-fetch before the
@@ -66,6 +67,7 @@ class _IndividualChatScreenState extends State<IndividualChatScreen>
     _setupServiceListeners();
     _connectAndJoin();
     _initMessages();
+    FcmTokenManager.cancelChatNotification(widget.conversationId);
   }
 
   Future<void> _resolvePartnerFromMatches() async {
@@ -101,6 +103,8 @@ class _IndividualChatScreenState extends State<IndividualChatScreen>
     ChatService.onMessageReceived = null;
     ChatService.onMessageSent = null;
     ChatService.onError = null;
+    ChatService.onConnected = null;
+    ChatService.onMessagesRead = null;
     OutboxService.onMessageDelivered = null;
     super.dispose();
   }
@@ -117,19 +121,20 @@ class _IndividualChatScreenState extends State<IndividualChatScreen>
       _scrollToBottom();
     };
 
-    // Socket ack that our send was received — update status.
-    ChatService.onMessageSent = (convId, ts) {
-      // The socket ack doesn't include the server ID, so we leave the
-      // optimistic message as-is and let the outbox handle confirmation
-      // for failed sends. For successful socket sends we mark 'sent'.
+    // Socket ack that our send was received — update status and ID.
+    ChatService.onMessageSent = (convId, clientMessageId, serverMessageId, ts) {
       if (!mounted) return;
       setState(() {
         for (int i = 0; i < _messages.length; i++) {
           if (_messages[i].localOnly &&
-              _messages[i].conversationId == convId) {
-            _messages[i] = _messages[i].copyWith(status: 'sent', localOnly: false);
+              _messages[i].id == clientMessageId) {
+            _messages[i] = _messages[i].copyWith(
+              id: serverMessageId,
+              status: 'sent', 
+              localOnly: false
+            );
             ChatDB.updateMessageStatus(
-                _messages[i].id, _messages[i].id, 'sent');
+                clientMessageId, serverMessageId, 'sent');
             break;
           }
         }
@@ -159,11 +164,32 @@ class _IndividualChatScreenState extends State<IndividualChatScreen>
         }
       });
     };
+
+    // Reconnect synchronization
+    ChatService.onConnected = () {
+      if (!mounted) return;
+      _deltaSync();
+    };
+
+    // Read receipt synchronization
+    ChatService.onMessagesRead = (convId, readBy, ts) {
+      if (convId != widget.conversationId || readBy == _myUserId) return;
+      if (!mounted) return;
+      setState(() {
+        for (int i = 0; i < _messages.length; i++) {
+          if (_messages[i].isMe && _messages[i].status != 'read') {
+            _messages[i] = _messages[i].copyWith(status: 'read');
+            ChatDB.updateMessageStatus(_messages[i].id, _messages[i].id, 'read');
+          }
+        }
+      });
+    };
   }
 
   void _connectAndJoin() {
     ChatService.connect();
     ChatService.joinConversation(widget.conversationId);
+    ChatService.markRead(widget.conversationId);
   }
 
   // ── Loading ───────────────────────────────────────────────────────────────
@@ -369,7 +395,7 @@ class _IndividualChatScreenState extends State<IndividualChatScreen>
 
     // Attempt socket send.
     if (ChatService.isConnected) {
-      ChatService.sendMessage(widget.conversationId, text);
+      ChatService.sendMessage(widget.conversationId, text, localId);
     } else {
       // Not connected — queue for outbox retry.
       OutboxService.notifyFailed();

@@ -46,7 +46,7 @@
             android:value="campusmatch_channel_id" />
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_icon"
-            android:resource="@mipmap/launcher_icon" />
+            android:resource="@drawable/ic_announcement" />
 
         <!-- Activity for image_cropper -->
         <activity

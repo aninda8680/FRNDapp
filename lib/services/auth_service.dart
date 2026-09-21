@@ -8,6 +8,8 @@ import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'chat_db.dart';
 import '../config/dev_config.dart';
 import 'fcm_token_manager.dart';
+import 'package:flutter/painting.dart';
+import 'image_cache_manager.dart';
 
 enum AuthResult {
   /// Existing user, correct password — go straight to profile setup.
@@ -135,6 +137,33 @@ class AuthService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
     await ChatDB.clearAll(); // Wipe all locally cached messages on logout
+    
+    // Wipe all locally cached images on logout (disk + memory)
+    try {
+      await AppImageCacheManager.sharedCacheManager.emptyCache();
+      PaintingBinding.instance.imageCache.clear();
+      PaintingBinding.instance.imageCache.clearLiveImages();
+    } catch (e) {
+      print('[Auth] Error clearing image cache during logout: $e');
+    }
+  }
+
+  /// Deletes the user account permanently and clears local session.
+  static Future<bool> deleteAccount() async {
+    try {
+      if (_cookie != null) {
+        final res = await http.delete(Uri.parse('$baseUrl/account'), headers: _getHeaders());
+        if (res.statusCode == 200) {
+          // Successfully deleted from server, clean up locally
+          await logout();
+          return true;
+        }
+      }
+      return false;
+    } catch (e) {
+      print('Error deleting account: $e');
+      return false;
+    }
   }
 
   /// Dedicated Login endpoint for existing users.
@@ -411,6 +440,13 @@ class AuthService {
           final prefs = await SharedPreferences.getInstance();
           await prefs.setString('user_session_v1', jsonEncode(user));
           await prefs.setString('last_synced_at', DateTime.now().toIso8601String());
+
+          if (userId != null) {
+            // Register FCM token now that we have a valid user ID (e.g. after login)
+            FcmTokenManager.registerDeviceToken(userId!).catchError((e) {
+              print('Failed to register FCM token during getProfile: $e');
+            });
+          }
         }
         return user;
       }

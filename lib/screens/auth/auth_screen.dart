@@ -298,6 +298,7 @@ class _AuthScreenState extends State<AuthScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFF800000), // Burgundy
       extendBodyBehindAppBar: true,
+      resizeToAvoidBottomInset: false,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -358,8 +359,10 @@ class _AuthFormContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: CustomScrollView(
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: SafeArea(
+        child: CustomScrollView(
         slivers: [
           SliverFillRemaining(
             hasScrollBody: false,
@@ -439,7 +442,8 @@ class _AuthFormContent extends StatelessWidget {
           ),
         ],
       ),
-    );
+    ),
+  );
   }
 }
 

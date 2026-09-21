@@ -54,6 +54,9 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
           final announcements = snapshot.data!;
           // Sort by newest first just in case backend doesn't sort
           announcements.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          
+          // Mark all fetched announcements as read since the user is viewing the list
+          AnnouncementService.markAllAsRead(announcements);
 
           return ListView.builder(
             padding: const EdgeInsets.all(16.0),
@@ -76,7 +79,7 @@ class _AnnouncementCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final formattedDate = DateFormat('MMM d, yyyy • h:mm a').format(announcement.createdAt);
+    final formattedDate = DateFormat('MMM d, yyyy • h:mm a').format(announcement.createdAt.toLocal());
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16.0),

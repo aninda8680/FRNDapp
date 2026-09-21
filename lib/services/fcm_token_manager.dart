@@ -31,13 +31,37 @@ class FcmTokenManager {
 
     // 3. Local Notifications Setup (for Foreground)
     const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
+        AndroidInitializationSettings('@mipmap/launcher_icon');
     
     // For iOS, you'd add DarwinInitializationSettings here.
     
     const InitializationSettings initializationSettings =
         InitializationSettings(android: initializationSettingsAndroid);
         
+    const AndroidNotificationChannel chatChannel = AndroidNotificationChannel(
+      'chat_messages_channel', // id
+      'Chat Messages', // name
+      description: 'Notifications for new chat messages.', // description
+      importance: Importance.max,
+    );
+
+    const AndroidNotificationChannel announcementChannel = AndroidNotificationChannel(
+      'announcements_channel', // id
+      'Announcements', // name
+      description: 'Important announcements and updates.', // description
+      importance: Importance.max,
+    );
+
+    await _localNotificationsPlugin
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(chatChannel);
+
+    await _localNotificationsPlugin
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(announcementChannel);
+
     await _localNotificationsPlugin.initialize(
       settings: initializationSettings,
       onDidReceiveNotificationResponse: (NotificationResponse details) {
@@ -136,25 +160,51 @@ class FcmTokenManager {
     final notification = message.notification;
     if (notification == null) return;
 
-    const AndroidNotificationDetails androidPlatformChannelSpecifics =
+    final type = message.data['type'];
+    final chatId = message.data['chatId'];
+
+    String channelId = 'chat_messages_channel';
+    String channelName = 'Chat Messages';
+    String channelDesc = 'Notifications for new chat messages.';
+    
+    // Default to a unique ID for announcements or generic messages
+    int notificationId = message.messageId?.hashCode ?? notification.hashCode;
+
+    if (type == 'announcement') {
+      channelId = 'announcements_channel';
+      channelName = 'Announcements';
+      channelDesc = 'Important announcements and updates.';
+    } else if (type == 'chat' && chatId != null) {
+      // Group by chat ID so new messages in the same chat replace the old notification
+      notificationId = chatId.hashCode;
+    }
+
+    AndroidNotificationDetails androidPlatformChannelSpecifics =
         AndroidNotificationDetails(
-      'campusmatch_channel_id',
-      'CampusMatch Notifications',
+      channelId,
+      channelName,
+      channelDescription: channelDesc,
       importance: Importance.max,
       priority: Priority.high,
+      icon: '@mipmap/launcher_icon',
       showWhen: true,
+      groupKey: type == 'chat' ? 'chat_$chatId' : null,
     );
 
-    const NotificationDetails platformChannelSpecifics =
+    NotificationDetails platformChannelSpecifics =
         NotificationDetails(android: androidPlatformChannelSpecifics);
 
     await _localNotificationsPlugin.show(
-      id: message.messageId?.hashCode ?? notification.hashCode,
-      title: notification.title,
-      body: notification.body,
-      notificationDetails: platformChannelSpecifics,
+      notificationId,
+      notification.title,
+      notification.body,
+      platformChannelSpecifics,
       payload: json.encode(message.data),
     );
+  }
+
+  static Future<void> cancelChatNotification(String chatId) async {
+    await _localNotificationsPlugin.cancel(chatId.hashCode);
   }
 
   static void _routeFromData(Map<String, dynamic> data, WidgetRef ref) {

@@ -56,10 +56,12 @@ class ChatService {
 
   // Callbacks
   static Function(ChatMessage)? onMessageReceived;
-  static Function(String, DateTime)? onMessageSent;
+  static Function(String, String, String, DateTime)? onMessageSent;
   static Function(String)? onError;
   static Function(Map<String, dynamic>)? onNewMatch;
   static Function(Map<String, dynamic>)? onNewLike;
+  static Function()? onConnected;
+  static Function(String, String, DateTime)? onMessagesRead;
 
   static String? _currentConversationId;
   static Timer? _heartbeatTimer;
@@ -163,6 +165,7 @@ class ChatService {
   static Future<String?> sendMessageHttp(
     String conversationId,
     String plaintext,
+    String clientMessageId,
   ) async {
     try {
       final encrypter = _getEncrypter(conversationId);
@@ -182,6 +185,7 @@ class ChatService {
             body: jsonEncode({
               'ciphertext': encrypted.base64,
               'iv': iv.base64,
+              'clientMessageId': clientMessageId,
             }),
           )
           .timeout(const Duration(seconds: 25));
@@ -237,6 +241,7 @@ class ChatService {
         _emitJoin(_currentConversationId!);
       }
       _startHeartbeat();
+      if (onConnected != null) onConnected!();
     });
 
     _socket!.onConnectError((err) {
@@ -295,10 +300,14 @@ class ChatService {
       print('ChatService: message_sent ack=$data');
       if (data is Map && onMessageSent != null) {
         final convId = data['conversationId'] as String?;
+        final clientMessageId = data['clientMessageId'] as String?;
+        final serverMessageId = data['messageId'] as String?;
         final timestampStr = data['timestamp'] as String?;
-        if (convId != null) {
+        if (convId != null && clientMessageId != null && serverMessageId != null) {
           onMessageSent!(
             convId,
+            clientMessageId,
+            serverMessageId,
             timestampStr != null
                 ? DateTime.parse(timestampStr).toLocal()
                 : DateTime.now(),
@@ -323,6 +332,23 @@ class ChatService {
       }
     });
 
+    // Server → Client: read receipt
+    _socket!.on('messages_read', (data) {
+      print('ChatService: messages_read event received=$data');
+      if (data is Map && onMessagesRead != null) {
+        final convId = data['conversationId'] as String?;
+        final readBy = data['readBy'] as String?;
+        final timestampStr = data['timestamp'] as String?;
+        if (convId != null && readBy != null) {
+          onMessagesRead!(
+            convId,
+            readBy,
+            timestampStr != null ? DateTime.parse(timestampStr).toLocal() : DateTime.now()
+          );
+        }
+      }
+    });
+
     // Server → Client: real-time new like push notification
     _socket!.on('new_like', (data) {
       print('ChatService: new_like event received=$data');
@@ -336,6 +362,13 @@ class ChatService {
   static void _emitJoin(String conversationId) {
     print('ChatService: Emitting join_conversation for $conversationId');
     _socket!.emit('join_conversation', {'conversationId': conversationId});
+  }
+
+  static void markRead(String conversationId) {
+    if (_socket != null && _socket!.connected) {
+      print('ChatService: Emitting mark_read for $conversationId');
+      _socket!.emit('mark_read', {'conversationId': conversationId});
+    }
   }
 
   static void _startHeartbeat() {
@@ -360,20 +393,20 @@ class ChatService {
     }
   }
 
-  static void sendMessage(String conversationId, String plaintext) {
+  static void sendMessage(String conversationId, String plaintext, String clientMessageId) {
     if (_socket == null || !_socket!.connected) {
       print('ChatService: Socket not connected, attempting reconnect...');
       connect();
       // Wait briefly then send (the socket may reconnect fast on mobile)
       Future.delayed(const Duration(milliseconds: 500), () {
-        _doSend(conversationId, plaintext);
+        _doSend(conversationId, plaintext, clientMessageId);
       });
       return;
     }
-    _doSend(conversationId, plaintext);
+    _doSend(conversationId, plaintext, clientMessageId);
   }
 
-  static void _doSend(String conversationId, String plaintext) {
+  static void _doSend(String conversationId, String plaintext, String clientMessageId) {
     try {
       final encrypter = _getEncrypter(conversationId);
       final iv = enc.IV.fromSecureRandom(12);
@@ -384,6 +417,7 @@ class ChatService {
         'conversationId': conversationId,
         'ciphertext': encrypted.base64,
         'iv': iv.base64,
+        'clientMessageId': clientMessageId,
       });
     } catch (e) {
       print('ChatService: Encrypt error: $e');

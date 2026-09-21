@@ -40,6 +40,30 @@ class _LikesMatchesScreenState extends State<LikesMatchesScreen> {
         ChatListScreen.triggerRefresh?.call();
       }
     };
+
+    // Listen for real-time WebSocket like notification
+    ChatService.onNewLike = (data) {
+      if (mounted) {
+        print('LikesMatchesScreen: Real-time new_like received: $data');
+        _fetchMatches();
+        
+        final message = data['message'] ?? 'Someone liked your profile!';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.favorite, color: Colors.white, size: 18),
+                const SizedBox(width: 8),
+                Expanded(child: Text(message)),
+              ],
+            ),
+            backgroundColor: const Color(0xFFA41534),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+      }
+    };
   }
 
   Future<void> _fetchMatches() async {
@@ -50,7 +74,7 @@ class _LikesMatchesScreenState extends State<LikesMatchesScreen> {
     if (mounted) {
       setState(() {
         _likesCount = likesData['totalLikesCount'] ?? 0;
-        _hasAccess = likesData['hasAccess'] ?? false;
+        _hasAccess = true; // likesData['hasAccess'] ?? false;
         
         if (likesData['likers'] != null) {
           final likersList = likesData['likers'] as List<dynamic>;
@@ -422,7 +446,7 @@ class _LikesMatchesScreenState extends State<LikesMatchesScreen> {
 
 
   Widget _buildLikerCard(Map<String, dynamic> liker) {
-    final bool isLocked = liker['isLocked'] == true || liker['hasAccess'] == false;
+    final bool isLocked = false; // liker['isLocked'] == true || liker['hasAccess'] == false;
     final Map<String, dynamic> profile = Map<String, dynamic>.from(liker['profile'] ?? {});
     final String type = (liker['type'] ?? profile['type'] ?? 'like').toString().toLowerCase();
     final bool isSuperlike = type == 'superlike';
