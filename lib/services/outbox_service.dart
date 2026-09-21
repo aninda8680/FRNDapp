@@ -77,6 +77,7 @@ class OutboxService {
         final serverId = await ChatService.sendMessageHttp(
           msg.conversationId,
           msg.content,
+          msg.id, // clientMessageId
         );
 
         if (serverId != null) {

@@ -195,16 +195,16 @@ class FcmTokenManager {
         NotificationDetails(android: androidPlatformChannelSpecifics);
 
     await _localNotificationsPlugin.show(
-      notificationId,
-      notification.title,
-      notification.body,
-      platformChannelSpecifics,
+      id: notificationId,
+      title: notification.title,
+      body: notification.body,
+      notificationDetails: platformChannelSpecifics,
       payload: json.encode(message.data),
     );
   }
 
   static Future<void> cancelChatNotification(String chatId) async {
-    await _localNotificationsPlugin.cancel(chatId.hashCode);
+    await _localNotificationsPlugin.cancel(id: chatId.hashCode);
   }
 
   static void _routeFromData(Map<String, dynamic> data, WidgetRef ref) {

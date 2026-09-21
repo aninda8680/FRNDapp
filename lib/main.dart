@@ -58,7 +58,6 @@ void main() async {
       if (!AuthService.isEmailVerified(cachedProfile)) {
         initialRouteString = AppRoutes.otp;
       } else if (AuthService.isProfileComplete(cachedProfile)) {
-        DiscoverService.prefetchFeed();
         initialRouteString = AppRoutes.main;
       } else {
         initialRouteString = AppRoutes.profileSetup;
@@ -72,7 +71,6 @@ void main() async {
         if (!AuthService.isEmailVerified(fetchedProfile)) {
           initialRouteString = AppRoutes.otp;
         } else if (AuthService.isProfileComplete(fetchedProfile)) {
-          DiscoverService.prefetchFeed();
           initialRouteString = AppRoutes.main;
         } else {
           initialRouteString = AppRoutes.profileSetup;
